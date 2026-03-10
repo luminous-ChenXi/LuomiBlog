@@ -1,0 +1,292 @@
+---
+export interface Props {
+  title: string;
+  summary: string;
+  date: string;
+  category: string;
+  tags: string[];
+  slug: string;
+  views?: number;
+  comments?: number;
+  cover?: string;
+  author?: string;
+  avatar?: string;
+}
+
+const { 
+  title, 
+  summary, 
+  date, 
+  category, 
+  tags, 
+  slug, 
+  views = 0, 
+  comments = 0,
+  cover,
+  author = '辰汐',
+  avatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=chenxi'
+} = Astro.props;
+---
+
+<article class="article-card">
+  <a href={`/article/${slug}`} class="card-link">
+    <div class="card-image">
+      {cover ? (
+        <img src={cover} alt={title} loading="lazy" class="cover-image" />
+      ) : (
+        <div class="image-placeholder">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+        </div>
+      )}
+      <div class="card-category">
+        <span class="category-dot"></span>
+        {category}
+      </div>
+    </div>
+  </a>
+  
+  <div class="card-content">
+    <h3 class="card-title">
+      <a href={`/article/${slug}`}>{title}</a>
+    </h3>
+    
+    <p class="card-summary">{summary}</p>
+    
+    <div class="card-tags">
+      {tags.map(tag => (
+        <span class="tag">{tag}</span>
+      ))}
+    </div>
+    
+    <div class="card-footer">
+      <div class="card-author">
+        <img src={avatar} alt={author} class="author-avatar" />
+        <div class="author-info">
+          <span class="author-name">{author}</span>
+          <span class="post-date">{date}</span>
+        </div>
+      </div>
+      
+      <div class="card-meta">
+        <div class="meta-item" title="阅读数">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>{views}</span>
+        </div>
+        <div class="meta-item" title="评论数">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>{comments}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<style>
+  .article-card {
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .article-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(255, 107, 157, 0.2);
+  }
+
+  .card-link {
+    display: block;
+    text-decoration: none;
+  }
+
+  .card-image {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+  }
+
+  .cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+  }
+
+  .article-card:hover .cover-image {
+    transform: scale(1.08);
+  }
+
+  .image-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.1) 0%, rgba(78, 205, 196, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--transition-base);
+    color: var(--color-brand-primary);
+    opacity: 0.6;
+  }
+
+  .article-card:hover .image-placeholder {
+    transform: scale(1.05);
+  }
+
+  .card-category {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-brand-primary);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  [data-theme="dark"] .card-category {
+    background: rgba(26, 26, 46, 0.95);
+  }
+
+  .category-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--color-brand-primary);
+    border-radius: 50%;
+  }
+
+  .card-content {
+    padding: 24px;
+  }
+
+  .card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .card-title a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .card-title a:hover {
+    color: var(--color-brand-primary);
+  }
+
+  .card-summary {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .tag {
+    padding: 4px 12px;
+    background: rgba(255, 107, 157, 0.08);
+    color: var(--color-brand-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
+    border: 1px solid rgba(255, 107, 157, 0.15);
+  }
+
+  .tag:hover {
+    background: var(--color-brand-primary);
+    color: white;
+    transform: translateY(-2px);
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .card-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    transition: border-color var(--transition-fast);
+  }
+
+  .article-card:hover .author-avatar {
+    border-color: var(--color-brand-primary);
+  }
+
+  .author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .author-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .post-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .card-meta {
+    display: flex;
+    gap: 12px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .meta-item svg {
+    color: var(--color-brand-primary);
+    opacity: 0.7;
+  }
+</style>

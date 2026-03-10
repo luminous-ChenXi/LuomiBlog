@@ -1,0 +1,457 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const users = [
+  {
+    id: 1,
+    name: '张三',
+    username: 'zhangsan',
+    email: 'zhangsan@example.com',
+    avatar: null,
+    role: 'admin',
+    status: 'active',
+    articles: 12,
+    comments: 45,
+    joinedAt: '2024-01-15',
+  },
+  {
+    id: 2,
+    name: '李四',
+    username: 'lisi',
+    email: 'lisi@example.com',
+    avatar: null,
+    role: 'editor',
+    status: 'active',
+    articles: 8,
+    comments: 23,
+    joinedAt: '2024-02-20',
+  },
+  {
+    id: 3,
+    name: '王五',
+    username: 'wangwu',
+    email: 'wangwu@example.com',
+    avatar: null,
+    role: 'user',
+    status: 'inactive',
+    articles: 0,
+    comments: 5,
+    joinedAt: '2024-03-10',
+  },
+  {
+    id: 4,
+    name: '赵六',
+    username: 'zhaoliu',
+    email: 'zhaoliu@example.com',
+    avatar: null,
+    role: 'user',
+    status: 'active',
+    articles: 3,
+    comments: 12,
+    joinedAt: '2024-03-25',
+  },
+];
+
+const roleOptions = [
+  { value: 'admin', label: '管理员', color: 'danger' },
+  { value: 'editor', label: '编辑', color: 'warning' },
+  { value: 'user', label: '用户', color: 'info' },
+];
+---
+
+<AdminLayout title="用户管理">
+  <div class="users-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">members</p>
+      <h1 class="admin-section-title">用户管理</h1>
+      <p class="admin-section-description">
+        列表视图展示全部成员，支持搜索、调整角色与删除操作。
+      </p>
+    </header>
+
+    <!-- 筛选工具栏 -->
+    <div class="glass-panel toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" class="admin-input" placeholder="搜索用户名 / 昵称 / 邮箱" />
+        </div>
+        <select class="admin-input filter-select">
+          <option value="">全部角色</option>
+          <option value="admin">管理员</option>
+          <option value="editor">编辑</option>
+          <option value="user">普通用户</option>
+        </select>
+        <select class="admin-input filter-select">
+          <option value="">全部状态</option>
+          <option value="active">活跃</option>
+          <option value="inactive">禁用</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="admin-btn admin-btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+          刷新
+        </button>
+      </div>
+    </div>
+
+    <!-- 用户表格 -->
+    <div class="glass-panel table-container">
+      <table class="admin-table users-table">
+        <thead>
+          <tr>
+            <th class="col-user">用户</th>
+            <th class="col-role">角色</th>
+            <th class="col-stats">文章/评论</th>
+            <th class="col-status">状态</th>
+            <th class="col-date">加入时间</th>
+            <th class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <div class="user-avatar">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} />
+                    ) : (
+                      <span class="avatar-placeholder">{user.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div class="user-info">
+                    <span class="user-name">{user.name}</span>
+                    <span class="user-meta">{user.username} · {user.email}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <select class="role-select">
+                  {roleOptions.map((role) => (
+                    <option value={role.value} selected={user.role === role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <div class="stats-cell">
+                  <span class="stat-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                    {user.articles}
+                  </span>
+                  <span class="stat-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    {user.comments}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class={`admin-badge ${user.status === 'active' ? 'admin-badge-success' : 'admin-badge-danger'}`}>
+                  {user.status === 'active' ? '活跃' : '禁用'}
+                </span>
+              </td>
+              <td>
+                <span class="date-text">{user.joinedAt}</span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-icon" title="编辑">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  </button>
+                  <button class="btn-icon btn-danger" title="删除">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 分页 -->
+    <div class="glass-panel pagination-panel">
+      <div class="pagination-info">
+        <span>共 <strong>128</strong> 位用户</span>
+        <span>第 <strong>1</strong> / 13 页</span>
+      </div>
+      <div class="pagination-controls">
+        <button class="btn-page" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn-page active">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">3</button>
+        <span class="page-ellipsis">...</span>
+        <button class="btn-page">13</button>
+        <button class="btn-page">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="page-size">
+        <span>每页</span>
+        <select class="admin-input">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+        </select>
+        <span>条</span>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .users-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 300px;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--admin-text-muted);
+  }
+
+  .search-box .admin-input {
+    padding-left: 42px;
+  }
+
+  .filter-select {
+    width: 140px;
+  }
+
+  /* 表格容器 */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .users-table {
+    min-width: 800px;
+  }
+
+  .users-table th {
+    white-space: nowrap;
+  }
+
+  /* 用户单元格 */
+  .user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--admin-primary) 0%, #c44569 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .user-name {
+    font-weight: 600;
+    color: var(--admin-text);
+  }
+
+  .user-meta {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  /* 角色选择 */
+  .role-select {
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 8px;
+    color: var(--admin-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .role-select:focus {
+    outline: none;
+    border-color: var(--admin-primary);
+  }
+
+  /* 统计单元格 */
+  .stats-cell {
+    display: flex;
+    gap: 16px;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* 日期 */
+  .date-text {
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* 操作按钮 */
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--admin-text);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-icon.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--admin-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* 分页 */
+  .pagination-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .pagination-info {
+    display: flex;
+    gap: 16px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .pagination-info strong {
+    color: var(--admin-text);
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-page:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--admin-text);
+  }
+
+  .btn-page.active {
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
+    color: white;
+  }
+
+  .btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .page-ellipsis {
+    color: var(--admin-text-muted);
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .page-size .admin-input {
+    width: 70px;
+    padding: 6px 10px;
+  }
+</style>

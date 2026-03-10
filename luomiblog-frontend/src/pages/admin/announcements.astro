@@ -1,0 +1,421 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const announcements = [
+  {
+    id: 1,
+    title: '网站维护通知',
+    content: '系统将于本周日凌晨 2:00-4:00 进行例行维护，期间可能出现短暂访问中断。',
+    level: 'WARNING',
+    status: 'PUBLISHED',
+    pinned: true,
+    views: 1250,
+    createdAt: '2024-03-20',
+  },
+  {
+    id: 2,
+    title: '新功能上线：评论系统',
+    content: '我们很高兴地宣布，全新的评论系统已经上线！支持 Markdown 语法和实时通知。',
+    level: 'NOTICE',
+    status: 'PUBLISHED',
+    pinned: false,
+    views: 890,
+    createdAt: '2024-03-18',
+  },
+  {
+    id: 3,
+    title: '关于垃圾评论处理的公告',
+    content: '近期发现大量垃圾评论，我们已加强审核机制，请大家共同维护良好的社区环境。',
+    level: 'ALERT',
+    status: 'PUBLISHED',
+    pinned: false,
+    views: 650,
+    createdAt: '2024-03-15',
+  },
+  {
+    id: 4,
+    title: '春节放假安排',
+    content: '春节期间客服响应可能有所延迟，祝大家新春快乐！',
+    level: 'NOTICE',
+    status: 'DRAFT',
+    pinned: false,
+    views: 0,
+    createdAt: '2024-03-10',
+  },
+];
+
+const getLevelBadge = (level: string) => {
+  const levelMap: Record<string, { label: string; class: string }> = {
+    NOTICE: { label: '通知', class: 'admin-badge-info' },
+    WARNING: { label: '警告', class: 'admin-badge-warning' },
+    ALERT: { label: '紧急', class: 'admin-badge-danger' },
+  };
+  return levelMap[level] || { label: level, class: '' };
+};
+
+const getStatusBadge = (status: string) => {
+  const statusMap: Record<string, { label: string; class: string }> = {
+    PUBLISHED: { label: '已发布', class: 'admin-badge-success' },
+    DRAFT: { label: '草稿', class: 'admin-badge-warning' },
+    ARCHIVED: { label: '已归档', class: 'admin-badge-info' },
+  };
+  return statusMap[status] || { label: status, class: '' };
+};
+---
+
+<AdminLayout title="公告管理">
+  <div class="announcements-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">notices</p>
+      <h1 class="admin-section-title">公告管理</h1>
+      <p class="admin-section-description">
+        管理系统公告，支持设置优先级和置顶状态。
+      </p>
+    </header>
+
+    <!-- 工具栏 -->
+    <div class="glass-panel toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" class="admin-input" placeholder="搜索公告标题..." />
+        </div>
+        <select class="admin-input filter-select">
+          <option value="">全部级别</option>
+          <option value="NOTICE">通知</option>
+          <option value="WARNING">警告</option>
+          <option value="ALERT">紧急</option>
+        </select>
+        <select class="admin-input filter-select">
+          <option value="">全部状态</option>
+          <option value="PUBLISHED">已发布</option>
+          <option value="DRAFT">草稿</option>
+          <option value="ARCHIVED">已归档</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <a href="/admin/announcements/new" class="admin-btn admin-btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          发布公告
+        </a>
+      </div>
+    </div>
+
+    <!-- 公告列表 -->
+    <div class="announcements-list">
+      {announcements.map((announcement) => {
+        const levelBadge = getLevelBadge(announcement.level);
+        const statusBadge = getStatusBadge(announcement.status);
+        return (
+          <div class={`announcement-card ${announcement.pinned ? 'pinned' : ''}`}>
+            {announcement.pinned && (
+              <div class="pinned-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                置顶
+              </div>
+            )}
+            <div class="announcement-header">
+              <h3 class="announcement-title">{announcement.title}</h3>
+              <div class="announcement-badges">
+                <span class={`admin-badge ${levelBadge.class}`}>{levelBadge.label}</span>
+                <span class={`admin-badge ${statusBadge.class}`}>{statusBadge.label}</span>
+              </div>
+            </div>
+            <p class="announcement-content">{announcement.content}</p>
+            <div class="announcement-footer">
+              <div class="announcement-meta">
+                <span class="meta-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  {announcement.views} 次浏览
+                </span>
+                <span class="meta-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                  {announcement.createdAt}
+                </span>
+              </div>
+              <div class="announcement-actions">
+                <button class="btn-icon" title="编辑">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                </button>
+                <button class="btn-icon" title={announcement.pinned ? '取消置顶' : '置顶'}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                </button>
+                <button class="btn-icon btn-danger" title="删除">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- 分页 -->
+    <div class="glass-panel pagination-panel">
+      <div class="pagination-info">
+        <span>共 <strong>12</strong> 条公告</span>
+        <span>第 <strong>1</strong> / 2 页</span>
+      </div>
+      <div class="pagination-controls">
+        <button class="btn-page" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn-page active">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="page-size">
+        <span>每页</span>
+        <select class="admin-input">
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+        <span>条</span>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .announcements-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 300px;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--admin-text-muted);
+  }
+
+  .search-box .admin-input {
+    padding-left: 42px;
+  }
+
+  .filter-select {
+    width: 140px;
+  }
+
+  /* 公告列表 */
+  .announcements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .announcement-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 20px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .announcement-card:hover {
+    border-color: rgba(255, 107, 157, 0.2);
+  }
+
+  .announcement-card.pinned {
+    border-color: rgba(255, 107, 157, 0.3);
+    background: rgba(255, 107, 157, 0.03);
+  }
+
+  .pinned-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 107, 157, 0.15);
+    border: 1px solid rgba(255, 107, 157, 0.3);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--admin-primary);
+    font-weight: 500;
+  }
+
+  .announcement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-right: 80px;
+  }
+
+  .announcement-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin: 0;
+  }
+
+  .announcement-badges {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .announcement-content {
+    font-size: 0.9375rem;
+    color: var(--admin-text-secondary);
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+  }
+
+  .announcement-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--admin-card-border);
+  }
+
+  .announcement-meta {
+    display: flex;
+    gap: 16px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    color: var(--admin-text-muted);
+  }
+
+  .announcement-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--admin-text);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-icon.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--admin-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* 分页 */
+  .pagination-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .pagination-info {
+    display: flex;
+    gap: 16px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .pagination-info strong {
+    color: var(--admin-text);
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-page:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--admin-text);
+  }
+
+  .btn-page.active {
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
+    color: white;
+  }
+
+  .btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .page-size .admin-input {
+    width: 70px;
+    padding: 6px 10px;
+  }
+</style>

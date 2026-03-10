@@ -1,0 +1,317 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 项目数据
+const projects = [
+  {
+    id: 1,
+    name: 'LuomiBlog',
+    description: '基于 Astro + Vue + Spring Boot 的 AI 知识库博客系统，支持 RAG 问答、文章管理、评论互动等功能。',
+    image: 'https://picsum.photos/seed/luomiblog/800/500',
+    tags: ['Astro', 'Vue3', 'Spring Boot', 'AI'],
+    github: 'https://github.com',
+    demo: 'https://demo.com',
+    featured: true
+  },
+  {
+    id: 2,
+    name: 'AstrNest',
+    description: '开源的图片托管与管理系统，支持多存储策略、API 接入、用户管理等功能。',
+    image: 'https://picsum.photos/seed/astrnest/800/500',
+    tags: ['Vue3', 'Spring Boot', 'OSS'],
+    github: 'https://github.com',
+    demo: 'https://demo.com',
+    featured: true
+  },
+  {
+    id: 3,
+    name: 'AI Chat Assistant',
+    description: '基于阿里云百炼的智能问答助手，支持知识库检索、多轮对话、上下文理解。',
+    image: 'https://picsum.photos/seed/aichat/800/500',
+    tags: ['AI', 'RAG', 'Vue3'],
+    github: 'https://github.com',
+    demo: null,
+    featured: false
+  },
+  {
+    id: 4,
+    name: 'Markdown Editor',
+    description: '简洁优雅的 Markdown 编辑器，支持实时预览、代码高亮、图片上传等功能。',
+    image: 'https://picsum.photos/seed/markdown/800/500',
+    tags: ['TypeScript', 'Monaco Editor'],
+    github: 'https://github.com',
+    demo: 'https://demo.com',
+    featured: false
+  },
+  {
+    id: 5,
+    name: 'Portfolio Template',
+    description: '个人作品集网站模板，响应式设计，支持暗色模式，易于定制。',
+    image: 'https://picsum.photos/seed/portfolio/800/500',
+    tags: ['Astro', 'Tailwind CSS'],
+    github: 'https://github.com',
+    demo: 'https://demo.com',
+    featured: false
+  },
+  {
+    id: 6,
+    name: 'Weather App',
+    description: '精美的天气预报应用，支持定位、多城市、未来7天预报。',
+    image: 'https://picsum.photos/seed/weather/800/500',
+    tags: ['Vue3', 'PWA'],
+    github: 'https://github.com',
+    demo: 'https://demo.com',
+    featured: false
+  }
+];
+
+const stats = [
+  { label: '开源项目', value: '12+' },
+  { label: 'GitHub Stars', value: '500+' },
+  { label: '技术文章', value: '50+' },
+  { label: '贡献者', value: '20+' }
+];
+---
+
+<Layout title="项目展示 - LuomiBlog">
+  <Header />
+  <main class="project-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">项目展示</h1>
+      <p class="page-subtitle">记录代码世界中的创造与探索</p>
+      
+      <!-- 统计数据 -->
+      <div class="stats-grid">
+        {stats.map((stat) => (
+          <div class="stat-item">
+            <span class="stat-value">{stat.value}</span>
+            <span class="stat-label">{stat.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- 精选项目 -->
+    <section class="page-content">
+      <div class="section-header">
+        <span class="section-eyebrow">Featured</span>
+        <h2 class="section-title">精选项目</h2>
+      </div>
+      
+      <div class="featured-projects">
+        {projects.filter(p => p.featured).map((project) => (
+          <div class="featured-card">
+            <div class="featured-image">
+              <img src={project.image} alt={project.name} loading="lazy" />
+            </div>
+            <div class="featured-content">
+              <div class="featured-tags">
+                {project.tags.map((tag) => (
+                  <span class="tag">{tag}</span>
+                ))}
+              </div>
+              <h3 class="featured-title">{project.name}</h3>
+              <p class="featured-desc">{project.description}</p>
+              <div class="featured-links">
+                {project.github && (
+                  <a href={project.github} target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                    GitHub
+                  </a>
+                )}
+                {project.demo && (
+                  <a href={project.demo} target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    在线预览
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- 更多项目 -->
+    <section class="page-content" style="padding-top: 0;">
+      <div class="section-header">
+        <span class="section-eyebrow">More</span>
+        <h2 class="section-title">更多项目</h2>
+      </div>
+      
+      <div class="projects-grid">
+        {projects.filter(p => !p.featured).map((project) => (
+          <div class="project-card">
+            <div class="project-image">
+              <img src={project.image} alt={project.name} loading="lazy" />
+            </div>
+            <div class="project-content">
+              <div class="project-header">
+                <h3 class="project-name">{project.name}</h3>
+                <div class="project-links">
+                  {project.github && (
+                    <a href={project.github} target="_blank" rel="noopener noreferrer" class="project-link" title="GitHub">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                    </a>
+                  )}
+                  {project.demo && (
+                    <a href={project.demo} target="_blank" rel="noopener noreferrer" class="project-link" title="在线预览">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
+                  )}
+                </div>
+              </div>
+              <p class="project-desc">{project.description}</p>
+              <div class="project-tech">
+                {project.tags.map((tag) => (
+                  <span>{tag}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .project-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .stats-grid {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-value {
+    display: block;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--color-brand-primary);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-top: 8px;
+    display: block;
+  }
+
+  .featured-projects {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .featured-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    transition: all var(--transition-base);
+  }
+
+  .featured-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .featured-card:nth-child(even) .featured-image {
+    order: 2;
+  }
+
+  .featured-image {
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+  }
+
+  .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+  }
+
+  .featured-card:hover .featured-image img {
+    transform: scale(1.05);
+  }
+
+  .featured-content {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .featured-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .featured-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 16px 0;
+  }
+
+  .featured-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+    margin: 0 0 24px 0;
+  }
+
+  .featured-links {
+    display: flex;
+    gap: 12px;
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .featured-card {
+      grid-template-columns: 1fr;
+    }
+
+    .featured-card:nth-child(even) .featured-image {
+      order: 0;
+    }
+
+    .stats-grid {
+      gap: 24px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+    }
+
+    .projects-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

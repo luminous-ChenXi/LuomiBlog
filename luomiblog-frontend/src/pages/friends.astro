@@ -1,0 +1,529 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const friendLinks = [
+  {
+    name: '技术博客',
+    description: '分享前沿技术文章，专注后端开发与架构设计',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['技术', '后端']
+  },
+  {
+    name: '设计师小站',
+    description: 'UI/UX 设计灵感与教程，让设计更简单',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['设计', 'UI/UX']
+  },
+  {
+    name: '前端工坊',
+    description: '前端开发者的聚集地，分享 Vue、React 实战经验',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['前端', 'Vue']
+  },
+  {
+    name: '算法之路',
+    description: '算法与数据结构学习笔记，助力编程面试',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['算法', '面试']
+  },
+  {
+    name: '摄影日记',
+    description: '记录生活中的美好瞬间，分享摄影技巧',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['摄影', '生活']
+  },
+  {
+    name: '开源社区',
+    description: '开源项目推荐与贡献指南，共建技术生态',
+    url: 'https://example.com',
+    avatar: '/avatar.png',
+    tags: ['开源', '社区']
+  }
+];
+
+const applyInfo = {
+  title: '友链申请',
+  requirements: [
+    '网站内容健康，无违法违规信息',
+    '网站稳定运行，访问速度良好',
+    '原创内容为主，定期更新',
+    '已添加本站链接'
+  ],
+  myInfo: {
+    name: '辰汐博客',
+    url: 'https://luminouschenxi.com',
+    description: '记录生活，分享技术',
+    avatar: '/avatar.png'
+  }
+};
+---
+
+<Layout>
+  <Header />
+  <main class="friends-page">
+    <!-- Hero 区域 -->
+    <section class="friends-hero">
+      <div class="hero-content">
+        <h1 class="hero-title">友情链接</h1>
+        <p class="hero-subtitle">与志同道合的朋友交换链接，共同成长</p>
+      </div>
+    </section>
+
+    <!-- 友链列表 -->
+    <section class="friends-section">
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-eyebrow">Friends</span>
+          <h2 class="section-title">我的朋友们</h2>
+        </div>
+        
+        <div class="friends-grid">
+          {friendLinks.map((friend) => (
+            <a href={friend.url} target="_blank" rel="noopener noreferrer" class="friend-card">
+              <div class="card-header">
+                <img src={friend.avatar} alt={friend.name} class="friend-avatar" />
+                <div class="friend-tags">
+                  {friend.tags.map((tag) => (
+                    <span class="tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+              <div class="card-body">
+                <h3 class="friend-name">{friend.name}</h3>
+                <p class="friend-desc">{friend.description}</p>
+              </div>
+              <div class="card-footer">
+                <span class="visit-link">
+                  访问网站
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 17 17 7"/>
+                    <path d="M7 7h10v10"/>
+                  </svg>
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- 申请友链 -->
+    <section class="apply-section">
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-eyebrow">Apply</span>
+          <h2 class="section-title">申请友链</h2>
+        </div>
+
+        <div class="apply-content">
+          <!-- 本站信息 -->
+          <div class="info-card my-info">
+            <h3 class="card-title">本站信息</h3>
+            <div class="info-content">
+              <img src={applyInfo.myInfo.avatar} alt="avatar" class="info-avatar" />
+              <div class="info-details">
+                <div class="info-item">
+                  <span class="info-label">网站名称：</span>
+                  <span class="info-value">{applyInfo.myInfo.name}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">网站地址：</span>
+                  <span class="info-value">{applyInfo.myInfo.url}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">网站描述：</span>
+                  <span class="info-value">{applyInfo.myInfo.description}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 申请要求 -->
+          <div class="info-card requirements">
+            <h3 class="card-title">申请要求</h3>
+            <ul class="requirement-list">
+              {applyInfo.requirements.map((req) => (
+                <li class="requirement-item">
+                  <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>{req}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <!-- 联系按钮 -->
+          <div class="apply-action">
+            <p class="apply-hint">符合以上要求？欢迎交换友链！</p>
+            <a href="mailto:chenxi@example.com" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              发送邮件申请
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .friends-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  /* Hero 区域 */
+  .friends-hero {
+    padding: 80px 24px 60px;
+    background: linear-gradient(135deg, #FADCE9 0%, #F9A8C8 50%, #E87A9F 100%);
+    text-align: center;
+    color: white;
+  }
+
+  .hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .hero-title {
+    font-size: 42px;
+    font-weight: 800;
+    margin: 0 0 16px 0;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    opacity: 0.9;
+    margin: 0;
+  }
+
+  /* 通用区块 */
+  .friends-section {
+    padding: 80px 24px;
+  }
+
+  .section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .section-eyebrow {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #ff6b9d;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  /* 友链网格 */
+  .friends-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .friend-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid transparent;
+  }
+
+  .friend-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 107, 157, 0.2);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .friend-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-border);
+  }
+
+  .friend-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .tag {
+    padding: 4px 10px;
+    background: rgba(255, 107, 157, 0.1);
+    color: #ff6b9d;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 20px;
+  }
+
+  .card-body {
+    flex: 1;
+    margin-bottom: 16px;
+  }
+
+  .friend-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 8px 0;
+  }
+
+  .friend-desc {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-footer {
+    margin-top: auto;
+  }
+
+  .visit-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ff6b9d;
+    transition: gap 0.2s ease;
+  }
+
+  .friend-card:hover .visit-link {
+    gap: 10px;
+  }
+
+  .visit-link svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* 申请区域 */
+  .apply-section {
+    padding: 80px 24px;
+    background: var(--color-bg-secondary);
+  }
+
+  .apply-content {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .info-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 20px 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .info-content {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .info-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff6b9d;
+    flex-shrink: 0;
+  }
+
+  .info-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info-item {
+    display: flex;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .info-label {
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+  }
+
+  .info-value {
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .requirement-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .requirement-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    color: var(--color-text);
+  }
+
+  .check-icon {
+    width: 20px;
+    height: 20px;
+    color: #10b981;
+    flex-shrink: 0;
+  }
+
+  .apply-action {
+    text-align: center;
+    padding: 24px;
+  }
+
+  .apply-hint {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    margin: 0 0 16px 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+  }
+
+  /* 响应式 */
+  @media (max-width: 1200px) {
+    .friends-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 32px;
+    }
+
+    .friends-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .info-content {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .info-details {
+      align-items: center;
+    }
+
+    .info-item {
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .friends-hero {
+      padding: 60px 16px;
+    }
+
+    .friends-section,
+    .apply-section {
+      padding: 60px 16px;
+    }
+
+    .section-title {
+      font-size: 24px;
+    }
+
+    .info-card {
+      padding: 24px;
+    }
+  }
+</style>

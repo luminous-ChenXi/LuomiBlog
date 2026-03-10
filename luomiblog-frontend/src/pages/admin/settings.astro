@@ -1,0 +1,360 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const settings = {
+  site: {
+    title: '辰汐小站',
+    description: '一个专注于技术分享的个人博客',
+    logo: '/logo.png',
+    favicon: '/favicon.ico',
+    icp: '',
+  },
+  seo: {
+    keywords: '技术博客,前端开发,Vue,React',
+    author: '辰汐',
+    robots: 'index,follow',
+  },
+  features: {
+    enableComment: true,
+    enableRegister: true,
+    enableEmailVerify: false,
+    enableCDN: true,
+  },
+  limits: {
+    maxUploadSize: 10,
+    allowedTypes: 'jpg,png,gif,webp',
+    postsPerPage: 10,
+  },
+};
+---
+
+<AdminLayout title="系统设置">
+  <div class="settings-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">settings</p>
+      <h1 class="admin-section-title">系统设置</h1>
+      <p class="admin-section-description">
+        配置网站基本信息、功能开关和系统参数。
+      </p>
+    </header>
+
+    <!-- 设置表单 -->
+    <div class="settings-form">
+      <!-- 站点信息 -->
+      <div class="glass-panel setting-section">
+        <h3 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          站点信息
+        </h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">网站标题</label>
+            <input type="text" class="admin-input" value={settings.site.title} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">网站描述</label>
+            <input type="text" class="admin-input" value={settings.site.description} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Logo</label>
+            <div class="file-input">
+              <input type="text" class="admin-input" value={settings.site.logo} readonly />
+              <button class="admin-btn admin-btn-secondary">上传</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Favicon</label>
+            <div class="file-input">
+              <input type="text" class="admin-input" value={settings.site.favicon} readonly />
+              <button class="admin-btn admin-btn-secondary">上传</button>
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">ICP 备案号</label>
+            <input type="text" class="admin-input" value={settings.site.icp} placeholder="如：京ICP备12345678号" />
+          </div>
+        </div>
+      </div>
+
+      <!-- SEO 设置 -->
+      <div class="glass-panel setting-section">
+        <h3 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          SEO 设置
+        </h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">关键词</label>
+            <input type="text" class="admin-input" value={settings.seo.keywords} />
+            <span class="form-hint">多个关键词用逗号分隔</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">作者</label>
+            <input type="text" class="admin-input" value={settings.seo.author} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Robots</label>
+            <input type="text" class="admin-input" value={settings.seo.robots} />
+          </div>
+        </div>
+      </div>
+
+      <!-- 功能开关 -->
+      <div class="glass-panel setting-section">
+        <h3 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          功能开关
+        </h3>
+        <div class="toggle-list">
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span class="toggle-label">评论功能</span>
+              <span class="toggle-desc">允许用户在文章下方发表评论</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked={settings.features.enableComment} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span class="toggle-label">用户注册</span>
+              <span class="toggle-desc">允许新用户注册账号</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked={settings.features.enableRegister} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span class="toggle-label">邮箱验证</span>
+              <span class="toggle-desc">注册时需要进行邮箱验证</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked={settings.features.enableEmailVerify} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span class="toggle-label">CDN 加速</span>
+              <span class="toggle-desc">使用 CDN 加速静态资源加载</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked={settings.features.enableCDN} />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 系统限制 -->
+      <div class="glass-panel setting-section">
+        <h3 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          系统限制
+        </h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">最大上传大小 (MB)</label>
+            <input type="number" class="admin-input" value={settings.limits.maxUploadSize} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">允许的文件类型</label>
+            <input type="text" class="admin-input" value={settings.limits.allowedTypes} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">每页文章数</label>
+            <input type="number" class="admin-input" value={settings.limits.postsPerPage} />
+          </div>
+        </div>
+      </div>
+
+      <!-- 保存按钮 -->
+      <div class="form-actions">
+        <button class="admin-btn admin-btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          重置
+        </button>
+        <button class="admin-btn admin-btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          保存设置
+        </button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .settings-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 设置区块 */
+  .setting-section {
+    padding: 28px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--admin-card-border);
+  }
+
+  .section-title svg {
+    color: var(--admin-primary);
+  }
+
+  /* 表单网格 */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--admin-text);
+  }
+
+  .form-hint {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  .file-input {
+    display: flex;
+    gap: 12px;
+  }
+
+  .file-input .admin-input {
+    flex: 1;
+  }
+
+  .file-input .admin-btn {
+    padding: 10px 16px;
+  }
+
+  /* 开关列表 */
+  .toggle-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--admin-card-border);
+  }
+
+  .toggle-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .toggle-item:first-child {
+    padding-top: 0;
+  }
+
+  .toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .toggle-label {
+    font-weight: 500;
+    color: var(--admin-text);
+  }
+
+  .toggle-desc {
+    font-size: 0.8125rem;
+    color: var(--admin-text-secondary);
+  }
+
+  /* 开关样式 */
+  .toggle-switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    cursor: pointer;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 28px;
+    transition: all 0.3s ease;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background: var(--admin-primary);
+  }
+
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+  }
+
+  /* 表单操作 */
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 8px;
+  }
+
+  .form-actions .admin-btn {
+    padding: 12px 24px;
+  }
+</style>

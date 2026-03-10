@@ -1,0 +1,244 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 相册数据
+const albums = [
+  {
+    id: 1,
+    title: '春日樱花',
+    cover: 'https://picsum.photos/seed/sakura/600/600',
+    count: 24,
+    date: '2026-03'
+  },
+  {
+    id: 2,
+    title: '城市夜景',
+    cover: 'https://picsum.photos/seed/city/600/600',
+    count: 18,
+    date: '2026-02'
+  },
+  {
+    id: 3,
+    title: '山间徒步',
+    cover: 'https://picsum.photos/seed/mountain/600/600',
+    count: 32,
+    date: '2025-11'
+  },
+  {
+    id: 4,
+    title: '海边度假',
+    cover: 'https://picsum.photos/seed/beach/600/600',
+    count: 28,
+    date: '2025-08'
+  },
+  {
+    id: 5,
+    title: '美食记录',
+    cover: 'https://picsum.photos/seed/food/600/600',
+    count: 45,
+    date: '2025-06'
+  },
+  {
+    id: 6,
+    title: '猫咪日常',
+    cover: 'https://picsum.photos/seed/cat/600/600',
+    count: 56,
+    date: '2025-04'
+  }
+];
+
+const photos = [
+  'https://picsum.photos/seed/photo1/400/400',
+  'https://picsum.photos/seed/photo2/400/400',
+  'https://picsum.photos/seed/photo3/400/400',
+  'https://picsum.photos/seed/photo4/400/400',
+  'https://picsum.photos/seed/photo5/400/400',
+  'https://picsum.photos/seed/photo6/400/400',
+  'https://picsum.photos/seed/photo7/400/400',
+  'https://picsum.photos/seed/photo8/400/400'
+];
+---
+
+<Layout title="相册 - LuomiBlog">
+  <Header />
+  <main class="gallery-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">相册</h1>
+      <p class="page-subtitle">用镜头记录生活中的美好瞬间</p>
+    </section>
+
+    <!-- 相册列表 -->
+    <section class="page-content">
+      <div class="section-header">
+        <span class="section-eyebrow">Albums</span>
+        <h2 class="section-title">我的相册</h2>
+      </div>
+      
+      <div class="gallery-grid">
+        {albums.map((album) => (
+          <a href={`/gallery/${album.id}`} class="album-card">
+            <div class="album-cover">
+              <img src={album.cover} alt={album.title} loading="lazy" />
+              <div class="album-overlay">
+                <span class="album-count">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  {album.count} 张
+                </span>
+              </div>
+            </div>
+            <div class="album-info">
+              <h3 class="album-title">{album.title}</h3>
+              <span class="album-date">{album.date}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- 精选照片 -->
+    <section class="page-content" style="padding-top: 0;">
+      <div class="section-header">
+        <span class="section-eyebrow">Featured</span>
+        <h2 class="section-title">精选照片</h2>
+      </div>
+      
+      <div class="photo-grid">
+        {photos.map((photo, index) => (
+          <div class="photo-item" data-index={index}>
+            <img src={photo} alt={`照片 ${index + 1}`} loading="lazy" />
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .gallery-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .album-card {
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    transition: all var(--transition-base);
+    text-decoration: none;
+  }
+
+  .album-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .album-cover {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+  }
+
+  .album-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+  }
+
+  .album-card:hover .album-cover img {
+    transform: scale(1.05);
+  }
+
+  .album-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    display: flex;
+    align-items: flex-end;
+    padding: 16px;
+  }
+
+  .album-card:hover .album-overlay {
+    opacity: 1;
+  }
+
+  .album-count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .album-info {
+    padding: 16px;
+  }
+
+  .album-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 4px 0;
+  }
+
+  .album-date {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .photo-item {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-base);
+  }
+
+  .photo-item:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+  }
+
+  .photo-item:hover img {
+    transform: scale(1.1);
+  }
+
+  @media (max-width: 1024px) {
+    .photo-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .photo-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>

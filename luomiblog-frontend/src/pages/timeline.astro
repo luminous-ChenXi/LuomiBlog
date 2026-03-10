@@ -1,0 +1,289 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 时间线数据
+const timelineData = [
+  {
+    date: '2026-03',
+    title: 'LuomiBlog V2.0 发布',
+    description: '基于 Astro + Vue 重构博客，引入 AI 助手功能，实现 Islands 架构的静态站点。',
+    icon: 'rocket',
+    type: 'milestone'
+  },
+  {
+    date: '2026-01',
+    title: '学习 Astro 框架',
+    description: '深入研究 Astro 的 Islands 架构，为博客重构做准备。',
+    icon: 'book',
+    type: 'study'
+  },
+  {
+    date: '2025-12',
+    title: 'AI 知识库项目启动',
+    description: '开始规划基于 RAG 的 AI 知识库博客，整合阿里云百炼平台。',
+    icon: 'sparkles',
+    type: 'project'
+  },
+  {
+    date: '2025-10',
+    title: '获得第一个开源贡献',
+    description: '为知名开源项目提交 PR 并被合并，正式踏入开源世界。',
+    icon: 'github',
+    type: 'achievement'
+  },
+  {
+    date: '2025-08',
+    title: '全栈开发转型',
+    description: '从纯前端开发转向全栈，深入学习 Spring Boot 和微服务架构。',
+    icon: 'code',
+    type: 'career'
+  },
+  {
+    date: '2025-05',
+    title: '第一次技术分享',
+    description: '在公司内部进行 Vue3 技术分享，获得同事好评。',
+    icon: 'mic',
+    type: 'share'
+  },
+  {
+    date: '2024-12',
+    title: '辰汐博客上线',
+    description: '基于 Hexo 的第一版个人博客正式上线，开始记录技术学习历程。',
+    icon: 'globe',
+    type: 'milestone'
+  },
+  {
+    date: '2024-09',
+    title: '加入互联网公司',
+    description: '正式成为前端开发工程师，参与大型项目的前端架构设计。',
+    icon: 'briefcase',
+    type: 'career'
+  },
+  {
+    date: '2024-06',
+    title: '大学毕业',
+    description: '计算机科学与技术专业毕业，完成学业踏上职场之路。',
+    icon: 'graduation',
+    type: 'life'
+  },
+  {
+    date: '2023-03',
+    title: '编程之旅开始',
+    description: '大学期间开始接触编程，对 Web 开发产生浓厚兴趣。',
+    icon: 'code-2',
+    type: 'study'
+  }
+];
+
+const getIconSvg = (icon: string) => {
+  const icons: Record<string, string> = {
+    'rocket': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+    'book': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>',
+    'sparkles': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
+    'github': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>',
+    'code': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    'mic': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>',
+    'globe': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+    'briefcase': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+    'graduation': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>',
+    'code-2': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>'
+  };
+  return icons[icon] || icons['code'];
+};
+
+const getTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    'milestone': '#ff6b9d',
+    'study': '#4ecdc4',
+    'project': '#a8e6cf',
+    'achievement': '#ffd93d',
+    'career': '#87ceeb',
+    'share': '#ff8a80',
+    'life': '#dda0dd'
+  };
+  return colors[type] || '#ff6b9d';
+};
+---
+
+<Layout title="时间线 - LuomiBlog">
+  <Header />
+  <main class="timeline-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">时间线</h1>
+      <p class="page-subtitle">记录每一个重要时刻，见证成长轨迹</p>
+    </section>
+
+    <!-- 时间线内容 -->
+    <section class="page-content">
+      <div class="timeline">
+        {timelineData.map((item, index) => (
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-dot" style={`background-color: ${getTypeColor(item.type)}; box-shadow: 0 0 0 4px ${getTypeColor(item.type)}20`}>
+                <span class="timeline-icon" set:html={getIconSvg(item.icon)} />
+              </span>
+            </div>
+            <div class="timeline-content">
+              <span class="timeline-date">{item.date}</span>
+              <h3 class="timeline-title">{item.title}</h3>
+              <p class="timeline-desc">{item.description}</p>
+              <span class="timeline-type" style={`background-color: ${getTypeColor(item.type)}20; color: ${getTypeColor(item.type)}`}>
+                {item.type === 'milestone' && '里程碑'}
+                {item.type === 'study' && '学习'}
+                {item.type === 'project' && '项目'}
+                {item.type === 'achievement' && '成就'}
+                {item.type === 'career' && '职业'}
+                {item.type === 'share' && '分享'}
+                {item.type === 'life' && '生活'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .timeline-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .timeline {
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--color-border), var(--color-brand-primary), var(--color-border));
+  }
+
+  .timeline-item {
+    position: relative;
+    padding: 0 0 50px 0;
+    width: 50%;
+  }
+
+  .timeline-item:nth-child(odd) {
+    padding-right: 50px;
+    text-align: right;
+  }
+
+  .timeline-item:nth-child(even) {
+    margin-left: 50%;
+    padding-left: 50px;
+  }
+
+  .timeline-item:last-child {
+    padding-bottom: 0;
+  }
+
+  .timeline-dot {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 0;
+  }
+
+  .timeline-item:nth-child(odd) .timeline-dot {
+    right: -22px;
+  }
+
+  .timeline-item:nth-child(even) .timeline-dot {
+    left: -22px;
+  }
+
+  .timeline-icon {
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .timeline-icon :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .timeline-content {
+    background: var(--color-card);
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-soft);
+    transition: all var(--transition-base);
+  }
+
+  .timeline-content:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .timeline-date {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-brand-primary);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .timeline-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 12px 0;
+  }
+
+  .timeline-desc {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    margin: 0 0 16px 0;
+  }
+
+  .timeline-type {
+    display: inline-block;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+  }
+
+  @media (max-width: 768px) {
+    .timeline::before {
+      left: 22px;
+    }
+    
+    .timeline-item,
+    .timeline-item:nth-child(odd),
+    .timeline-item:nth-child(even) {
+      width: 100%;
+      margin-left: 0;
+      padding-left: 70px;
+      padding-right: 0;
+      text-align: left;
+    }
+    
+    .timeline-item:nth-child(odd) .timeline-dot,
+    .timeline-item:nth-child(even) .timeline-dot {
+      left: 0;
+      right: auto;
+    }
+  }
+</style>

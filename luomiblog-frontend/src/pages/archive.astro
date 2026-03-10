@@ -1,0 +1,135 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 模拟归档数据
+const archiveData = [
+  {
+    year: '2026',
+    articles: [
+      {
+        title: '基于 Astro 的静态博客性能优化实践',
+        date: '03-05',
+        slug: 'astro-performance-optimization',
+        tags: ['Astro', '性能优化', '前端']
+      },
+      {
+        title: 'Spring Boot 3.2 新特性探索',
+        date: '02-28',
+        slug: 'spring-boot-3-2-features',
+        tags: ['Spring Boot', 'Java', '后端']
+      },
+      {
+        title: 'Vue 3.4  defineModel  的使用指南',
+        date: '02-15',
+        slug: 'vue-3-4-define-model',
+        tags: ['Vue', '前端']
+      }
+    ]
+  },
+  {
+    year: '2025',
+    articles: [
+      {
+        title: '使用阿里云百炼构建 RAG 知识库',
+        date: '12-20',
+        slug: 'aliyun-bailian-rag',
+        tags: ['AI', 'RAG', '阿里云']
+      },
+      {
+        title: 'MySQL 8.0 分区表实战指南',
+        date: '11-15',
+        slug: 'mysql-partition-table',
+        tags: ['MySQL', '数据库']
+      },
+      {
+        title: 'Docker Compose 部署全栈应用',
+        date: '10-08',
+        slug: 'docker-compose-deployment',
+        tags: ['Docker', 'DevOps']
+      },
+      {
+        title: 'TypeScript 高级类型体操',
+        date: '09-22',
+        slug: 'typescript-advanced-types',
+        tags: ['TypeScript']
+      },
+      {
+        title: 'Redis 缓存设计与实战',
+        date: '08-10',
+        slug: 'redis-cache-practice',
+        tags: ['Redis', '缓存']
+      }
+    ]
+  },
+  {
+    year: '2024',
+    articles: [
+      {
+        title: '从零搭建 Vue3 + Vite 项目',
+        date: '12-01',
+        slug: 'vue3-vite-setup',
+        tags: ['Vue', 'Vite']
+      },
+      {
+        title: 'Git 工作流最佳实践',
+        date: '11-18',
+        slug: 'git-workflow',
+        tags: ['Git']
+      },
+      {
+        title: '前端性能监控方案',
+        date: '10-25',
+        slug: 'frontend-performance-monitoring',
+        tags: ['性能', '监控']
+      }
+    ]
+  }
+];
+
+const totalArticles = archiveData.reduce((sum, year) => sum + year.articles.length, 0);
+---
+
+<Layout title="文章归档 - LuomiBlog">
+  <Header />
+  <main class="archive-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">文章归档</h1>
+      <p class="page-subtitle">共 {totalArticles} 篇文章，记录学习与成长的足迹</p>
+    </section>
+
+    <!-- 归档内容 -->
+    <section class="page-content">
+      <div class="archive-list">
+        {archiveData.map((yearData) => (
+          <div class="archive-year">
+            <h2 class="archive-year-title">{yearData.year}</h2>
+            <div class="archive-items">
+              {yearData.articles.map((article) => (
+                <a href={`/article/${article.slug}`} class="archive-item">
+                  <span class="archive-date">{article.date}</span>
+                  <span class="archive-title">{article.title}</span>
+                  <div class="archive-tags">
+                    {article.tags.map((tag) => (
+                      <span class="archive-tag">{tag}</span>
+                    ))}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .archive-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+</style>

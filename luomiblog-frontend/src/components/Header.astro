@@ -1,0 +1,532 @@
+---
+import type { AstroGlobal } from 'astro';
+import ThemeSwitcher from './ThemeSwitcher.vue';
+
+// 获取当前页面路径
+declare const Astro: AstroGlobal;
+const currentPath = Astro.url.pathname;
+
+// 导航项配置
+const navItems = [
+  { href: '/', label: '首页' },
+  { href: '/archive', label: '归档' },
+  { href: '/timeline', label: '时间线' },
+  { href: '/gallery', label: '相册' },
+  { href: '/project', label: '项目' },
+  { href: '/skill', label: '技能' },
+  { href: '/equipment', label: '设备' },
+  { href: '/anime', label: '番剧' },
+  { href: '/diary', label: '日记' },
+  { href: '/about', label: '关于' },
+  { href: '/friends', label: '友链' },
+];
+
+// 判断是否为当前页面
+const isActive = (href: string) => {
+  if (href === '/') {
+    return currentPath === '/';
+  }
+  return currentPath.startsWith(href);
+};
+---
+
+<header class="navbar" id="navbar">
+  <div class="navbar-container">
+    <!-- 左侧：网站名 -->
+    <div class="navbar-brand">
+      <a href="/" class="brand-link">辰汐小站</a>
+    </div>
+
+    <!-- 中间：导航菜单 -->
+    <nav class="navbar-nav">
+      {navItems.slice(0, 7).map((item) => (
+        <a 
+          href={item.href} 
+          class={`nav-link ${isActive(item.href) ? 'active' : ''}`}
+        >
+          {item.label}
+        </a>
+      ))}
+      <div class="nav-more-dropdown">
+        <button class="nav-link more-btn" aria-label="更多">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="19" cy="12" r="1"/>
+            <circle cx="5" cy="12" r="1"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu">
+          {navItems.slice(7).map((item) => (
+            <a 
+              href={item.href} 
+              class={`dropdown-link ${isActive(item.href) ? 'active' : ''}`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </nav>
+
+    <!-- 右侧：操作区 -->
+    <div class="navbar-actions">
+      <button class="action-btn search-btn" aria-label="搜索">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.3-4.3"/>
+        </svg>
+      </button>
+      <ThemeSwitcher client:load />
+      
+      <!-- 登录注册区域 -->
+      <div class="auth-wrapper">
+        <div class="auth-links">
+          <a href="#" class="auth-link login-link" id="login-btn">登录</a>
+          <span class="auth-divider">or</span>
+          <a href="/register" class="auth-link register-link">注册</a>
+        </div>
+        <span class="new-tag">NEW</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* 导航栏基础样式 */
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 16px 24px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 暗色主题：渐变背景 */
+  [data-theme="dark"] .navbar {
+    background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.3) 50%,
+      transparent 100%);
+  }
+
+  /* 明亮主题：透明背景 */
+  [data-theme="light"] .navbar {
+    background: transparent;
+  }
+
+  /* 滚动后状态 */
+  .navbar.scrolled {
+    padding: 12px 24px;
+    background: transparent;
+  }
+
+  .navbar.scrolled .navbar-container {
+    background: color-mix(in srgb, var(--color-bg) 95%, transparent);
+    backdrop-filter: blur(20px);
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 8px 24px;
+  }
+
+  [data-theme="dark"] .navbar.scrolled .navbar-container {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 容器 */
+  .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 品牌名 */
+  .navbar-brand {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .brand-link {
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 700;
+    transition: color 0.3s ease;
+  }
+
+  /* 未滚动时 - 暗色主题：白色文字 */
+  [data-theme="dark"] .brand-link {
+    color: white;
+  }
+
+  /* 未滚动时 - 明亮主题：深色文字 */
+  [data-theme="light"] .brand-link {
+    color: var(--color-text);
+  }
+
+  /* 滚动后：使用主题文字颜色 */
+  .navbar.scrolled .brand-link {
+    color: var(--color-text);
+  }
+
+  /* 导航菜单 */
+  .navbar-nav {
+    flex: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* 未滚动时 - 暗色主题：白色文字 */
+  [data-theme="dark"] .nav-link {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  [data-theme="dark"] .nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="dark"] .nav-link.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* 未滚动时 - 明亮主题：深色文字 */
+  [data-theme="light"] .nav-link {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+  }
+
+  [data-theme="light"] .nav-link:hover {
+    color: var(--color-brand-primary);
+    background: rgba(255, 107, 157, 0.1);
+  }
+
+  [data-theme="light"] .nav-link.active {
+    color: var(--color-brand-primary);
+    background: rgba(255, 107, 157, 0.15);
+  }
+
+  /* 滚动后 - 使用主题颜色 */
+  .navbar.scrolled .nav-link {
+    color: var(--color-text-secondary);
+  }
+
+  .navbar.scrolled .nav-link:hover {
+    color: var(--color-brand-primary);
+    background: rgba(255, 107, 157, 0.08);
+  }
+
+  .navbar.scrolled .nav-link.active {
+    color: var(--color-brand-primary);
+    background: rgba(255, 107, 157, 0.12);
+  }
+
+  /* 操作区 */
+  .navbar-actions {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  /* 未滚动时 - 暗色主题 */
+  [data-theme="dark"] .action-btn {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  [data-theme="dark"] .action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  /* 未滚动时 - 明亮主题 */
+  [data-theme="light"] .action-btn {
+    color: var(--color-text-secondary);
+  }
+
+  [data-theme="light"] .action-btn:hover {
+    background: rgba(255, 107, 157, 0.1);
+    color: var(--color-brand-primary);
+  }
+
+  /* 滚动后 */
+  .navbar.scrolled .action-btn {
+    color: var(--color-text-secondary);
+  }
+
+  .navbar.scrolled .action-btn:hover {
+    background: rgba(255, 107, 157, 0.08);
+    color: var(--color-brand-primary);
+  }
+
+  /* 登录注册区域 */
+  .auth-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .auth-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+  }
+
+  /* 未滚动时 - 暗色主题 */
+  [data-theme="dark"] .auth-links {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="dark"] .auth-links:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* 未滚动时 - 明亮主题 */
+  [data-theme="light"] .auth-links {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="light"] .auth-links:hover {
+    background: rgba(255, 107, 157, 0.1);
+  }
+
+  /* 滚动后 */
+  .navbar.scrolled .auth-links {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .navbar.scrolled .auth-links:hover {
+    background: rgba(255, 107, 157, 0.1);
+  }
+
+  .auth-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    padding: 2px 4px;
+  }
+
+  /* 未滚动时 - 暗色主题 */
+  [data-theme="dark"] .auth-link {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  [data-theme="dark"] .auth-link:hover {
+    color: white;
+  }
+
+  /* 未滚动时 - 明亮主题 */
+  [data-theme="light"] .auth-link {
+    color: var(--color-text-secondary);
+  }
+
+  [data-theme="light"] .auth-link:hover {
+    color: var(--color-brand-primary);
+  }
+
+  /* 滚动后 */
+  .navbar.scrolled .auth-link {
+    color: var(--color-text-secondary);
+  }
+
+  .navbar.scrolled .auth-link:hover {
+    color: var(--color-brand-primary);
+  }
+
+  .auth-divider {
+    font-size: 0.75rem;
+    opacity: 0.5;
+  }
+
+  /* 未滚动时 - 暗色主题 */
+  [data-theme="dark"] .auth-divider {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* 未滚动时 - 明亮主题 */
+  [data-theme="light"] .auth-divider {
+    color: var(--color-text-muted);
+  }
+
+  /* 滚动后 */
+  .navbar.scrolled .auth-divider {
+    color: var(--color-text-muted);
+  }
+
+  /* NEW 标签 */
+  .new-tag {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+    padding: 2px 6px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  /* 下拉菜单 */
+  .nav-more-dropdown {
+    position: relative;
+  }
+
+  .more-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    min-width: 120px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1001;
+  }
+
+  .nav-more-dropdown:hover .dropdown-menu,
+  .nav-more-dropdown:focus-within .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .dropdown-link {
+    display: block;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+  }
+
+  .dropdown-link:hover,
+  .dropdown-link.active {
+    background: rgba(255, 107, 157, 0.1);
+    color: var(--color-brand-primary);
+  }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .auth-wrapper {
+      display: none;
+    }
+  }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .navbar-container {
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .navbar-brand,
+    .navbar-actions {
+      flex: 0 0 auto;
+    }
+
+    .navbar-nav {
+      flex: 1 1 100%;
+      order: 3;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  // 导航栏滚动效果
+  const navbar = document.getElementById('navbar');
+  
+  if (navbar) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    });
+  }
+
+  // 登录弹窗控制 - 使用全局函数
+  const loginBtn = document.getElementById('login-btn');
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // 调用全局函数打开登录弹窗
+      const w = window as any;
+      if (typeof w.openLoginModal === 'function') {
+        w.openLoginModal();
+      } else {
+        // 如果函数还未加载，触发自定义事件
+        window.dispatchEvent(new CustomEvent('open-login-modal'));
+      }
+    });
+  }
+</script>

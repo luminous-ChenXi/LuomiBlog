@@ -1,0 +1,469 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const articles = [
+  {
+    id: 1,
+    title: 'Vue3 组合式函数最佳实践',
+    summary: '深入探讨 Vue3 Composition API 的使用技巧和最佳实践...',
+    cover: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=100&h=100&fit=crop',
+    category: '技术',
+    status: 'published',
+    views: 1200,
+    comments: 24,
+    createdAt: '2024-03-15',
+  },
+  {
+    id: 2,
+    title: 'React Hooks 深度解析',
+    summary: '全面解析 React Hooks 的原理和常见使用场景...',
+    cover: null,
+    category: '技术',
+    status: 'draft',
+    views: 0,
+    comments: 0,
+    createdAt: '2024-03-18',
+  },
+  {
+    id: 3,
+    title: '我的 2024 年度总结',
+    summary: '回顾过去一年的成长与收获，展望新的一年...',
+    cover: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=100&h=100&fit=crop',
+    category: '生活',
+    status: 'published',
+    views: 856,
+    comments: 18,
+    createdAt: '2024-03-20',
+  },
+  {
+    id: 4,
+    title: 'TypeScript 高级类型体操',
+    summary: '探索 TypeScript 类型系统的强大能力...',
+    cover: null,
+    category: '技术',
+    status: 'private',
+    views: 320,
+    comments: 5,
+    createdAt: '2024-03-22',
+  },
+];
+
+const categories = ['技术', '生活', '笔记', '随笔'];
+
+const getStatusBadge = (status: string) => {
+  const statusMap: Record<string, { label: string; class: string }> = {
+    published: { label: '已发布', class: 'admin-badge-success' },
+    draft: { label: '草稿', class: 'admin-badge-warning' },
+    private: { label: '私密', class: 'admin-badge-info' },
+  };
+  return statusMap[status] || { label: status, class: '' };
+};
+---
+
+<AdminLayout title="文章管理">
+  <div class="articles-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">content</p>
+      <h1 class="admin-section-title">文章管理</h1>
+      <p class="admin-section-description">
+        管理博客文章，支持创建、编辑和删除操作。
+      </p>
+    </header>
+
+    <!-- 工具栏 -->
+    <div class="glass-panel toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" class="admin-input" placeholder="搜索文章标题..." />
+        </div>
+        <select class="admin-input filter-select">
+          <option value="">全部分类</option>
+          {categories.map(cat => <option value={cat}>{cat}</option>)}
+        </select>
+        <select class="admin-input filter-select">
+          <option value="">全部状态</option>
+          <option value="published">已发布</option>
+          <option value="draft">草稿</option>
+          <option value="private">私密</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <a href="/admin/articles/new" class="admin-btn admin-btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          写文章
+        </a>
+      </div>
+    </div>
+
+    <!-- 文章列表 -->
+    <div class="glass-panel table-container">
+      <table class="admin-table articles-table">
+        <thead>
+          <tr>
+            <th class="col-checkbox">
+              <input type="checkbox" class="checkbox" />
+            </th>
+            <th class="col-article">文章信息</th>
+            <th class="col-category">分类</th>
+            <th class="col-status">状态</th>
+            <th class="col-stats">浏览/评论</th>
+            <th class="col-date">发布时间</th>
+            <th class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {articles.map((article) => {
+            const statusBadge = getStatusBadge(article.status);
+            return (
+              <tr>
+                <td>
+                  <input type="checkbox" class="checkbox" />
+                </td>
+                <td>
+                  <div class="article-cell">
+                    {article.cover ? (
+                      <img src={article.cover} alt="cover" class="article-cover" />
+                    ) : (
+                      <div class="article-cover placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                      </div>
+                    )}
+                    <div class="article-info">
+                      <span class="article-title">{article.title}</span>
+                      <span class="article-summary">{article.summary}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="category-badge">{article.category}</span>
+                </td>
+                <td>
+                  <span class={`admin-badge ${statusBadge.class}`}>
+                    {statusBadge.label}
+                  </span>
+                </td>
+                <td>
+                  <div class="stats-cell">
+                    <span class="stat-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      {article.views}
+                    </span>
+                    <span class="stat-item">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      {article.comments}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <span class="date-text">{article.createdAt}</span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="编辑">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    </button>
+                    <button class="btn-icon" title="预览">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                    <button class="btn-icon btn-danger" title="删除">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 分页 -->
+    <div class="glass-panel pagination-panel">
+      <div class="pagination-info">
+        <span>共 <strong>56</strong> 篇文章</span>
+        <span>第 <strong>1</strong> / 6 页</span>
+      </div>
+      <div class="pagination-controls">
+        <button class="btn-page" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn-page active">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">3</button>
+        <span class="page-ellipsis">...</span>
+        <button class="btn-page">6</button>
+        <button class="btn-page">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="page-size">
+        <span>每页</span>
+        <select class="admin-input">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+        </select>
+        <span>条</span>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .articles-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 300px;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--admin-text-muted);
+  }
+
+  .search-box .admin-input {
+    padding-left: 42px;
+  }
+
+  .filter-select {
+    width: 140px;
+  }
+
+  /* 表格 */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .articles-table {
+    min-width: 900px;
+  }
+
+  .col-checkbox {
+    width: 50px;
+    text-align: center;
+  }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    accent-color: var(--admin-primary);
+  }
+
+  /* 文章单元格 */
+  .article-cell {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .article-cover {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .article-cover.placeholder {
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--admin-text-muted);
+  }
+
+  .article-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .article-title {
+    font-weight: 600;
+    color: var(--admin-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .article-summary {
+    font-size: 0.8125rem;
+    color: var(--admin-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+  }
+
+  /* 分类徽章 */
+  .category-badge {
+    display: inline-flex;
+    padding: 4px 12px;
+    background: rgba(255, 107, 157, 0.1);
+    border: 1px solid rgba(255, 107, 157, 0.2);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--admin-primary);
+  }
+
+  /* 统计 */
+  .stats-cell {
+    display: flex;
+    gap: 16px;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* 日期 */
+  .date-text {
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  /* 操作按钮 */
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--admin-text);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-icon.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--admin-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* 分页 */
+  .pagination-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .pagination-info {
+    display: flex;
+    gap: 16px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .pagination-info strong {
+    color: var(--admin-text);
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-page:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--admin-text);
+  }
+
+  .btn-page.active {
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
+    color: white;
+  }
+
+  .btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .page-ellipsis {
+    color: var(--admin-text-muted);
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .page-size .admin-input {
+    width: 70px;
+    padding: 6px 10px;
+  }
+</style>

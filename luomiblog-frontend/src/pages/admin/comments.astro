@@ -1,0 +1,483 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const comments = [
+  {
+    id: 1,
+    author: '张三',
+    avatar: null,
+    email: 'zhangsan@example.com',
+    content: '这篇文章写得真好，学到了很多！期待更多类似的内容。',
+    article: 'Vue3 组合式函数最佳实践',
+    status: 'approved',
+    createdAt: '2024-03-22 14:30',
+  },
+  {
+    id: 2,
+    author: '李四',
+    avatar: null,
+    email: 'lisi@example.com',
+    content: '请问这个在 Vue2 中也能用吗？',
+    article: 'Vue3 组合式函数最佳实践',
+    status: 'pending',
+    createdAt: '2024-03-22 10:15',
+  },
+  {
+    id: 3,
+    author: '王五',
+    avatar: null,
+    email: 'wangwu@example.com',
+    content: '写得不错，但是有些地方还可以更详细一些。',
+    article: 'React Hooks 深度解析',
+    status: 'approved',
+    createdAt: '2024-03-21 18:45',
+  },
+  {
+    id: 4,
+    author: 'SpamBot',
+    avatar: null,
+    email: 'spam@example.com',
+    content: '点击这里购买便宜商品！限时优惠！',
+    article: '我的 2024 年度总结',
+    status: 'spam',
+    createdAt: '2024-03-21 09:20',
+  },
+];
+
+const getStatusBadge = (status: string) => {
+  const statusMap: Record<string, { label: string; class: string }> = {
+    approved: { label: '已通过', class: 'admin-badge-success' },
+    pending: { label: '待审核', class: 'admin-badge-warning' },
+    spam: { label: '垃圾', class: 'admin-badge-danger' },
+    rejected: { label: '已拒绝', class: 'admin-badge-info' },
+  };
+  return statusMap[status] || { label: status, class: '' };
+};
+---
+
+<AdminLayout title="评价管理">
+  <div class="comments-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">reviews</p>
+      <h1 class="admin-section-title">评价管理</h1>
+      <p class="admin-section-description">
+        管理用户评论，支持审核、回复和删除操作。
+      </p>
+    </header>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">328</span>
+        <span class="stat-label">总评论</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">12</span>
+        <span class="stat-label">待审核</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">5</span>
+        <span class="stat-label">今日新增</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">8</span>
+        <span class="stat-label">垃圾评论</span>
+      </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="glass-panel toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" class="admin-input" placeholder="搜索评论内容..." />
+        </div>
+        <select class="admin-input filter-select">
+          <option value="">全部状态</option>
+          <option value="approved">已通过</option>
+          <option value="pending">待审核</option>
+          <option value="spam">垃圾</option>
+          <option value="rejected">已拒绝</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="admin-btn admin-btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          清空垃圾
+        </button>
+      </div>
+    </div>
+
+    <!-- 评论列表 -->
+    <div class="comments-list">
+      {comments.map((comment) => {
+        const statusBadge = getStatusBadge(comment.status);
+        return (
+          <div class={`comment-card ${comment.status}`}>
+            <div class="comment-header">
+              <div class="comment-author">
+                <div class="author-avatar">
+                  {comment.avatar ? (
+                    <img src={comment.avatar} alt={comment.author} />
+                  ) : (
+                    <span class="avatar-placeholder">{comment.author.charAt(0)}</span>
+                  )}
+                </div>
+                <div class="author-info">
+                  <span class="author-name">{comment.author}</span>
+                  <span class="author-email">{comment.email}</span>
+                </div>
+              </div>
+              <div class="comment-meta">
+                <span class={`admin-badge ${statusBadge.class}`}>{statusBadge.label}</span>
+                <span class="comment-time">{comment.createdAt}</span>
+              </div>
+            </div>
+            <div class="comment-content">
+              <p>{comment.content}</p>
+            </div>
+            <div class="comment-article">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              <span>评论于：{comment.article}</span>
+            </div>
+            <div class="comment-actions">
+              {comment.status === 'pending' && (
+                <button class="admin-btn admin-btn-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  通过
+                </button>
+              )}
+              {comment.status === 'spam' && (
+                <button class="admin-btn admin-btn-secondary">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><circle cx="12" cy="12" r="1"/></svg>
+                  恢复
+                </button>
+              )}
+              <button class="admin-btn admin-btn-outline">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                回复
+              </button>
+              <button class="admin-btn admin-btn-outline btn-danger">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                删除
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- 分页 -->
+    <div class="glass-panel pagination-panel">
+      <div class="pagination-info">
+        <span>共 <strong>328</strong> 条评论</span>
+        <span>第 <strong>1</strong> / 33 页</span>
+      </div>
+      <div class="pagination-controls">
+        <button class="btn-page" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn-page active">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">3</button>
+        <span class="page-ellipsis">...</span>
+        <button class="btn-page">33</button>
+        <button class="btn-page">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="page-size">
+        <span>每页</span>
+        <select class="admin-input">
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+        <span>条</span>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .comments-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 统计卡片 */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--admin-text);
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+  }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .toolbar-left {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+    width: 300px;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--admin-text-muted);
+  }
+
+  .search-box .admin-input {
+    padding-left: 42px;
+  }
+
+  .filter-select {
+    width: 140px;
+  }
+
+  /* 评论列表 */
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .comment-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 20px;
+    padding: 24px;
+    transition: all 0.3s ease;
+  }
+
+  .comment-card:hover {
+    border-color: rgba(255, 107, 157, 0.2);
+  }
+
+  .comment-card.spam {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.03);
+  }
+
+  .comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .comment-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .author-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--admin-primary) 0%, #c44569 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .author-name {
+    font-weight: 600;
+    color: var(--admin-text);
+  }
+
+  .author-email {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  .comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .comment-time {
+    font-size: 0.8125rem;
+    color: var(--admin-text-muted);
+  }
+
+  .comment-content {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+  }
+
+  .comment-content p {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--admin-text);
+    line-height: 1.6;
+  }
+
+  .comment-article {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 0.8125rem;
+    color: var(--admin-text-secondary);
+  }
+
+  .comment-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .comment-actions .admin-btn {
+    padding: 8px 16px;
+    font-size: 0.8125rem;
+  }
+
+  .comment-actions .btn-danger {
+    color: var(--admin-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .comment-actions .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  /* 分页 */
+  .pagination-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .pagination-info {
+    display: flex;
+    gap: 16px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .pagination-info strong {
+    color: var(--admin-text);
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-page:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--admin-text);
+  }
+
+  .btn-page.active {
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
+    color: white;
+  }
+
+  .btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .page-ellipsis {
+    color: var(--admin-text-muted);
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .page-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .page-size .admin-input {
+    width: 70px;
+    padding: 6px 10px;
+  }
+</style>

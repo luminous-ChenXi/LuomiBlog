@@ -1,0 +1,167 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 日记数据
+const diaryEntries = [
+  {
+    date: '2026-03-08',
+    mood: '开心',
+    content: '今天完成了博客的时间线页面设计，效果比预期要好很多。参考了 Demo 文件夹里的设计，做出了一个既有视觉冲击力又实用的页面。晚上和朋友吃了火锅，聊了很多关于技术规划的话题，收获满满。',
+    images: ['https://picsum.photos/seed/diary1/300/300']
+  },
+  {
+    date: '2026-03-05',
+    mood: '充实',
+    content: '今天把归档页面和相册页面都做好了。归档页面采用了按年份分组的方式，看起来清晰明了。相册页面则使用了网格布局，图片hover时有缩放效果，体验不错。',
+    images: []
+  },
+  {
+    date: '2026-03-01',
+    mood: '思考',
+    content: '开始规划博客的第二阶段功能，主要是 AI 助手的集成。需要设计一个合理的架构，既要保证静态页面的性能，又要提供良好的交互体验。Islands 架构似乎是最佳选择。',
+    images: ['https://picsum.photos/seed/diary2/300/300', 'https://picsum.photos/seed/diary3/300/300']
+  },
+  {
+    date: '2026-02-28',
+    mood: '疲惫',
+    content: '连续几天都在写代码，今天感觉有点疲惫。不过看到博客逐渐成型，还是很有成就感的。明天打算休息一下，去公园走走，换换脑子。',
+    images: []
+  },
+  {
+    date: '2026-02-25',
+    mood: '兴奋',
+    content: '博客的首页终于完成了！采用了 Astro + Vue 的技术栈，性能表现非常好。Lighthouse 评分几乎满分，这才是静态博客应该有的样子。',
+    images: ['https://picsum.photos/seed/diary4/300/300']
+  }
+];
+
+const moodColors: Record<string, string> = {
+  '开心': '#10b981',
+  '充实': '#3b82f6',
+  '思考': '#8b5cf6',
+  '疲惫': '#f59e0b',
+  '兴奋': '#ef4444',
+  '平静': '#6b7280'
+};
+---
+
+<Layout title="日记 - LuomiBlog">
+  <Header />
+  <main class="diary-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">日记</h1>
+      <p class="page-subtitle">记录生活的点滴，留下时光的印记</p>
+    </section>
+
+    <!-- 日记列表 -->
+    <section class="page-content page-content-narrow">
+      <div class="diary-list">
+        {diaryEntries.map((entry) => (
+          <article class="diary-entry">
+            <div class="diary-header">
+              <span class="diary-date">{entry.date}</span>
+              <span class="diary-mood" style={`background-color: ${moodColors[entry.mood] || '#6b7280'}20; color: ${moodColors[entry.mood] || '#6b7280'}`}>
+                {entry.mood}
+              </span>
+            </div>
+            <div class="diary-content">
+              <p>{entry.content}</p>
+              {entry.images.length > 0 && (
+                <div class="diary-images">
+                  {entry.images.map((image) => (
+                    <img src={image} alt="日记配图" loading="lazy" />
+                  ))}
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <!-- 加载更多 -->
+      <div class="load-more">
+        <button class="btn btn-secondary">加载更多</button>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .diary-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .diary-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .diary-entry {
+    padding: 32px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .diary-entry:last-child {
+    border-bottom: none;
+  }
+
+  .diary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .diary-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-brand-primary);
+  }
+
+  .diary-mood {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+  }
+
+  .diary-content {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--color-text);
+  }
+
+  .diary-content p {
+    margin: 0;
+  }
+
+  .diary-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .diary-images img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+  }
+
+  .diary-images img:hover {
+    transform: scale(1.02);
+  }
+
+  .load-more {
+    text-align: center;
+    margin-top: 40px;
+  }
+</style>
