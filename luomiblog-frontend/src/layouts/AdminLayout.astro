@@ -1,0 +1,473 @@
+---
+export interface Props {
+  title?: string;
+}
+
+const { title = '管理后台' } = Astro.props;
+
+// 获取当前路径
+const currentPath = Astro.url.pathname;
+
+// 侧边栏菜单
+const menuItems = [
+  { href: '/admin', label: '仪表盘', subtitle: 'overview', icon: 'LayoutDashboard' },
+  { href: '/admin/users', label: '用户管理', subtitle: 'members', icon: 'Users' },
+  { href: '/admin/articles', label: '文章管理', subtitle: 'content', icon: 'FileText' },
+  { href: '/admin/announcements', label: '公告管理', subtitle: 'notices', icon: 'Megaphone' },
+  { href: '/admin/comments', label: '评价管理', subtitle: 'reviews', icon: 'MessageSquare' },
+  { href: '/admin/settings', label: '系统设置', subtitle: 'settings', icon: 'Settings' },
+  { href: '/admin/mail', label: '邮箱设置', subtitle: 'messaging', icon: 'Mail' },
+];
+
+const isActive = (href: string) => {
+  if (href === '/admin') {
+    return currentPath === '/admin' || currentPath === '/admin/';
+  }
+  return currentPath.startsWith(href);
+};
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} - 辰汐小站</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="admin-body">
+    <div class="admin-layout">
+      <!-- 侧边栏 -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-header">
+          <a href="/" class="logo-link">
+            <div class="logo-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <span class="logo-title">辰汐小站</span>
+              <span class="logo-subtitle">管理后台</span>
+            </div>
+          </a>
+        </div>
+
+        <nav class="sidebar-nav">
+          {menuItems.map((item) => (
+            <a 
+              href={item.href} 
+              class={`nav-item ${isActive(item.href) ? 'active' : ''}`}
+            >
+              <span class="nav-icon">
+                {item.icon === 'LayoutDashboard' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                )}
+                {item.icon === 'Users' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                )}
+                {item.icon === 'FileText' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                )}
+                {item.icon === 'Megaphone' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                )}
+                {item.icon === 'MessageSquare' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                )}
+                {item.icon === 'Settings' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+                {item.icon === 'Mail' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                )}
+              </span>
+              <div class="nav-text">
+                <span class="nav-subtitle">{item.subtitle}</span>
+                <span class="nav-label">{item.label}</span>
+              </div>
+            </a>
+          ))}
+        </nav>
+
+        <div class="sidebar-footer">
+          <a href="/" class="back-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            返回前台
+          </a>
+        </div>
+      </aside>
+
+      <!-- 主内容区 -->
+      <main class="admin-main">
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --admin-bg: #0a0a0f;
+    --admin-sidebar-bg: rgba(15, 15, 25, 0.95);
+    --admin-card-bg: rgba(255, 255, 255, 0.03);
+    --admin-card-border: rgba(255, 255, 255, 0.08);
+    --admin-text: #ffffff;
+    --admin-text-secondary: rgba(255, 255, 255, 0.6);
+    --admin-text-muted: rgba(255, 255, 255, 0.4);
+    --admin-primary: #ff6b9d;
+    --admin-primary-hover: #ff5a8a;
+    --admin-success: #10b981;
+    --admin-warning: #f59e0b;
+    --admin-danger: #ef4444;
+    --admin-info: #3b82f6;
+    --admin-sidebar-width: 280px;
+  }
+
+  .admin-body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--admin-bg);
+    color: var(--admin-text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .admin-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* 侧边栏 */
+  .admin-sidebar {
+    width: var(--admin-sidebar-width);
+    background: var(--admin-sidebar-bg);
+    border-right: 1px solid var(--admin-card-border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+
+  .sidebar-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--admin-card-border);
+  }
+
+  .logo-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--admin-text);
+  }
+
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--admin-primary) 0%, #c44569 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .logo-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--admin-text);
+  }
+
+  .logo-subtitle {
+    font-size: 0.75rem;
+    color: var(--admin-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--admin-text-secondary);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text);
+  }
+
+  .nav-item.active {
+    background: rgba(255, 107, 157, 0.1);
+    border-color: rgba(255, 107, 157, 0.2);
+    color: var(--admin-primary);
+  }
+
+  .nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  .nav-item:hover .nav-icon,
+  .nav-item.active .nav-icon {
+    opacity: 1;
+  }
+
+  .nav-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-subtitle {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  .nav-label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--admin-card-border);
+  }
+
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border: 1px solid var(--admin-card-border);
+  }
+
+  .back-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* 主内容区 */
+  .admin-main {
+    flex: 1;
+    margin-left: var(--admin-sidebar-width);
+    padding: 32px 40px;
+    min-height: 100vh;
+  }
+
+  /* 通用页面样式 */
+  .admin-section-header {
+    margin-bottom: 32px;
+  }
+
+  .admin-section-subtitle {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--admin-text-muted);
+    margin-bottom: 8px;
+  }
+
+  .admin-section-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 8px;
+  }
+
+  .admin-section-description {
+    font-size: 0.9375rem;
+    color: var(--admin-text-secondary);
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  /* Glass Panel */
+  .glass-panel {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 20px;
+    padding: 24px;
+  }
+
+  /* 按钮样式 */
+  .admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+  }
+
+  .admin-btn-primary {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, #c44569 100%);
+    color: white;
+  }
+
+  .admin-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(255, 107, 157, 0.3);
+  }
+
+  .admin-btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text);
+    border: 1px solid var(--admin-card-border);
+  }
+
+  .admin-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .admin-btn-outline {
+    background: transparent;
+    color: var(--admin-text-secondary);
+    border: 1px solid var(--admin-card-border);
+  }
+
+  .admin-btn-outline:hover {
+    border-color: var(--admin-primary);
+    color: var(--admin-primary);
+  }
+
+  /* 输入框样式 */
+  .admin-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 10px;
+    color: var(--admin-text);
+    font-size: 0.9375rem;
+    transition: all 0.2s ease;
+  }
+
+  .admin-input:focus {
+    outline: none;
+    border-color: var(--admin-primary);
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .admin-input::placeholder {
+    color: var(--admin-text-muted);
+  }
+
+  /* 表格样式 */
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--admin-card-border);
+  }
+
+  .admin-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--admin-text-muted);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .admin-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* 徽章样式 */
+  .admin-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .admin-badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--admin-success);
+  }
+
+  .admin-badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--admin-warning);
+  }
+
+  .admin-badge-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--admin-danger);
+  }
+
+  .admin-badge-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--admin-info);
+  }
+
+  /* 响应式 */
+  @media (max-width: 1024px) {
+    .admin-sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .admin-main {
+      margin-left: 0;
+      padding: 24px;
+    }
+  }
+</style>

@@ -1,0 +1,319 @@
+---
+import ArticleCard from './ArticleCard.astro';
+import ViewModeSwitcher from './ViewModeSwitcher.vue';
+
+const articles = [
+  {
+    title: "深入理解 Astro 岛屿架构",
+    summary: "Astro 的岛屿架构是一种革命性的前端架构模式，它允许开发者在静态生成的页面中按需加载交互式组件...",
+    date: "2026-02-26",
+    category: "前端架构",
+    tags: ["Astro", "性能优化", "静态生成"],
+    slug: "astro-island-architecture",
+    views: 128,
+    comments: 12,
+    cover: "https://picsum.photos/seed/astro/800/500"
+  },
+  {
+    title: "Spring Boot 3.2 新特性探索",
+    summary: "Spring Boot 3.2 带来了许多令人兴奋的新特性，包括虚拟线程支持、RestClient、JdbcClient 等...",
+    date: "2026-02-28",
+    category: "后端开发",
+    tags: ["Spring Boot", "Java", "后端"],
+    slug: "spring-boot-3-2-features",
+    views: 256,
+    comments: 23,
+    cover: "https://picsum.photos/seed/springboot/800/500"
+  },
+  {
+    title: "基于 Agentic RAG 的智能问答系统",
+    summary: "RAG（检索增强生成）技术结合 Agent 智能体，能够基于博主原创内容提供精准的问答服务...",
+    date: "2026-02-25",
+    category: "AI 技术",
+    tags: ["RAG", "AI", "阿里云百炼"],
+    slug: "agentic-rag-qa-system",
+    views: 256,
+    comments: 23,
+    cover: "https://picsum.photos/seed/ai/800/500"
+  },
+  {
+    title: "轻量级博客的数据库设计",
+    summary: "如何在 2核4G 的轻量服务器上设计高效的数据库架构？本文分享 MySQL 分区表、索引优化...",
+    date: "2026-02-24",
+    category: "后端开发",
+    tags: ["MySQL", "数据库", "性能优化"],
+    slug: "lightweight-blog-database-design",
+    views: 189,
+    comments: 8,
+    cover: "https://picsum.photos/seed/database/800/500"
+  },
+  {
+    title: "Vue 3 Composition API 最佳实践",
+    summary: "深入理解 Vue 3 Composition API，掌握组合式函数的设计模式与代码组织技巧...",
+    date: "2026-02-22",
+    category: "前端架构",
+    tags: ["Vue", "JavaScript", "前端"],
+    slug: "vue3-composition-api",
+    views: 312,
+    comments: 15,
+    cover: "https://picsum.photos/seed/vue/800/500"
+  },
+  {
+    title: "Docker 容器化部署实战",
+    summary: "从零开始学习 Docker，掌握容器化部署的核心概念与实战技巧...",
+    date: "2026-02-20",
+    category: "DevOps",
+    tags: ["Docker", "DevOps", "部署"],
+    slug: "docker-deployment",
+    views: 178,
+    comments: 6,
+    cover: "https://picsum.photos/seed/docker/800/500"
+  }
+];
+---
+
+<section class="article-section" id="article-section">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-title-wrapper">
+        <div class="section-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+        </div>
+        <h2 class="section-title">最新文章</h2>
+      </div>
+      <div class="section-actions">
+        <ViewModeSwitcher client:load modelValue="grid" />
+        <a href="/articles" class="view-all">
+          <span>查看全部</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/>
+            <path d="m12 5 7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="article-grid" id="article-grid">
+      {articles.map(article => (
+        <ArticleCard {...article} />
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  // 从本地存储读取视图模式
+  const savedMode = localStorage.getItem('articleViewMode') || 'grid';
+  const articleGrid = document.getElementById('article-grid');
+  
+  if (articleGrid) {
+    articleGrid.setAttribute('data-view-mode', savedMode);
+  }
+
+  // 监听视图模式变化
+  window.addEventListener('viewModeChange', ((e: Event) => {
+    const customEvent = e as CustomEvent;
+    const mode = customEvent.detail;
+    if (articleGrid) {
+      articleGrid.setAttribute('data-view-mode', mode);
+    }
+  }) as EventListener);
+</script>
+
+<style>
+  .article-section {
+    padding: 40px 0 80px;
+    position: relative;
+  }
+
+  .section-container {
+    width: 100%;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 48px;
+  }
+
+  .section-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: var(--shadow-brand);
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text);
+    position: relative;
+  }
+
+  .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+  }
+
+  .section-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--color-card);
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    transition: all var(--transition-base);
+  }
+
+  .view-all:hover {
+    border-color: var(--color-brand-primary);
+    color: var(--color-brand-primary);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .view-all svg {
+    transition: transform var(--transition-base);
+  }
+
+  .view-all:hover svg {
+    transform: translateX(4px);
+  }
+
+  /* 网格模式 */
+  .article-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 28px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 列表模式 */
+  .article-grid[data-view-mode="list"] {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .article-grid[data-view-mode="list"] :global(.article-card) {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    animation: listModeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .article-grid :global(.article-card) {
+    animation: gridModeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes listModeIn {
+    0% {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes gridModeIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.95) translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .article-grid[data-view-mode="list"] :global(.card-image) {
+    height: 100%;
+    min-height: 200px;
+    transition: all 0.4s ease;
+  }
+
+  .article-grid[data-view-mode="list"] :global(.card-content) {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.4s ease;
+  }
+
+  .article-grid[data-view-mode="list"] :global(.card-title) {
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+  }
+
+  .article-grid[data-view-mode="list"] :global(.card-summary) {
+    -webkit-line-clamp: 2;
+    transition: all 0.3s ease;
+  }
+
+  @media (max-width: 968px) {
+    .article-grid[data-view-mode="list"] :global(.article-card) {
+      grid-template-columns: 200px 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .article-section {
+      padding: 20px 0 60px;
+    }
+
+    .article-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .section-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .article-grid[data-view-mode="list"] :global(.article-card) {
+      grid-template-columns: 1fr;
+    }
+
+    .article-grid[data-view-mode="list"] :global(.card-image) {
+      height: 180px;
+    }
+  }
+</style>

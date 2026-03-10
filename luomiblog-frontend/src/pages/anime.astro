@@ -1,0 +1,360 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 番剧数据
+const animeList = [
+  {
+    id: 1,
+    name: '葬送的芙莉莲',
+    cover: 'https://picsum.photos/seed/frieren/400/600',
+    rating: 9.8,
+    status: '已看完',
+    progress: 100,
+    tags: ['奇幻', '治愈'],
+    comment: '近年来最棒的奇幻作品，情感细腻，画面精美。'
+  },
+  {
+    id: 2,
+    name: '我推的孩子',
+    cover: 'https://picsum.photos/seed/oshinoko/400/600',
+    rating: 9.2,
+    status: '已看完',
+    progress: 100,
+    tags: ['偶像', '悬疑'],
+    comment: '开局神回，剧情紧凑，对娱乐圈的描述很真实。'
+  },
+  {
+    id: 3,
+    name: '鬼灭之刃 锻刀村篇',
+    cover: 'https://picsum.photos/seed/demonslayer/400/600',
+    rating: 9.0,
+    status: '已看完',
+    progress: 100,
+    tags: ['热血', '战斗'],
+    comment: '飞碟社的制作水准依旧在线，战斗场面震撼。'
+  },
+  {
+    id: 4,
+    name: '咒术回战 第二季',
+    cover: 'https://picsum.photos/seed/jujutsu/400/600',
+    rating: 8.8,
+    status: '已看完',
+    progress: 100,
+    tags: ['热血', '超能力'],
+    comment: '涩谷事变篇节奏紧凑，五条悟的高光时刻。'
+  },
+  {
+    id: 5,
+    name: '间谍过家家 第二季',
+    cover: 'https://picsum.photos/seed/spyfamily/400/600',
+    rating: 9.1,
+    status: '追看中',
+    progress: 60,
+    tags: ['喜剧', '家庭'],
+    comment: '温馨搞笑，阿尼亚太可爱了！'
+  },
+  {
+    id: 6,
+    name: '进击的巨人 最终季',
+    cover: 'https://picsum.photos/seed/aot/400/600',
+    rating: 9.5,
+    status: '已看完',
+    progress: 100,
+    tags: ['热血', '悬疑'],
+    comment: '史诗般的结局，十年陪伴画上句号。'
+  },
+  {
+    id: 7,
+    name: '孤独摇滚！',
+    cover: 'https://picsum.photos/seed/bocchi/400/600',
+    rating: 9.3,
+    status: '已看完',
+    progress: 100,
+    tags: ['音乐', '日常'],
+    comment: '社恐女主的摇滚成长史，制作非常有创意。'
+  },
+  {
+    id: 8,
+    name: '电锯人',
+    cover: 'https://picsum.photos/seed/chainsaw/400/600',
+    rating: 8.9,
+    status: '已看完',
+    progress: 100,
+    tags: ['热血', '黑暗'],
+    comment: 'MAPPA的大胆改编，风格独特。'
+  }
+];
+
+const stats = {
+  total: 156,
+  watching: 3,
+  completed: 142,
+  dropped: 11
+};
+---
+
+<Layout title="番剧 - LuomiBlog">
+  <Header />
+  <main class="anime-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">番剧</h1>
+      <p class="page-subtitle">二次元世界的追番记录</p>
+      
+      <!-- 统计 -->
+      <div class="anime-stats">
+        <div class="stat-item">
+          <span class="stat-value">{stats.total}</span>
+          <span class="stat-label">总观看</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{stats.watching}</span>
+          <span class="stat-label">追看中</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{stats.completed}</span>
+          <span class="stat-label">已看完</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 番剧列表 -->
+    <section class="page-content">
+      <!-- 筛选标签 -->
+      <div class="filter-tabs">
+        <button class="tab active">全部</button>
+        <button class="tab">追看中</button>
+        <button class="tab">已看完</button>
+        <button class="tab">想看</button>
+      </div>
+
+      <!-- 番剧网格 -->
+      <div class="anime-grid">
+        {animeList.map((anime) => (
+          <div class="anime-card">
+            <div class="anime-cover">
+              <img src={anime.cover} alt={anime.name} loading="lazy" />
+              <span class="anime-status">{anime.status}</span>
+              <div class="anime-rating">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span>{anime.rating}</span>
+              </div>
+            </div>
+            <div class="anime-info">
+              <h3 class="anime-name">{anime.name}</h3>
+              <div class="anime-tags">
+                {anime.tags.map((tag) => (
+                  <span class="anime-tag">{tag}</span>
+                ))}
+              </div>
+              <p class="anime-comment">{anime.comment}</p>
+              {anime.progress < 100 && (
+                <div class="progress-bar">
+                  <div class="progress-fill" style={`width: ${anime.progress}%`}></div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .anime-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .anime-stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin-top: 32px;
+  }
+
+  .anime-stats .stat-item {
+    text-align: center;
+  }
+
+  .anime-stats .stat-value {
+    display: block;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-brand-primary);
+  }
+
+  .anime-stats .stat-label {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+    display: block;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .tab:hover {
+    border-color: var(--color-brand-primary);
+    color: var(--color-brand-primary);
+  }
+
+  .tab.active {
+    background: var(--color-brand-primary);
+    border-color: var(--color-brand-primary);
+    color: white;
+  }
+
+  .anime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
+  }
+
+  .anime-card {
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-border-soft);
+    transition: all var(--transition-base);
+  }
+
+  .anime-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .anime-cover {
+    aspect-ratio: 2 / 3;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .anime-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+  }
+
+  .anime-card:hover .anime-cover img {
+    transform: scale(1.05);
+  }
+
+  .anime-status {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 11px;
+    border-radius: var(--radius-full);
+    backdrop-filter: blur(10px);
+  }
+
+  .anime-rating {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    backdrop-filter: blur(10px);
+  }
+
+  .anime-info {
+    padding: 16px;
+  }
+
+  .anime-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 8px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .anime-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .anime-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-full);
+  }
+
+  .anime-comment {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--color-brand-primary);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  @media (max-width: 640px) {
+    .anime-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .anime-stats {
+      gap: 24px;
+    }
+
+    .anime-stats .stat-value {
+      font-size: 24px;
+    }
+  }
+</style>

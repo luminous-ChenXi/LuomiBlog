@@ -1,0 +1,347 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const stats = [
+  { label: '总用户数', value: '1,234', change: '+12%', icon: 'users', trend: 'up' },
+  { label: '文章数量', value: '56', change: '+5%', icon: 'articles', trend: 'up' },
+  { label: '评论数量', value: '328', change: '+23%', icon: 'comments', trend: 'up' },
+  { label: '今日访问', value: '2.1K', change: '+8%', icon: 'views', trend: 'up' },
+];
+
+const recentActivities = [
+  { type: 'user', action: '新用户注册', detail: '用户 "张三" 注册了账号', time: '2分钟前' },
+  { type: 'article', action: '文章发布', detail: '"Vue3 最佳实践指南" 已发布', time: '15分钟前' },
+  { type: 'comment', action: '新评论', detail: '李四评论了 "React Hooks 详解"', time: '1小时前' },
+  { type: 'system', action: '系统通知', detail: '服务器备份完成', time: '3小时前' },
+];
+
+const quickActions = [
+  { label: '写文章', icon: 'edit', href: '/admin/articles/new' },
+  { label: '发布公告', icon: 'megaphone', href: '/admin/announcements/new' },
+  { label: '管理用户', icon: 'users', href: '/admin/users' },
+  { label: '系统设置', icon: 'settings', href: '/admin/settings' },
+];
+---
+
+<AdminLayout title="仪表盘">
+  <div class="dashboard-page">
+    <!-- 页面头部 -->
+    <header class="admin-section-header">
+      <p class="admin-section-subtitle">overview</p>
+      <h1 class="admin-section-title">仪表盘</h1>
+      <p class="admin-section-description">
+        欢迎回来，管理员。这里是博客的整体数据概览和快捷操作入口。
+      </p>
+    </header>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+      {stats.map((stat) => (
+        <div class="stat-card">
+          <div class="stat-icon">
+            {stat.icon === 'users' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            )}
+            {stat.icon === 'articles' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+            )}
+            {stat.icon === 'comments' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            )}
+            {stat.icon === 'views' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            )}
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{stat.value}</span>
+            <span class="stat-label">{stat.label}</span>
+          </div>
+          <div class={`stat-change ${stat.trend}`}>
+            {stat.change}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="glass-panel quick-actions">
+      <h3 class="panel-title">快捷操作</h3>
+      <div class="actions-grid">
+        {quickActions.map((action) => (
+          <a href={action.href} class="action-card">
+            <div class="action-icon">
+              {action.icon === 'edit' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              )}
+              {action.icon === 'megaphone' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+              )}
+              {action.icon === 'users' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              )}
+              {action.icon === 'settings' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              )}
+            </div>
+            <span class="action-label">{action.label}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- 最近动态 -->
+    <div class="glass-panel recent-activities">
+      <h3 class="panel-title">最近动态</h3>
+      <div class="activities-list">
+        {recentActivities.map((activity) => (
+          <div class="activity-item">
+            <div class={`activity-icon ${activity.type}`}>
+              {activity.type === 'user' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              )}
+              {activity.type === 'article' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              )}
+              {activity.type === 'comment' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              )}
+              {activity.type === 'system' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m4.22-10.22 4.24-4.24M6.34 6.34 2.1 2.1m17.8 17.8-4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24-4.24-4.24 4.24M6.34 6.34l-4.24-4.24"/></svg>
+              )}
+            </div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-action">{activity.action}</span>
+                <span class="activity-time">{activity.time}</span>
+              </div>
+              <p class="activity-detail">{activity.detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .dashboard-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* 统计卡片 */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+
+  .stat-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 107, 157, 0.2);
+  }
+
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.2) 0%, rgba(196, 69, 105, 0.2) 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--admin-primary);
+  }
+
+  .stat-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--admin-text);
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+  }
+
+  .stat-change {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .stat-change.up {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--admin-success);
+  }
+
+  .stat-change.down {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--admin-danger);
+  }
+
+  /* 面板标题 */
+  .panel-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 20px;
+  }
+
+  /* 快捷操作 */
+  .quick-actions {
+    margin-top: 8px;
+  }
+
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--admin-card-border);
+    border-radius: 16px;
+    text-decoration: none;
+    color: var(--admin-text-secondary);
+    transition: all 0.2s ease;
+  }
+
+  .action-card:hover {
+    background: rgba(255, 107, 157, 0.1);
+    border-color: rgba(255, 107, 157, 0.3);
+    color: var(--admin-text);
+    transform: translateY(-2px);
+  }
+
+  .action-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--admin-primary);
+  }
+
+  .action-card:hover .action-icon {
+    background: rgba(255, 107, 157, 0.2);
+  }
+
+  .action-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  /* 最近动态 */
+  .recent-activities {
+    margin-top: 8px;
+  }
+
+  .activities-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .activity-item:hover {
+    border-color: var(--admin-card-border);
+  }
+
+  .activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .activity-icon.user {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--admin-info);
+  }
+
+  .activity-icon.article {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--admin-success);
+  }
+
+  .activity-icon.comment {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--admin-warning);
+  }
+
+  .activity-icon.system {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+  }
+
+  .activity-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .activity-action {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--admin-text);
+  }
+
+  .activity-time {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  .activity-detail {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+    margin: 0;
+  }
+</style>

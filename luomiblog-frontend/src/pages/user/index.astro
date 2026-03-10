@@ -1,0 +1,628 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+// 模拟用户数据
+const userData = {
+  id: 5,
+  username: 'chenxi',
+  email: '318713682@qq.com',
+  nickname: '辰汐',
+  avatar: '/avatar.png',
+  level: '注册会员',
+  levelBadge: 'AI 智能会员',
+  expiryDate: '永久',
+  lastLogin: '2026-02-28 19:28:30',
+  loginIp: '27.128.57.70',
+  points: 9,
+  consumed: 0.00,
+  favorites: 0,
+  comments: 2
+};
+
+const stats = [
+  { label: '积分余额', value: `${userData.points}芙贝币`, action: '查看充值记录 →' },
+  { label: '累计消耗', value: `${userData.consumed.toFixed(2)}芙贝币`, action: '前往充值 →' },
+  { label: '收藏文章', value: `${userData.favorites}条`, action: '查看收藏文章 →' },
+  { label: '累计评论', value: `${userData.comments}条`, action: '查看评论记录 →' }
+];
+
+const menuItems = [
+  { icon: 'user', label: '用户中心', active: true },
+  { icon: 'order', label: '订单管理', active: false },
+  { icon: 'vip', label: '会员订阅', active: false },
+  { icon: 'asset', label: '资产管理', active: false },
+  { icon: 'recharge', label: '充值记录', active: false },
+  { icon: 'favorite', label: '我的收藏', active: false },
+  { icon: 'comment', label: '评论内容', active: false },
+  { icon: 'password', label: '修改密码', active: false },
+  { icon: 'logout', label: '退出登录', active: false }
+];
+---
+
+<Layout>
+  <Header />
+  <main class="user-center-page">
+    <div class="page-container">
+      <!-- 左侧菜单 -->
+      <aside class="user-sidebar">
+        <div class="user-info-brief">
+          <img src={userData.avatar} alt="avatar" class="user-avatar-small" />
+          <span class="user-name-small">{userData.email}</span>
+        </div>
+        
+        <nav class="user-menu">
+          {menuItems.map((item) => (
+            <a 
+              href="#" 
+              class={`menu-item ${item.active ? 'active' : ''}`}
+            >
+              <span class={`menu-icon icon-${item.icon}`}></span>
+              <span class="menu-label">{item.label}</span>
+            </a>
+          ))}
+        </nav>
+      </aside>
+
+      <!-- 右侧内容 -->
+      <div class="user-content">
+        <!-- 页面标题 -->
+        <div class="page-header">
+          <h1 class="page-title">个人中心</h1>
+          <div class="page-actions">
+            <button class="btn btn-outline">今日签到</button>
+            <button class="btn btn-primary">
+              积分充值
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 用户信息卡片 -->
+        <div class="user-profile-card">
+          <div class="profile-main">
+            <img src={userData.avatar} alt="avatar" class="profile-avatar" />
+            <div class="profile-info">
+              <h2 class="profile-name">{userData.nickname} <span class="user-id">(ID:{userData.id})</span></h2>
+              <div class="profile-meta">
+                <span class="meta-item">
+                  <span class="meta-label">会员等级:</span>
+                  <span class="meta-value">{userData.level}</span>
+                </span>
+                <span class="badge">{userData.levelBadge}</span>
+                <span class="meta-item">
+                  <span class="meta-label">到期时间:</span>
+                  <span class="meta-value">{userData.expiryDate}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="profile-extra">
+            <div class="extra-item">
+              <span class="extra-label">最近登录</span>
+              <span class="extra-value">{userData.lastLogin}</span>
+            </div>
+            <div class="extra-item">
+              <span class="extra-label">登录IP</span>
+              <span class="extra-value">{userData.loginIp}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 统计数据 -->
+        <div class="stats-grid">
+          {stats.map((stat) => (
+            <div class="stat-card">
+              <span class="stat-label">{stat.label}</span>
+              <span class="stat-value">{stat.value}</span>
+              <a href="#" class="stat-action">{stat.action}</a>
+            </div>
+          ))}
+        </div>
+
+        <!-- 更新头像 -->
+        <div class="section-card">
+          <h3 class="section-title">更新头像</h3>
+          <p class="section-desc">上传头像，让您的头像更加突出！</p>
+          <div class="upload-area">
+            <button class="btn btn-outline">上传头像</button>
+            <span class="upload-hint">支持 *.jpeg, *.jpg, *.png, *.gif 最大1MB</span>
+          </div>
+        </div>
+
+        <!-- 更新资料 -->
+        <div class="section-card">
+          <h3 class="section-title">更新资料</h3>
+          <p class="section-desc">补全您的资料，让您的资料更加完整！</p>
+          
+          <form class="profile-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">用户名 <span class="label-hint">(不可修改)</span></label>
+                <input type="text" value={userData.username} disabled class="form-input disabled" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">邮箱 <span class="label-hint">(不可修改)</span></label>
+                <input type="email" value={userData.email} disabled class="form-input disabled" />
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">昵称</label>
+                <input type="text" value={userData.nickname} class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">网站</label>
+                <input type="url" placeholder="https://" class="form-input" />
+              </div>
+            </div>
+            
+            <div class="form-group full-width">
+              <label class="form-label">个性签名</label>
+              <textarea rows="4" class="form-textarea"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">保存修改</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .user-center-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+    padding: 40px 0;
+  }
+
+  .page-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 40px;
+    padding: 0 24px;
+  }
+
+  /* 左侧菜单 */
+  .user-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+  }
+
+  .user-info-brief {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-card);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .user-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .user-name-small {
+    font-size: 14px;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .user-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .menu-item:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+  }
+
+  .menu-item.active {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .menu-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .menu-label {
+    font-size: 14px;
+  }
+
+  /* 右侧内容 */
+  .user-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .page-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .btn-outline:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  }
+
+  .btn-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* 用户信息卡片 */
+  .user-profile-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .profile-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff6b9d;
+  }
+
+  .profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 8px 0;
+  }
+
+  .user-id {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+  }
+
+  .profile-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .meta-label {
+    color: var(--color-text-secondary);
+  }
+
+  .meta-value {
+    color: var(--color-text);
+  }
+
+  .badge {
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+    font-size: 12px;
+    border-radius: 4px;
+  }
+
+  .profile-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .extra-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .extra-label {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .extra-value {
+    font-size: 13px;
+    color: var(--color-text);
+  }
+
+  /* 统计数据 */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--color-card);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .stat-action {
+    font-size: 12px;
+    color: #ff6b9d;
+    text-decoration: none;
+  }
+
+  .stat-action:hover {
+    text-decoration: underline;
+  }
+
+  /* 卡片区域 */
+  .section-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 4px 0;
+  }
+
+  .section-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin: 0 0 16px 0;
+  }
+
+  .upload-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .upload-hint {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  /* 表单 */
+  .profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .label-hint {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+  }
+
+  .form-input,
+  .form-textarea {
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    transition: all 0.2s ease;
+  }
+
+  .form-input:focus,
+  .form-textarea:focus {
+    outline: none;
+    border-color: #ff6b9d;
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+  }
+
+  .form-input.disabled {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  /* 响应式 */
+  @media (max-width: 1200px) {
+    .page-container {
+      grid-template-columns: 220px 1fr;
+      gap: 32px;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 968px) {
+    .page-container {
+      grid-template-columns: 1fr;
+    }
+
+    .user-sidebar {
+      position: relative;
+      top: 0;
+    }
+
+    .user-info-brief {
+      display: none;
+    }
+
+    .user-menu {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .menu-item {
+      flex: 1;
+      min-width: 120px;
+      justify-content: center;
+    }
+
+    .user-profile-card {
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .profile-extra {
+      text-align: center;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .page-container {
+      padding: 0 16px;
+    }
+
+    .page-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .profile-meta {
+      justify-content: center;
+    }
+  }
+</style>

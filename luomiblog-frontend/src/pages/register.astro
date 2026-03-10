@@ -1,0 +1,954 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="注册 - 辰汐小站">
+  <div class="register-page">
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="bg-circle circle-1"></div>
+      <div class="bg-circle circle-2"></div>
+      <div class="bg-circle circle-3"></div>
+    </div>
+
+    <div class="register-container">
+      <!-- 左侧：品牌展示 -->
+      <div class="brand-section">
+        <div class="brand-content">
+          <div class="brand-logo">
+            <span class="logo-text">CX</span>
+          </div>
+          <h1 class="brand-title">辰汐小站</h1>
+          <p class="brand-slogan">记录生活，分享技术</p>
+          <div class="brand-features">
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span>安全可靠</span>
+            </div>
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>完全免费</span>
+            </div>
+            <div class="feature-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>社区互动</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：注册表单 -->
+      <div class="form-section">
+        <div class="form-card">
+          <header class="form-header">
+            <h2 class="form-title">创建账号</h2>
+            <p class="form-subtitle">填写以下信息开始您的旅程</p>
+          </header>
+
+          <form class="register-form" id="register-form">
+            <!-- 步骤指示器 -->
+            <div class="step-indicator">
+              <div class="step-item active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">基本信息</span>
+              </div>
+              <div class="step-line"></div>
+              <div class="step-item" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">安全设置</span>
+              </div>
+            </div>
+
+            <!-- 步骤 1：基本信息 -->
+            <div class="step-content active" data-step="1">
+              <div class="form-group">
+                <label class="form-label" for="username">用户名</label>
+                <div class="input-wrapper">
+                  <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    placeholder="请输入用户名"
+                    required
+                    minlength="3"
+                  />
+                </div>
+                <span class="error-message" id="username-error"></span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="email">邮箱地址</label>
+                <div class="input-wrapper">
+                  <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="form-input" 
+                    placeholder="请输入邮箱地址"
+                    required
+                  />
+                </div>
+                <span class="error-message" id="email-error"></span>
+              </div>
+
+              <button type="button" class="btn-primary btn-next" id="btn-next">
+                下一步
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+            </div>
+
+            <!-- 步骤 2：安全设置 -->
+            <div class="step-content" data-step="2">
+              <div class="form-group">
+                <label class="form-label" for="password">密码</label>
+                <div class="input-wrapper">
+                  <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="请输入密码"
+                    required
+                    minlength="6"
+                  />
+                  <button type="button" class="toggle-password" id="toggle-password">
+                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <span class="error-message" id="password-error"></span>
+                <div class="password-strength" id="password-strength">
+                  <div class="strength-bar">
+                    <div class="strength-fill"></div>
+                  </div>
+                  <span class="strength-text">密码强度</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="confirm-password">确认密码</label>
+                <div class="input-wrapper">
+                  <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input 
+                    type="password" 
+                    id="confirm-password" 
+                    name="confirm-password" 
+                    class="form-input" 
+                    placeholder="请再次输入密码"
+                    required
+                  />
+                </div>
+                <span class="error-message" id="confirm-password-error"></span>
+              </div>
+
+              <div class="form-group checkbox-group">
+                <label class="checkbox-wrapper">
+                  <input type="checkbox" id="agree-terms" name="agree-terms" required />
+                  <span class="checkbox-custom"></span>
+                  <span class="checkbox-text">我已阅读并同意 <a href="#" class="link">服务条款</a> 和 <a href="#" class="link">隐私政策</a></span>
+                </label>
+                <span class="error-message" id="terms-error"></span>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn-secondary btn-prev" id="btn-prev">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                  上一步
+                </button>
+                <button type="submit" class="btn-primary btn-submit" id="btn-submit">
+                  <span class="btn-text">创建账号</span>
+                  <span class="btn-loading" style="display: none;">
+                    <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div class="form-footer">
+            <p>已有账号？<a href="/" class="link" id="login-link">立即登录</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .register-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow: hidden;
+    background: var(--color-bg);
+  }
+
+  /* 背景装饰 */
+  .bg-decoration {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .bg-circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+  }
+
+  .circle-1 {
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, var(--color-brand-primary) 0%, #c44569 100%);
+    top: -100px;
+    right: -100px;
+  }
+
+  .circle-2 {
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    bottom: -50px;
+    left: -50px;
+  }
+
+  .circle-3 {
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    top: 50%;
+    left: 30%;
+    opacity: 0.3;
+  }
+
+  /* 注册容器 */
+  .register-container {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    max-width: 1000px;
+    width: 100%;
+    background: var(--color-card-bg);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 品牌区域 */
+  .brand-section {
+    background: linear-gradient(135deg, var(--color-brand-primary) 0%, #c44569 100%);
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+  }
+
+  .brand-content {
+    text-align: center;
+  }
+
+  .brand-logo {
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .logo-text {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--color-brand-primary) 0%, #c44569 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .brand-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .brand-slogan {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-bottom: 40px;
+  }
+
+  .brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+  }
+
+  .feature-item svg {
+    opacity: 0.9;
+  }
+
+  /* 表单区域 */
+  .form-section {
+    padding: 60px 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .form-card {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .form-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 8px;
+  }
+
+  .form-subtitle {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* 步骤指示器 */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+    gap: 16px;
+  }
+
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .step-item.active .step-number {
+    background: var(--color-brand-primary);
+    color: white;
+  }
+
+  .step-item.completed .step-number {
+    background: var(--color-success);
+    color: white;
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    transition: all 0.3s ease;
+  }
+
+  .step-item.active .step-label {
+    color: var(--color-brand-primary);
+    font-weight: 500;
+  }
+
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--color-border);
+    max-width: 60px;
+    transition: all 0.3s ease;
+  }
+
+  .step-line.completed {
+    background: var(--color-success);
+  }
+
+  /* 步骤内容 */
+  .step-content {
+    display: none;
+  }
+
+  .step-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* 表单组 */
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: 8px;
+  }
+
+  .input-wrapper {
+    position: relative;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.9375rem;
+    transition: all 0.3s ease;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: var(--color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+  }
+
+  .form-input.error {
+    border-color: var(--color-error);
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toggle-password:hover {
+    color: var(--color-text-secondary);
+  }
+
+  .error-message {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-error);
+    margin-top: 6px;
+    min-height: 18px;
+  }
+
+  /* 密码强度 */
+  .password-strength {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .strength-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .strength-fill {
+    height: 100%;
+    width: 0;
+    background: var(--color-error);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  .strength-fill.weak {
+    width: 33%;
+    background: var(--color-error);
+  }
+
+  .strength-fill.medium {
+    width: 66%;
+    background: var(--color-warning);
+  }
+
+  .strength-fill.strong {
+    width: 100%;
+    background: var(--color-success);
+  }
+
+  .strength-text {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  /* 复选框 */
+  .checkbox-group {
+    margin-top: 24px;
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .checkbox-wrapper input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .checkbox-wrapper input:checked + .checkbox-custom {
+    background: var(--color-brand-primary);
+    border-color: var(--color-brand-primary);
+  }
+
+  .checkbox-wrapper input:checked + .checkbox-custom::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .checkbox-text {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* 按钮 */
+  .btn-primary,
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-brand-primary) 0%, #c44569 100%);
+    color: white;
+    box-shadow: 0 4px 14px rgba(255, 107, 157, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: var(--color-border);
+    color: var(--color-text);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-text-muted);
+    color: white;
+  }
+
+  .btn-next {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .form-actions .btn-primary,
+  .form-actions .btn-secondary {
+    flex: 1;
+  }
+
+  /* 加载动画 */
+  .btn-loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* 链接 */
+  .link {
+    color: var(--color-brand-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  /* 表单底部 */
+  .form-footer {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .form-footer p {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .register-container {
+      grid-template-columns: 1fr;
+    }
+
+    .brand-section {
+      padding: 40px 24px;
+    }
+
+    .brand-features {
+      display: none;
+    }
+
+    .form-section {
+      padding: 40px 24px;
+    }
+
+    .bg-circle {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // 步骤控制
+  let currentStep = 1;
+  const totalSteps = 2;
+
+  const stepContents = document.querySelectorAll('.step-content');
+  const stepItems = document.querySelectorAll('.step-item');
+  const stepLine = document.querySelector('.step-line');
+
+  const btnNext = document.getElementById('btn-next');
+  const btnPrev = document.getElementById('btn-prev');
+  const form = document.getElementById('register-form');
+
+  // 验证步骤1
+  function validateStep1() {
+    let isValid = true;
+    const username = document.getElementById('username') as HTMLInputElement;
+    const email = document.getElementById('email') as HTMLInputElement;
+    const usernameError = document.getElementById('username-error');
+    const emailError = document.getElementById('email-error');
+
+    // 验证用户名
+    if (!username.value.trim()) {
+      if (usernameError) usernameError.textContent = '请输入用户名';
+      username.classList.add('error');
+      isValid = false;
+    } else if (username.value.length < 3) {
+      if (usernameError) usernameError.textContent = '用户名至少3个字符';
+      username.classList.add('error');
+      isValid = false;
+    } else {
+      if (usernameError) usernameError.textContent = '';
+      username.classList.remove('error');
+    }
+
+    // 验证邮箱
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.value.trim()) {
+      if (emailError) emailError.textContent = '请输入邮箱地址';
+      email.classList.add('error');
+      isValid = false;
+    } else if (!emailRegex.test(email.value)) {
+      if (emailError) emailError.textContent = '请输入有效的邮箱地址';
+      email.classList.add('error');
+      isValid = false;
+    } else {
+      if (emailError) emailError.textContent = '';
+      email.classList.remove('error');
+    }
+
+    return isValid;
+  }
+
+  // 验证步骤2
+  function validateStep2() {
+    let isValid = true;
+    const password = document.getElementById('password') as HTMLInputElement;
+    const confirmPassword = document.getElementById('confirm-password') as HTMLInputElement;
+    const agreeTerms = document.getElementById('agree-terms') as HTMLInputElement;
+    const passwordError = document.getElementById('password-error');
+    const confirmPasswordError = document.getElementById('confirm-password-error');
+    const termsError = document.getElementById('terms-error');
+
+    // 验证密码
+    if (!password.value) {
+      if (passwordError) passwordError.textContent = '请输入密码';
+      password.classList.add('error');
+      isValid = false;
+    } else if (password.value.length < 6) {
+      if (passwordError) passwordError.textContent = '密码至少6个字符';
+      password.classList.add('error');
+      isValid = false;
+    } else {
+      if (passwordError) passwordError.textContent = '';
+      password.classList.remove('error');
+    }
+
+    // 验证确认密码
+    if (password.value !== confirmPassword.value) {
+      if (confirmPasswordError) confirmPasswordError.textContent = '两次输入的密码不一致';
+      confirmPassword.classList.add('error');
+      isValid = false;
+    } else {
+      if (confirmPasswordError) confirmPasswordError.textContent = '';
+      confirmPassword.classList.remove('error');
+    }
+
+    // 验证条款
+    if (!agreeTerms.checked) {
+      if (termsError) termsError.textContent = '请同意服务条款';
+      isValid = false;
+    } else {
+      if (termsError) termsError.textContent = '';
+    }
+
+    return isValid;
+  }
+
+  // 更新步骤显示
+  function updateStep(step: number) {
+    currentStep = step;
+
+    // 更新步骤内容
+    stepContents.forEach((content, index) => {
+      if (index + 1 === step) {
+        content.classList.add('active');
+      } else {
+        content.classList.remove('active');
+      }
+    });
+
+    // 更新步骤指示器
+    stepItems.forEach((item, index) => {
+      if (index + 1 < step) {
+        item.classList.add('completed');
+        item.classList.remove('active');
+      } else if (index + 1 === step) {
+        item.classList.add('active');
+        item.classList.remove('completed');
+      } else {
+        item.classList.remove('active', 'completed');
+      }
+    });
+
+    // 更新步骤线
+    if (stepLine) {
+      if (step > 1) {
+        stepLine.classList.add('completed');
+      } else {
+        stepLine.classList.remove('completed');
+      }
+    }
+  }
+
+  // 下一步按钮
+  btnNext?.addEventListener('click', () => {
+    if (validateStep1()) {
+      updateStep(2);
+    }
+  });
+
+  // 上一步按钮
+  btnPrev?.addEventListener('click', () => {
+    updateStep(1);
+  });
+
+  // 表单提交
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!validateStep2()) return;
+
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnText = btnSubmit?.querySelector('.btn-text');
+    const btnLoading = btnSubmit?.querySelector('.btn-loading');
+
+    // 显示加载状态
+    if (btnSubmit) (btnSubmit as HTMLButtonElement).disabled = true;
+    if (btnText) (btnText as HTMLElement).style.display = 'none';
+    if (btnLoading) (btnLoading as HTMLElement).style.display = 'inline-flex';
+
+    // 模拟注册请求
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // 注册成功，跳转到登录页
+    alert('注册成功！请登录');
+    window.location.href = '/';
+  });
+
+  // 密码强度检测
+  const passwordInput = document.getElementById('password');
+  const strengthFill = document.querySelector('.strength-fill');
+  const strengthText = document.querySelector('.strength-text');
+
+  passwordInput?.addEventListener('input', (e) => {
+    const value = (e.target as HTMLInputElement).value;
+    let strength = 0;
+
+    if (value.length >= 6) strength++;
+    if (value.length >= 10) strength++;
+    if (/[A-Z]/.test(value)) strength++;
+    if (/[0-9]/.test(value)) strength++;
+    if (/[^A-Za-z0-9]/.test(value)) strength++;
+
+    if (strengthFill) strengthFill.classList.remove('weak', 'medium', 'strong');
+
+    if (value.length === 0) {
+      if (strengthText) strengthText.textContent = '密码强度';
+    } else if (strength <= 2) {
+      if (strengthFill) strengthFill.classList.add('weak');
+      if (strengthText) strengthText.textContent = '弱';
+    } else if (strength <= 4) {
+      if (strengthFill) strengthFill.classList.add('medium');
+      if (strengthText) strengthText.textContent = '中';
+    } else {
+      if (strengthFill) strengthFill.classList.add('strong');
+      if (strengthText) strengthText.textContent = '强';
+    }
+  });
+
+  // 密码显示切换
+  const togglePassword = document.getElementById('toggle-password');
+  const eyeIcon = togglePassword?.querySelector('.eye-icon');
+
+  togglePassword?.addEventListener('click', () => {
+    const type = passwordInput?.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput?.setAttribute('type', type);
+
+    // 切换图标
+    if (eyeIcon) {
+      if (type === 'text') {
+        eyeIcon.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/><path d="m4.22 4.22 15.56 15.56"/>';
+      } else {
+        eyeIcon.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    }
+  });
+
+  // 登录链接点击
+  const loginLink = document.getElementById('login-link');
+  loginLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    // 打开登录弹窗
+    const w = window as any;
+    if (typeof w.openLoginModal === 'function') {
+      w.openLoginModal();
+    } else {
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+    }
+  });
+</script>

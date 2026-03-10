@@ -1,0 +1,195 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import ProfileCard from '../components/ProfileCard.vue';
+import ArticleList from '../components/ArticleList.astro';
+import SearchBox from '../components/SearchBox.vue';
+import AIAssistant from '../components/AIAssistant.vue';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout>
+  <Header />
+  <main>
+    <!-- Hero Banner 区域 -->
+    <Hero />
+    
+    <!-- 内容区域 -->
+    <div class="main-content">
+      <div class="content-container">
+        <!-- 左侧：文章列表 -->
+        <div class="articles-section" id="articles-section">
+          <ArticleList />
+        </div>
+        
+        <!-- 右侧：侧边栏（搜索、个人卡片、AI助手） -->
+        <aside class="right-sidebar" id="right-sidebar">
+          <div class="sidebar-content">
+            <!-- 搜索框 -->
+            <div class="sidebar-item search-item">
+              <SearchBox client:load />
+            </div>
+            
+            <!-- 个人简介卡片 -->
+            <div class="sidebar-item profile-item">
+              <ProfileCard client:load />
+            </div>
+            
+            <!-- AI助手 -->
+            <div class="sidebar-item ai-item">
+              <AIAssistant client:load />
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  /* 主内容区域 */
+  .main-content {
+    position: relative;
+    z-index: 1;
+    background: var(--color-bg);
+    padding: 40px 0 80px;
+  }
+
+  .content-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 40px;
+    padding: 0 24px;
+    align-items: start;
+  }
+
+  /* 文章区域 - 左侧 */
+  .articles-section {
+    min-width: 0;
+    min-height: 600px; /* 最小高度，确保右侧组件不会超出 */
+  }
+
+  /* 右侧侧边栏 */
+  .right-sidebar {
+    position: relative;
+    height: 100%;
+    max-height: fit-content; /* 限制最大高度 */
+  }
+
+  .sidebar-content {
+    position: sticky;
+    top: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: calc(100vh - 120px); /* 限制最大高度，避免超出视口 */
+    overflow-y: auto; /* 内容过多时可滚动 */
+    scrollbar-width: thin; /* 细滚动条 */
+  }
+
+  .sidebar-content::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-content::-webkit-scrollbar-thumb {
+    background: var(--color-border, #e0e0e0);
+    border-radius: 2px;
+  }
+
+  .sidebar-item {
+    animation: fadeInUp 0.6s ease-out backwards;
+  }
+
+  .sidebar-item:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .sidebar-item:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .sidebar-item:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 响应式 */
+  @media (max-width: 1200px) {
+    .content-container {
+      grid-template-columns: 1fr 320px;
+      gap: 32px;
+    }
+  }
+
+  @media (max-width: 968px) {
+    .content-container {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+
+    .right-sidebar {
+      order: -1;
+      height: auto;
+    }
+
+    .sidebar-content {
+      position: relative;
+      top: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .sidebar-item {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .content-container {
+      padding: 0 16px;
+    }
+
+    .sidebar-content {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // 获取文章区域和侧边栏
+  const articlesSection = document.getElementById('articles-section');
+  const sidebar = document.getElementById('right-sidebar');
+  
+  if (articlesSection && sidebar) {
+    // 监听文章区域高度变化，调整侧边栏
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === articlesSection) {
+          const articleHeight = entry.contentRect.height;
+          sidebar.style.minHeight = `${articleHeight}px`;
+        }
+      }
+    });
+    
+    resizeObserver.observe(articlesSection);
+  }
+</script>

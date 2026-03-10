@@ -1,0 +1,154 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+// 技能数据
+const skillCategories = [
+  {
+    name: '前端开发',
+    skills: [
+      { name: 'Vue.js', level: 90 },
+      { name: 'React', level: 75 },
+      { name: 'TypeScript', level: 85 },
+      { name: 'Astro', level: 80 },
+      { name: 'Tailwind CSS', level: 90 }
+    ]
+  },
+  {
+    name: '后端开发',
+    skills: [
+      { name: 'Spring Boot', level: 85 },
+      { name: 'Java', level: 80 },
+      { name: 'Node.js', level: 70 },
+      { name: 'Python', level: 65 }
+    ]
+  },
+  {
+    name: '数据库',
+    skills: [
+      { name: 'MySQL', level: 85 },
+      { name: 'Redis', level: 75 },
+      { name: 'MongoDB', level: 60 }
+    ]
+  },
+  {
+    name: 'DevOps',
+    skills: [
+      { name: 'Docker', level: 75 },
+      { name: 'Git', level: 85 },
+      { name: 'Linux', level: 70 },
+      { name: 'Nginx', level: 65 }
+    ]
+  }
+];
+
+const tools = [
+  { name: 'VS Code', icon: '💻', category: '编辑器' },
+  { name: 'IntelliJ IDEA', icon: '🚀', category: '编辑器' },
+  { name: 'Figma', icon: '🎨', category: '设计' },
+  { name: 'Postman', icon: '📮', category: '工具' },
+  { name: 'GitHub', icon: '🐙', category: '协作' },
+  { name: 'Notion', icon: '📝', category: '笔记' },
+  { name: 'Docker Desktop', icon: '🐳', category: '工具' },
+  { name: 'TablePlus', icon: '🗄️', category: '数据库' }
+];
+---
+
+<Layout title="技能栈 - LuomiBlog">
+  <Header />
+  <main class="skill-page">
+    <!-- 页面标题 -->
+    <section class="page-header">
+      <h1 class="page-title">技能栈</h1>
+      <p class="page-subtitle">持续学习，不断进步</p>
+    </section>
+
+    <!-- 技能图表 -->
+    <section class="page-content">
+      {skillCategories.map((category) => (
+        <div class="skill-category">
+          <h2 class="skill-category-title">{category.name}</h2>
+          <div class="skill-list">
+            {category.skills.map((skill) => (
+              <div class="skill-item">
+                <div class="skill-header">
+                  <span class="skill-name">{skill.name}</span>
+                  <span class="skill-level">{skill.level}%</span>
+                </div>
+                <div class="skill-bar">
+                  <div class="skill-progress" style={`width: ${skill.level}%`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+
+    <!-- 常用工具 -->
+    <section class="page-content" style="padding-top: 0;">
+      <div class="section-header">
+        <span class="section-eyebrow">Tools</span>
+        <h2 class="section-title">常用工具</h2>
+      </div>
+      
+      <div class="tools-grid">
+        {tools.map((tool) => (
+          <div class="tool-card">
+            <span class="tool-icon">{tool.icon}</span>
+            <span class="tool-name">{tool.name}</span>
+            <span class="tool-category">{tool.category}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .skill-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 20px;
+  }
+
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-soft);
+    transition: all var(--transition-base);
+  }
+
+  .tool-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-brand-primary);
+  }
+
+  .tool-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .tool-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 4px;
+  }
+
+  .tool-category {
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+</style>
