@@ -1,6 +1,7 @@
 ---
 import type { AstroGlobal } from 'astro';
 import ThemeSwitcher from './ThemeSwitcher.vue';
+import UserAuth from './UserAuth.vue';
 
 // 获取当前页面路径
 declare const Astro: AstroGlobal;
@@ -78,15 +79,8 @@ const isActive = (href: string) => {
       </button>
       <ThemeSwitcher client:load />
       
-      <!-- 登录注册区域 -->
-      <div class="auth-wrapper">
-        <div class="auth-links">
-          <a href="#" class="auth-link login-link" id="login-btn">登录</a>
-          <span class="auth-divider">or</span>
-          <a href="/register" class="auth-link register-link">注册</a>
-        </div>
-        <span class="new-tag">NEW</span>
-      </div>
+      <!-- 用户认证区域 -->
+      <UserAuth client:load />
     </div>
   </div>
 </header>
