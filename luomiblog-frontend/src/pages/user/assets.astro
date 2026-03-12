@@ -1,0 +1,402 @@
+---
+import UserCenterLayout from '../../layouts/UserCenterLayout.astro';
+
+const assets = {
+  points: 1250,
+  coupons: 3,
+  downloads: 5,
+  storage: {
+    used: 256,
+    total: 1024,
+    unit: 'MB'
+  }
+};
+
+const transactions = [
+  { id: 1, type: 'income', title: '每日签到奖励', amount: 10, date: '2026-03-12' },
+  { id: 2, type: 'expense', title: 'AI 问答消耗', amount: -5, date: '2026-03-11' },
+  { id: 3, type: 'income', title: '文章被收藏奖励', amount: 20, date: '2026-03-10' },
+  { id: 4, type: 'expense', title: '下载资源消耗', amount: -50, date: '2026-03-09' },
+  { id: 5, type: 'income', title: '邀请好友奖励', amount: 100, date: '2026-03-08' },
+];
+
+const coupons = [
+  { id: 1, name: '新用户优惠券', discount: '9折', minSpend: 100, expiry: '2026-04-01', status: 'valid' },
+  { id: 2, name: '月度会员券', discount: '¥20', minSpend: 0, expiry: '2026-03-20', status: 'valid' },
+  { id: 3, name: '积分兑换券', discount: '100积分', minSpend: 0, expiry: '2026-03-15', status: 'expired' },
+];
+---
+
+<UserCenterLayout title="资产管理 - 用户中心" activeMenu="assets">
+  <div class="page-header">
+    <h1 class="page-title">资产管理</h1>
+  </div>
+
+  <!-- 资产概览 -->
+  <div class="assets-overview">
+    <div class="asset-card primary">
+      <div class="asset-icon">💎</div>
+      <div class="asset-info">
+        <span class="asset-label">积分余额</span>
+        <span class="asset-value">{assets.points}</span>
+      </div>
+      <a href="#" class="asset-action">去充值 →</a>
+    </div>
+    <div class="asset-card">
+      <div class="asset-icon">🎫</div>
+      <div class="asset-info">
+        <span class="asset-label">优惠券</span>
+        <span class="asset-value">{assets.coupons}张</span>
+      </div>
+      <a href="#coupons" class="asset-action">查看 →</a>
+    </div>
+    <div class="asset-card">
+      <div class="asset-icon">📥</div>
+      <div class="asset-info">
+        <span class="asset-label">下载次数</span>
+        <span class="asset-value">{assets.downloads}次</span>
+      </div>
+      <a href="#" class="asset-action">获取 →</a>
+    </div>
+    <div class="asset-card">
+      <div class="asset-icon">☁️</div>
+      <div class="asset-info">
+        <span class="asset-label">存储空间</span>
+        <span class="asset-value">{assets.storage.used}{assets.storage.unit}</span>
+      </div>
+      <div class="storage-bar">
+        <div class="storage-progress" style={`width: ${(assets.storage.used / assets.storage.total) * 100}%`}></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 积分明细 -->
+  <div class="section-card">
+    <div class="section-header">
+      <h2 class="section-title">积分明细</h2>
+      <div class="filter-tabs">
+        <button class="tab active">全部</button>
+        <button class="tab">收入</button>
+        <button class="tab">支出</button>
+      </div>
+    </div>
+    <div class="transactions-list">
+      {transactions.map((item) => (
+        <div class="transaction-item">
+          <div class="transaction-info">
+            <span class="transaction-title">{item.title}</span>
+            <span class="transaction-date">{item.date}</span>
+          </div>
+          <span class={`transaction-amount ${item.type}`}>
+            {item.amount > 0 ? '+' : ''}{item.amount}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- 优惠券 -->
+  <div class="section-card" id="coupons">
+    <h2 class="section-title">我的优惠券</h2>
+    <div class="coupons-grid">
+      {coupons.map((coupon) => (
+        <div class={`coupon-card ${coupon.status}`}>
+          <div class="coupon-left">
+            <span class="coupon-discount">{coupon.discount}</span>
+            <span class="coupon-name">{coupon.name}</span>
+          </div>
+          <div class="coupon-right">
+            <span class="coupon-condition">{coupon.minSpend > 0 ? `满${coupon.minSpend}可用` : '无门槛'}</span>
+            <span class="coupon-expiry">有效期至 {coupon.expiry}</span>
+            {coupon.status === 'valid' ? (
+              <button class="btn-use">立即使用</button>
+            ) : (
+              <span class="status-text">已过期</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</UserCenterLayout>
+
+<style>
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  /* 资产概览 */
+  .assets-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .asset-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .asset-card.primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .asset-icon {
+    font-size: 32px;
+  }
+
+  .asset-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .asset-label {
+    font-size: 13px;
+    opacity: 0.8;
+  }
+
+  .asset-value {
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .asset-action {
+    font-size: 13px;
+    color: inherit;
+    opacity: 0.8;
+    text-decoration: none;
+  }
+
+  .asset-action:hover {
+    opacity: 1;
+  }
+
+  .storage-bar {
+    height: 6px;
+    background: var(--color-bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .storage-progress {
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  /* 卡片区域 */
+  .section-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    border-color: transparent;
+    color: white;
+  }
+
+  /* 交易记录 */
+  .transactions-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .transaction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .transaction-item:last-child {
+    border-bottom: none;
+  }
+
+  .transaction-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .transaction-title {
+    font-size: 14px;
+    color: var(--color-text);
+  }
+
+  .transaction-date {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .transaction-amount {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .transaction-amount.income {
+    color: #16a34a;
+  }
+
+  .transaction-amount.expense {
+    color: #dc2626;
+  }
+
+  /* 优惠券 */
+  .coupons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .coupon-card {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .coupon-card.valid {
+    border-color: #ff6b9d;
+  }
+
+  .coupon-card.expired {
+    opacity: 0.6;
+  }
+
+  .coupon-left {
+    flex: 0 0 120px;
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    gap: 4px;
+  }
+
+  .coupon-card.expired .coupon-left {
+    background: var(--color-text-tertiary);
+  }
+
+  .coupon-discount {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .coupon-name {
+    font-size: 12px;
+    opacity: 0.9;
+    text-align: center;
+  }
+
+  .coupon-right {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .coupon-condition {
+    font-size: 14px;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .coupon-expiry {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .btn-use {
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-start;
+  }
+
+  .btn-use:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  }
+
+  .status-text {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+
+  @media (max-width: 768px) {
+    .assets-overview {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .coupons-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
