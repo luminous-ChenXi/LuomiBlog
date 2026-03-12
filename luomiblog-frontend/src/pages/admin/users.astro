@@ -116,11 +116,7 @@ const roleOptions = [
               <td>
                 <div class="user-cell">
                   <div class="user-avatar">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} />
-                    ) : (
-                      <span class="avatar-placeholder">{user.name.charAt(0)}</span>
-                    )}
+                    <img src={user.avatar || '/default-avatar.svg'} alt={user.name} />
                   </div>
                   <div class="user-info">
                     <span class="user-name">{user.name}</span>
