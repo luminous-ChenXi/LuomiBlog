@@ -170,4 +170,10 @@ onUnmounted(() => {
 [data-theme="dark"] .loading-overlay {
   background: var(--color-bg, #0f0f1a);
 }
+
+.loading-text {
+  margin-top: 24px;
+  font-size: 16px;
+  color: var(--color-text, #333);
+}
 </style>

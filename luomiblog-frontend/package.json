@@ -7,7 +7,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "lint": "astro check",
+    "typecheck": "astro check",
+    "lint": "eslint . --ext .ts,.tsx,.vue,.js,.jsx,.astro,.mjs",
     "clean": "rm -rf dist .astro"
   },
   "dependencies": {

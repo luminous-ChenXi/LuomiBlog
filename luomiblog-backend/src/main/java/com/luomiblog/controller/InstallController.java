@@ -24,11 +24,21 @@ public class InstallController {
 
     @PostMapping("/check-environment")
     public ApiResponse<EnvironmentCheckResponse> checkEnvironment() {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         return ApiResponse.success(installService.checkEnvironment());
     }
 
     @PostMapping("/test-database")
     public ApiResponse<Map<String, Object>> testDatabaseConnection(@Valid @RequestBody DatabaseConfigRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         boolean success = installService.testDatabaseConnection(request);
         return ApiResponse.success(Map.of(
             "success", success,
@@ -38,6 +48,11 @@ public class InstallController {
 
     @PostMapping("/execute-sql")
     public ApiResponse<Map<String, Object>> executeSqlScripts(@Valid @RequestBody DatabaseConfigRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         try {
             installService.executeSqlScripts(request);
             return ApiResponse.success(Map.of(
@@ -51,6 +66,11 @@ public class InstallController {
 
     @PostMapping("/create-admin")
     public ApiResponse<Map<String, Object>> createAdminAccount(@Valid @RequestBody AdminAccountRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         try {
             installService.createAdminAccount(request);
             return ApiResponse.success(Map.of(
@@ -64,6 +84,11 @@ public class InstallController {
 
     @PostMapping("/site-config")
     public ApiResponse<Map<String, Object>> saveSiteConfig(@Valid @RequestBody SiteConfigRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         try {
             installService.saveSiteConfig(request);
             return ApiResponse.success(Map.of(
@@ -77,6 +102,11 @@ public class InstallController {
 
     @PostMapping("/complete")
     public ApiResponse<Map<String, Object>> completeInstallation() {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
         try {
             installService.completeInstallation();
             return ApiResponse.success(Map.of(
