@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,24 +64,25 @@ public class InstallServiceImpl implements InstallService {
 
         // 检查 Java 版本
         String javaVersion = System.getProperty("java.version");
-        boolean javaVersionOk = javaVersion.startsWith("17") || javaVersion.startsWith("21");
+        int majorVersion = parseJavaVersion(javaVersion);
+        boolean javaVersionOk = majorVersion >= 17;
         checks.add(EnvironmentCheckResponse.CheckItem.builder()
                 .name("Java 版本")
                 .passed(javaVersionOk)
                 .message("当前 Java 版本: " + javaVersion)
-                .suggestion(javaVersionOk ? null : "建议使用 Java 17 或 21")
+                .suggestion(javaVersionOk ? null : "需要 Java 17 或更高版本")
                 .build());
         allPassed &= javaVersionOk;
 
-        // 检查端口占用（8080）
-        boolean portAvailable = isPortAvailable(8080);
+        // 检查后端服务配置
+        boolean backendConfigOk = checkBackendConfiguration();
         checks.add(EnvironmentCheckResponse.CheckItem.builder()
-                .name("端口 8080")
-                .passed(portAvailable)
-                .message(portAvailable ? "端口 8080 可用" : "端口 8080 被占用")
-                .suggestion(portAvailable ? null : "请关闭占用 8080 端口的程序，或修改配置文件使用其他端口")
+                .name("后端服务")
+                .passed(backendConfigOk)
+                .message(backendConfigOk ? "后端服务运行正常" : "后端服务配置异常")
+                .suggestion(backendConfigOk ? null : "请确保后端服务已正确启动")
                 .build());
-        allPassed &= portAvailable;
+        allPassed &= backendConfigOk;
 
         // 检查 MySQL 驱动
         boolean mysqlDriverOk = checkMysqlDriver();
@@ -99,9 +102,19 @@ public class InstallServiceImpl implements InstallService {
 
     @Override
     public boolean testDatabaseConnection(DatabaseConfigRequest request) {
-        try {
-            DataSource dataSource = createDataSource(request);
-            dataSource.getConnection().close();
+        try (Connection connection = createDataSource(request).getConnection()) {
+            // 检查 MySQL 版本
+            DatabaseMetaData metaData = connection.getMetaData();
+            String version = metaData.getDatabaseProductVersion();
+            int majorVersion = metaData.getDatabaseMajorVersion();
+
+            // MySQL 8.0 或更高版本
+            if (majorVersion < 8) {
+                log.error("MySQL 版本过低: {}，需要 8.0 或更高版本", version);
+                return false;
+            }
+
+            log.info("数据库连接成功，MySQL 版本: {}", version);
             return true;
         } catch (Exception e) {
             log.error("数据库连接测试失败", e);
@@ -194,11 +207,28 @@ public class InstallServiceImpl implements InstallService {
         return new File(INSTALL_LOCK_FILE).exists();
     }
 
-    private boolean isPortAvailable(int port) {
-        try (java.net.ServerSocket socket = new java.net.ServerSocket(port)) {
-            socket.setReuseAddress(true);
+    private int parseJavaVersion(String version) {
+        try {
+            // 处理版本号格式如 "21.0.1" 或 "17.0.8"
+            String[] parts = version.split("\\.");
+            if (parts[0].equals("1")) {
+                // 旧版本格式如 "1.8.0"
+                return Integer.parseInt(parts[1]);
+            }
+            return Integer.parseInt(parts[0]);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private boolean checkBackendConfiguration() {
+        // 检查关键配置是否正确加载
+        try {
+            // 检查数据库配置是否可用
+            jdbcTemplate.queryForObject("SELECT 1", Integer.class);
             return true;
-        } catch (IOException e) {
+        } catch (Exception e) {
+            log.warn("后端服务配置检查失败: {}", e.getMessage());
             return false;
         }
     }

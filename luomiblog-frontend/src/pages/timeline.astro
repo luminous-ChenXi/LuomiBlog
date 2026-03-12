@@ -119,7 +119,7 @@ const getTypeColor = (type: string) => {
     <!-- 时间线内容 -->
     <section class="page-content">
       <div class="timeline">
-        {timelineData.map((item, index) => (
+        {timelineData.map((item) => (
           <div class="timeline-item">
             <div class="timeline-marker">
               <span class="timeline-dot" style={`background-color: ${getTypeColor(item.type)}; box-shadow: 0 0 0 4px ${getTypeColor(item.type)}20`}>

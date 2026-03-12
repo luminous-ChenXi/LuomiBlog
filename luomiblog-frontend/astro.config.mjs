@@ -22,13 +22,15 @@ export default defineConfig({
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ['element-plus']
+    },
+    build: {
+      chunkSizeWarningLimit: 1000
     }
   },
 
   // 构建配置
   build: {
-    format: 'file',
-    chunkSizeWarningLimit: 1000
+    format: 'file'
   },
 
   // 开发服务器配置
