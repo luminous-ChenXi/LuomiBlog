@@ -80,6 +80,11 @@ const validateStep2 = () => {
   return Object.keys(errors.value).length === 0;
 };
 
+const openLogin = () => {
+  // 触发打开登录弹窗事件
+  window.dispatchEvent(new CustomEvent('open-login-modal'));
+};
+
 const nextStep = () => {
   registerError.value = '';
   if (validateStep1()) {
@@ -192,7 +197,7 @@ onUnmounted(() => {
           <div class="modal-form">
             <div class="form-header">
               <h2 class="form-title">注册账号</h2>
-              <p class="form-subtitle">已有账号？<a href="#" @click.prevent="handleClose(); (window as any).openLoginModal?.()">立即登录</a></p>
+              <p class="form-subtitle">已有账号？<a href="#" @click.prevent="handleClose(); openLogin()">立即登录</a></p>
             </div>
 
             <form @submit.prevent="currentStep === 1 ? nextStep() : handleSubmit()">
