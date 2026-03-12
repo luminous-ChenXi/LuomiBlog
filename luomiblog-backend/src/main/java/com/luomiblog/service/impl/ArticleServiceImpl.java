@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class ArticleServiceImpl implements ArticleService {
 
     private final ArticleRepository articleRepository;
