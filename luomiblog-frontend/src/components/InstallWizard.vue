@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../utils/api';
+import type { FaviconConfigRequest } from '../types/api';
 
 const currentStep = ref(0);
 const loading = ref(false);
@@ -120,7 +121,7 @@ const saveFaviconConfig = async () => {
 
   loading.value = true;
   try {
-    const config = faviconForm.type === 'svg' 
+    const config: FaviconConfigRequest = faviconForm.type === 'svg'
       ? { type: 'svg', content: faviconForm.svgCode }
       : { type: 'url', content: faviconForm.url };
     const response = await api.install.saveFaviconConfig(config);
@@ -841,7 +842,7 @@ onMounted(() => {
         <div class="step-actions">
           <button class="btn-secondary" @click="prevStep">上一步</button>
           <button class="btn-outline" @click="skipFavicon">跳过此步骤</button>
-          <button class="btn-primary" :disabled="loading || (faviconForm.type === 'svg' && faviconForm.svgCode && !isValidSvg(faviconForm.svgCode))" @click="saveFaviconConfig">
+          <button class="btn-primary" :disabled="loading || !!(faviconForm.type === 'svg' && faviconForm.svgCode && !isValidSvg(faviconForm.svgCode))" @click="saveFaviconConfig">
             保存并继续
           </button>
         </div>

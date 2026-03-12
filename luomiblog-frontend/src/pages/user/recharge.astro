@@ -18,7 +18,7 @@ const rechargeOptions = [
   { amount: 500, points: 5000, bonus: 500 },
 ];
 
-const statusMap = {
+const statusMap: Record<string, { label: string; class: string }> = {
   success: { label: '充值成功', class: 'status-success' },
   failed: { label: '充值失败', class: 'status-danger' },
   pending: { label: '处理中', class: 'status-warning' },
