@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { api } from '../utils/api';
+import { setAuth } from '../stores/user';
 
 const isVisible = ref(false);
+const loginError = ref('');
 
 const form = ref({
   username: '',
@@ -19,6 +22,7 @@ const handleClose = () => {
   // 重置表单
   form.value = { username: '', password: '' };
   errors.value = { username: '', password: '' };
+  loginError.value = '';
 };
 
 const handleOpen = () => {
@@ -28,6 +32,7 @@ const handleOpen = () => {
 const validateForm = () => {
   let isValid = true;
   errors.value = { username: '', password: '' };
+  loginError.value = '';
 
   if (!form.value.username.trim()) {
     errors.value.username = '请输入用户名或邮箱';
@@ -49,15 +54,27 @@ const handleSubmit = async () => {
   if (!validateForm()) return;
 
   submitting.value = true;
+  loginError.value = '';
 
-  // 模拟登录请求
-  setTimeout(() => {
-    submitting.value = false;
-    // 模拟登录成功
+  try {
+    const response = await api.auth.login({
+      username: form.value.username.trim(),
+      password: form.value.password
+    });
+
+    // 保存认证信息
+    setAuth(response);
+
+    // 关闭弹窗
     handleClose();
+
     // 跳转到个人中心
     window.location.href = '/user';
-  }, 1500);
+  } catch (error: any) {
+    loginError.value = error.message || '登录失败，请检查用户名和密码';
+  } finally {
+    submitting.value = false;
+  }
 };
 
 // ESC 键关闭
@@ -140,6 +157,16 @@ onUnmounted(() => {
               </header>
 
               <form class="login-form" @submit.prevent="handleSubmit">
+                <!-- 登录错误提示 -->
+                <div v-if="loginError" class="login-error">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" x2="12" y1="8" y2="12"/>
+                    <line x1="12" x2="12.01" y1="16" y2="16"/>
+                  </svg>
+                  <span>{{ loginError }}</span>
+                </div>
+
                 <div class="form-item">
                   <label class="form-label">用户名 / 邮箱</label>
                   <div class="input-wrapper">
@@ -376,6 +403,25 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+/* 登录错误提示 */
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.login-error svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .form-item {

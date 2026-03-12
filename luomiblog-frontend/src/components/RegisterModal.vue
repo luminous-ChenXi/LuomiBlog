@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { api } from '../utils/api';
+import { setAuth } from '../stores/user';
 
 const isVisible = ref(false);
 const isLoading = ref(false);
 const currentStep = ref(1);
+const registerError = ref('');
 
 const formData = ref({
   username: '',
@@ -35,6 +38,7 @@ const resetForm = () => {
     agreeTerms: false
   };
   errors.value = {};
+  registerError.value = '';
   currentStep.value = 1;
 };
 
@@ -77,6 +81,7 @@ const validateStep2 = () => {
 };
 
 const nextStep = () => {
+  registerError.value = '';
   if (validateStep1()) {
     currentStep.value = 2;
   }
@@ -89,17 +94,34 @@ const prevStep = () => {
 
 const handleSubmit = async () => {
   if (!validateStep2()) return;
-  
+
   isLoading.value = true;
-  
-  // 模拟注册请求
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  isLoading.value = false;
-  handleClose();
-  
-  // 触发注册成功事件
-  window.dispatchEvent(new CustomEvent('register-success'));
+  registerError.value = '';
+
+  try {
+    const response = await api.auth.register({
+      username: formData.value.username.trim(),
+      email: formData.value.email.trim(),
+      password: formData.value.password,
+      confirmPassword: formData.value.confirmPassword,
+      nickname: formData.value.username.trim()
+    });
+
+    // 保存认证信息（自动登录）
+    setAuth(response);
+
+    isLoading.value = false;
+    handleClose();
+
+    // 触发注册成功事件
+    window.dispatchEvent(new CustomEvent('register-success'));
+
+    // 跳转到个人中心
+    window.location.href = '/user';
+  } catch (error: any) {
+    registerError.value = error.message || '注册失败，请检查输入信息';
+    isLoading.value = false;
+  }
 };
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -221,6 +243,16 @@ onUnmounted(() => {
 
               <!-- 步骤 2: 设置密码 -->
               <div v-else class="form-step">
+                <!-- 注册错误提示 -->
+                <div v-if="registerError" class="register-error">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" x2="12" y1="8" y2="12"/>
+                    <line x1="12" x2="12.01" y1="16" y2="16"/>
+                  </svg>
+                  <span>{{ registerError }}</span>
+                </div>
+
                 <div class="form-group">
                   <label class="form-label">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -313,6 +345,24 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 注册错误提示 */
+.register-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.register-error svg {
+  flex-shrink: 0;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

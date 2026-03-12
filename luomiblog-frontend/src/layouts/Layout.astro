@@ -11,6 +11,7 @@ const {
 
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import LoginModal from '../components/LoginModal.vue';
+import RegisterModal from '../components/RegisterModal.vue';
 import '../styles/global.css';
 ---
 
@@ -33,6 +34,8 @@ import '../styles/global.css';
     <LoadingSpinner client:load />
     <!-- 登录弹窗 - 全局可用 -->
     <LoginModal client:load />
+    <!-- 注册弹窗 - 全局可用 -->
+    <RegisterModal client:load />
     <slot />
   </body>
 </html>
