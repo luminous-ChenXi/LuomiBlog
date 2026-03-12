@@ -4,6 +4,14 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import AIAssistant from '../../components/AIAssistant.vue';
 
+// 定义动态路由参数
+export function getStaticPaths() {
+  return [
+    { params: { slug: 'spring-boot-3-2-features' } },
+    { params: { slug: 'astro-performance-optimization' } }
+  ];
+}
+
 // 模拟文章数据
 const articles: Record<string, any> = {
   'spring-boot-3-2-features': {
