@@ -18,7 +18,8 @@ import type {
   DatabaseConfigRequest,
   AdminAccountRequest,
   SiteConfigRequest,
-  SmtpConfigRequest
+  SmtpConfigRequest,
+  FaviconConfigRequest
 } from '../types/api';
 
 // API 基础 URL
@@ -224,6 +225,12 @@ export const api = {
 
     saveSmtpConfig: (data: SmtpConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/smtp-config', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    saveFaviconConfig: (data: FaviconConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/favicon-config', {
         method: 'POST',
         body: JSON.stringify(data)
       }),

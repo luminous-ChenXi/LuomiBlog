@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../utils/api';
 
@@ -59,6 +59,82 @@ const smtpForm = reactive({
 // 跳过SMTP配置
 const skipSmtp = () => {
   currentStep.value++;
+};
+
+// 跳过网站图标配置
+const skipFavicon = () => {
+  currentStep.value++;
+};
+
+// 图标加载错误处理
+const onFaviconError = () => {
+  ElMessage.warning('图标加载失败，请检查URL是否有效');
+};
+
+// 网站图标配置表单
+const defaultFavicon = `<svg t="1773292844613" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="21701" width="200" height="200"><path d="M810.667 490.667L787.2 552.533h-61.867l51.2 38.4-23.466 70.4 57.6-42.666 57.6 42.666-23.467-70.4 51.2-38.4h-61.867l-23.466-61.866zM539.733 448l57.6-42.667 57.6 42.667-23.466-70.4 51.2-38.4H620.8l-23.467-61.867-23.466 61.867H512l51.2 38.4-23.467 70.4z m441.6-320H896l-32-85.333L832 128h-85.333l70.4 53.333-32 96 81.066-59.733 81.067 59.733-32-96L981.333 128zM362.667 339.2c0-113.067 40.533-215.467 106.666-296.533C230.4 64 42.667 266.667 42.667 512c0 260.267 209.066 469.333 469.333 469.333 147.2 0 298.667-68.266 384-172.8-14.933 2.134-49.067 2.134-64 2.134-260.267 0-469.333-211.2-469.333-471.467zM512 938.667c-234.667 0-426.667-192-426.667-426.667 0-187.733 119.467-349.867 292.267-405.333-36.267 72.533-57.6 153.6-57.6 234.666 0 268.8 204.8 488.534 467.2 512-76.8 53.334-177.067 85.334-275.2 85.334z" p-id="21702"></path></svg>`;
+
+const faviconForm = reactive({
+  type: 'svg', // 'svg' | 'url'
+  svgCode: defaultFavicon,
+  url: ''
+});
+
+// 判断是否为有效的SVG代码
+const isValidSvg = (code: string): boolean => {
+  return code.trim().startsWith('<svg') && code.trim().endsWith('</svg>');
+};
+
+// 获取预览图标内容
+const getFaviconPreview = computed(() => {
+  if (faviconForm.type === 'svg') {
+    return isValidSvg(faviconForm.svgCode) ? faviconForm.svgCode : defaultFavicon;
+  }
+  return faviconForm.url || '';
+});
+
+// 保存网站图标配置
+const saveFaviconConfig = async () => {
+  if (faviconForm.type === 'svg') {
+    if (!faviconForm.svgCode.trim()) {
+      ElMessage.warning('请输入SVG代码');
+      return;
+    }
+    if (!isValidSvg(faviconForm.svgCode)) {
+      ElMessage.warning('请输入有效的SVG代码（必须以<svg开头，以</svg>结尾）');
+      return;
+    }
+  } else {
+    if (!faviconForm.url.trim()) {
+      ElMessage.warning('请输入图标URL');
+      return;
+    }
+    // 简单的URL验证
+    try {
+      new URL(faviconForm.url);
+    } catch {
+      ElMessage.warning('请输入有效的URL地址');
+      return;
+    }
+  }
+
+  loading.value = true;
+  try {
+    const config = faviconForm.type === 'svg' 
+      ? { type: 'svg', content: faviconForm.svgCode }
+      : { type: 'url', content: faviconForm.url };
+    const response = await api.install.saveFaviconConfig(config);
+    if (response.success) {
+      ElMessage.success('网站图标配置保存成功');
+      currentStep.value++;
+    } else {
+      ElMessage.error(response.message);
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '网站图标配置保存失败');
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 检查安装状态
@@ -356,6 +432,7 @@ onMounted(() => {
         <el-step title="初始化数据" />
         <el-step title="站点配置" />
         <el-step title="SMTP配置" />
+        <el-step title="网站图标" />
         <el-step title="创建管理员" />
         <el-step title="完成安装" />
       </el-steps>
@@ -659,8 +736,120 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 5: 创建管理员 -->
+    <!-- 步骤 5: 网站图标配置 -->
     <div v-if="currentStep === 4" class="step-content">
+      <div class="step-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <h3 class="card-title">网站图标配置</h3>
+          <p class="card-desc">自定义浏览器标签页上显示的网站图标（可选）</p>
+        </div>
+
+        <div class="favicon-notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p>您可以粘贴 SVG 代码或图标 URL 来自定义网站图标。如果不设置，将使用默认图标。由于存储策略尚未配置，暂不支持上传图片。</p>
+        </div>
+
+        <!-- 图标预览 -->
+        <div class="favicon-preview-section">
+          <label class="form-label">图标预览</label>
+          <div class="favicon-preview-box">
+            <div v-if="faviconForm.type === 'svg'" class="favicon-preview-svg" v-html="getFaviconPreview"></div>
+            <img v-else-if="faviconForm.url" :src="getFaviconPreview" alt="favicon" class="favicon-preview-img" @error="onFaviconError" />
+            <div v-else class="favicon-preview-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <span>暂无预览</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="install-form">
+          <!-- 图标类型选择 -->
+          <div class="form-group">
+            <label class="form-label">图标来源</label>
+            <div class="favicon-type-tabs">
+              <button 
+                type="button" 
+                class="type-tab" 
+                :class="{ active: faviconForm.type === 'svg' }" 
+                @click="faviconForm.type = 'svg'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                SVG 代码
+              </button>
+              <button 
+                type="button" 
+                class="type-tab" 
+                :class="{ active: faviconForm.type === 'url' }" 
+                @click="faviconForm.type = 'url'"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                图标 URL
+              </button>
+            </div>
+          </div>
+
+          <!-- SVG 代码输入 -->
+          <div v-if="faviconForm.type === 'svg'" class="form-group">
+            <label class="form-label">
+              SVG 代码
+              <span class="form-hint-inline">（将自动验证格式）</span>
+            </label>
+            <textarea 
+              v-model="faviconForm.svgCode" 
+              class="form-textarea favicon-textarea" 
+              rows="6" 
+              placeholder="在此粘贴 SVG 代码，例如：<svg>...</svg>"
+            ></textarea>
+            <p v-if="faviconForm.svgCode && !isValidSvg(faviconForm.svgCode)" class="form-error">
+              请输入有效的 SVG 代码（必须以 &lt;svg 开头，以 &lt;/svg&gt; 结尾）
+            </p>
+          </div>
+
+          <!-- URL 输入 -->
+          <div v-else class="form-group">
+            <label class="form-label">图标 URL</label>
+            <input 
+              v-model="faviconForm.url" 
+              type="url" 
+              class="form-input" 
+              placeholder="https://example.com/favicon.ico"
+            />
+            <p class="form-hint">支持 .ico、.png、.svg 等格式的图标链接</p>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-secondary" @click="prevStep">上一步</button>
+          <button class="btn-outline" @click="skipFavicon">跳过此步骤</button>
+          <button class="btn-primary" :disabled="loading || (faviconForm.type === 'svg' && faviconForm.svgCode && !isValidSvg(faviconForm.svgCode))" @click="saveFaviconConfig">
+            保存并继续
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 6: 创建管理员 -->
+    <div v-if="currentStep === 5" class="step-content">
       <div class="step-card">
         <div class="card-header">
           <div class="card-icon">
@@ -706,8 +895,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 6: 完成安装 -->
-    <div v-if="currentStep === 5" class="step-content">
+    <!-- 步骤 7: 完成安装 -->
+    <div v-if="currentStep === 6" class="step-content">
       <div class="step-card complete-card">
         <div class="complete-icon">
           <div class="success-circle">
@@ -1280,6 +1469,152 @@ onMounted(() => {
   .smtp-test {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* 网站图标配置样式 */
+.favicon-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 107, 157, 0.08);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 107, 157, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+.favicon-notice svg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-brand-primary);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.favicon-notice p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.favicon-preview-section {
+  margin-bottom: 1.5rem;
+}
+
+.favicon-preview-box {
+  width: 100px;
+  height: 100px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+}
+
+.favicon-preview-svg {
+  width: 64px;
+  height: 64px;
+}
+
+.favicon-preview-svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+.favicon-preview-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.favicon-preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.favicon-preview-placeholder svg {
+  width: 32px;
+  height: 32px;
+}
+
+.favicon-preview-placeholder span {
+  font-size: 0.75rem;
+}
+
+.favicon-type-tabs {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.type-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.type-tab:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+}
+
+.type-tab.active {
+  background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+  border-color: transparent;
+  color: white;
+}
+
+.type-tab svg {
+  width: 18px;
+  height: 18px;
+}
+
+.favicon-textarea {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  resize: vertical;
+}
+
+.form-hint-inline {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.form-error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin: 0.5rem 0 0 0;
+}
+
+@media (max-width: 640px) {
+  .favicon-type-tabs {
+    flex-direction: column;
+  }
+
+  .type-tab {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .favicon-preview-box {
+    width: 80px;
+    height: 80px;
   }
 }
 </style>
