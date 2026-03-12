@@ -17,7 +17,8 @@ import type {
   EnvironmentCheckResponse,
   DatabaseConfigRequest,
   AdminAccountRequest,
-  SiteConfigRequest
+  SiteConfigRequest,
+  SmtpConfigRequest
 } from '../types/api';
 
 // API 基础 URL
@@ -211,6 +212,18 @@ export const api = {
 
     saveSiteConfig: (data: SiteConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/site-config', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    testSmtp: (data: SmtpConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/test-smtp', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    saveSmtpConfig: (data: SmtpConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/smtp-config', {
         method: 'POST',
         body: JSON.stringify(data)
       }),

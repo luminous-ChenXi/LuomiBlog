@@ -1,0 +1,343 @@
+---
+import UserCenterLayout from '../../layouts/UserCenterLayout.astro';
+
+const orders = [
+  { id: 'ORD202403010001', type: '积分充值', amount: 100, points: 1000, status: 'completed', date: '2026-03-01 14:30:00', payMethod: '支付宝' },
+  { id: 'ORD202402280002', type: '会员订阅', amount: 99, points: 0, status: 'completed', date: '2026-02-28 10:15:00', payMethod: '微信支付' },
+  { id: 'ORD202402250003', type: '积分充值', amount: 50, points: 500, status: 'pending', date: '2026-02-25 16:45:00', payMethod: '待支付' },
+  { id: 'ORD202402200004', type: 'AI服务', amount: 20, points: 200, status: 'cancelled', date: '2026-02-20 09:20:00', payMethod: '-' },
+];
+
+const statusMap = {
+  completed: { label: '已完成', class: 'status-success' },
+  pending: { label: '待支付', class: 'status-warning' },
+  cancelled: { label: '已取消', class: 'status-danger' },
+};
+---
+
+<UserCenterLayout title="订单管理 - 用户中心" activeMenu="orders">
+  <div class="page-header">
+    <h1 class="page-title">订单管理</h1>
+    <div class="filter-tabs">
+      <button class="tab active">全部</button>
+      <button class="tab">待支付</button>
+      <button class="tab">已完成</button>
+      <button class="tab">已取消</button>
+    </div>
+  </div>
+
+  <div class="orders-container">
+    {orders.length > 0 ? (
+      <div class="orders-list">
+        {orders.map((order) => (
+          <div class="order-card">
+            <div class="order-header">
+              <span class="order-id">订单号：{order.id}</span>
+              <span class={`order-status ${statusMap[order.status].class}`}>
+                {statusMap[order.status].label}
+              </span>
+            </div>
+            <div class="order-body">
+              <div class="order-info">
+                <div class="info-item">
+                  <span class="info-label">订单类型</span>
+                  <span class="info-value">{order.type}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">支付方式</span>
+                  <span class="info-value">{order.payMethod}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">下单时间</span>
+                  <span class="info-value">{order.date}</span>
+                </div>
+              </div>
+              <div class="order-amount">
+                <span class="amount-label">订单金额</span>
+                <span class="amount-value">¥{order.amount.toFixed(2)}</span>
+                {order.points > 0 && (
+                  <span class="points-value">+{order.points} 积分</span>
+                )}
+              </div>
+            </div>
+            <div class="order-footer">
+              {order.status === 'pending' && (
+                <>
+                  <button class="btn btn-primary">立即支付</button>
+                  <button class="btn btn-outline">取消订单</button>
+                </>
+              )}
+              {order.status === 'completed' && (
+                <button class="btn btn-outline">查看详情</button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="2"/>
+          <path d="M9 14h.01"/>
+          <path d="M12 14h.01"/>
+          <path d="M15 14h.01"/>
+          <path d="M9 17h.01"/>
+          <path d="M12 17h.01"/>
+          <path d="M15 17h.01"/>
+        </svg>
+        <p class="empty-text">暂无订单记录</p>
+        <a href="/" class="btn btn-primary">去逛逛</a>
+      </div>
+    )}
+  </div>
+</UserCenterLayout>
+
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .tab {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-card);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    border-color: transparent;
+    color: white;
+  }
+
+  .orders-container {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .order-card {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .order-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .order-id {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    font-family: monospace;
+  }
+
+  .order-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .status-success {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+
+  .status-warning {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+  .status-danger {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .order-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .order-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
+  .info-value {
+    font-size: 14px;
+    color: var(--color-text);
+  }
+
+  .order-amount {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .amount-label {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .amount-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ff6b9d;
+  }
+
+  .points-value {
+    font-size: 12px;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .order-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .btn-outline:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+  }
+
+  .empty-icon {
+    width: 80px;
+    height: 80px;
+    color: var(--color-text-tertiary);
+    margin-bottom: 16px;
+  }
+
+  .empty-text {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    margin: 0 0 24px 0;
+  }
+
+  @media (max-width: 768px) {
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .filter-tabs {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .order-body {
+      flex-direction: column;
+    }
+
+    .order-amount {
+      align-items: flex-start;
+    }
+
+    .order-footer {
+      justify-content: flex-start;
+    }
+  }
+</style>

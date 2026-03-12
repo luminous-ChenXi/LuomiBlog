@@ -1,0 +1,195 @@
+---
+import Layout from './Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  activeMenu: string;
+}
+
+const { title, activeMenu } = Astro.props;
+
+// 模拟用户数据
+const userData = {
+  id: 5,
+  username: 'chenxi',
+  email: '318713682@qq.com',
+  nickname: '辰汐',
+  avatar: '/default-avatar.svg',
+};
+
+const menuItems = [
+  { icon: 'user', label: '用户中心', href: '/user', id: 'profile' },
+  { icon: 'order', label: '订单管理', href: '/user/orders', id: 'orders' },
+  { icon: 'vip', label: '会员订阅', href: '/user/subscription', id: 'subscription' },
+  { icon: 'asset', label: '资产管理', href: '/user/assets', id: 'assets' },
+  { icon: 'recharge', label: '充值记录', href: '/user/recharge', id: 'recharge' },
+  { icon: 'favorite', label: '我的收藏', href: '/user/favorites', id: 'favorites' },
+  { icon: 'comment', label: '评论内容', href: '/user/comments', id: 'comments' },
+  { icon: 'password', label: '修改密码', href: '/user/password', id: 'password' },
+];
+---
+
+<Layout title={title}>
+  <Header />
+  <main class="user-center-page">
+    <div class="page-container">
+      <!-- 左侧菜单 -->
+      <aside class="user-sidebar">
+        <div class="user-info-brief">
+          <img src={userData.avatar} alt="avatar" class="user-avatar-small" />
+          <span class="user-name-small">{userData.email}</span>
+        </div>
+        
+        <nav class="user-menu">
+          {menuItems.map((item) => (
+            <a 
+              href={item.href}
+              class={`menu-item ${activeMenu === item.id ? 'active' : ''}`}
+            >
+              <span class={`menu-icon icon-${item.icon}`}></span>
+              <span class="menu-label">{item.label}</span>
+            </a>
+          ))}
+          <button class="menu-item logout-item" onclick="handleLogout()">
+            <span class="menu-icon icon-logout"></span>
+            <span class="menu-label">退出登录</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- 右侧内容 -->
+      <div class="user-content">
+        <slot />
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  function handleLogout() {
+    if (confirm('确定要退出登录吗？')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  }
+</script>
+
+<style>
+  .user-center-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+    padding: 40px 0;
+  }
+
+  .page-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 40px;
+    padding: 0 24px;
+  }
+
+  /* 左侧菜单 */
+  .user-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+  }
+
+  .user-info-brief {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-card);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .user-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .user-name-small {
+    font-size: 14px;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .user-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .menu-item:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+  }
+
+  .menu-item.active {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .logout-item {
+    margin-top: 8px;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding-top: 16px;
+  }
+
+  .logout-item:hover {
+    color: #ef4444;
+  }
+
+  .menu-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 右侧内容 */
+  .user-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .page-container {
+      grid-template-columns: 1fr;
+    }
+
+    .user-sidebar {
+      position: static;
+    }
+  }
+</style>

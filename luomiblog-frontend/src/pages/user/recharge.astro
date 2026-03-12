@@ -1,0 +1,424 @@
+---
+import UserCenterLayout from '../../layouts/UserCenterLayout.astro';
+
+const rechargeRecords = [
+  { id: 'REC202403120001', amount: 100, points: 1000, method: '支付宝', status: 'success', date: '2026-03-12 14:30:00' },
+  { id: 'REC202403010002', amount: 50, points: 500, method: '微信支付', status: 'success', date: '2026-03-01 10:15:00' },
+  { id: 'REC202402280003', amount: 200, points: 2000, method: '支付宝', status: 'success', date: '2026-02-28 16:45:00' },
+  { id: 'REC202402200004', amount: 30, points: 300, method: '微信支付', status: 'failed', date: '2026-02-20 09:20:00' },
+  { id: 'REC202402150005', amount: 100, points: 1000, method: '支付宝', status: 'success', date: '2026-02-15 11:30:00' },
+];
+
+const rechargeOptions = [
+  { amount: 10, points: 100, bonus: 0 },
+  { amount: 30, points: 300, bonus: 10 },
+  { amount: 50, points: 500, bonus: 25 },
+  { amount: 100, points: 1000, bonus: 60, popular: true },
+  { amount: 200, points: 2000, bonus: 150 },
+  { amount: 500, points: 5000, bonus: 500 },
+];
+
+const statusMap = {
+  success: { label: '充值成功', class: 'status-success' },
+  failed: { label: '充值失败', class: 'status-danger' },
+  pending: { label: '处理中', class: 'status-warning' },
+};
+---
+
+<UserCenterLayout title="充值记录 - 用户中心" activeMenu="recharge">
+  <div class="page-header">
+    <h1 class="page-title">充值记录</h1>
+    <button class="btn btn-primary" onclick="showRechargeModal()">
+      立即充值
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- 充值统计 -->
+  <div class="stats-cards">
+    <div class="stat-card">
+      <span class="stat-label">累计充值</span>
+      <span class="stat-value">¥480.00</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">获得积分</span>
+      <span class="stat-value">4,800</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">充值次数</span>
+      <span class="stat-value">5次</span>
+    </div>
+  </div>
+
+  <!-- 充值选项（快速充值） -->
+  <div class="section-card">
+    <h2 class="section-title">快速充值</h2>
+    <div class="recharge-options">
+      {rechargeOptions.map((option) => (
+        <div class={`option-card ${option.popular ? 'popular' : ''}`}>
+          {option.popular && <span class="popular-badge">推荐</span>}
+          <div class="option-amount">¥{option.amount}</div>
+          <div class="option-points">{option.points} 积分</div>
+          {option.bonus > 0 && (
+            <div class="option-bonus">+{option.bonus} 赠送</div>
+          )}
+          <button class="btn-recharge">立即充值</button>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- 充值记录 -->
+  <div class="section-card">
+    <div class="section-header">
+      <h2 class="section-title">充值记录</h2>
+      <div class="filter-tabs">
+        <button class="tab active">全部</button>
+        <button class="tab">成功</button>
+        <button class="tab">失败</button>
+      </div>
+    </div>
+    
+    {rechargeRecords.length > 0 ? (
+      <div class="records-table">
+        <div class="table-header">
+          <span>订单号</span>
+          <span>充值金额</span>
+          <span>获得积分</span>
+          <span>支付方式</span>
+          <span>状态</span>
+          <span>时间</span>
+        </div>
+        {rechargeRecords.map((record) => (
+          <div class="table-row">
+            <span class="order-id">{record.id}</span>
+            <span class="amount">¥{record.amount.toFixed(2)}</span>
+            <span class="points">+{record.points}</span>
+            <span class="method">{record.method}</span>
+            <span class={`status ${statusMap[record.status].class}`}>
+              {statusMap[record.status].label}
+            </span>
+            <span class="date">{record.date}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="empty-state">
+        <p>暂无充值记录</p>
+      </div>
+    )}
+  </div>
+</UserCenterLayout>
+
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  }
+
+  .btn-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* 统计卡片 */
+  .stats-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--color-card);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  /* 卡片区域 */
+  .section-card {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    border-color: transparent;
+    color: white;
+  }
+
+  /* 充值选项 */
+  .recharge-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .option-card {
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .option-card:hover {
+    border-color: #ff6b9d;
+    transform: translateY(-2px);
+  }
+
+  .option-card.popular {
+    border-color: #ff6b9d;
+  }
+
+  .popular-badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 10px;
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  .option-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 4px;
+  }
+
+  .option-points {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .option-bonus {
+    font-size: 12px;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+
+  .btn-recharge {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid #ff6b9d;
+    color: #ff6b9d;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-recharge:hover {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  /* 记录表格 */
+  .records-table {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+    color: var(--color-text);
+    align-items: center;
+  }
+
+  .table-row:last-child {
+    border-bottom: none;
+  }
+
+  .order-id {
+    font-family: monospace;
+    font-size: 13px;
+  }
+
+  .amount {
+    font-weight: 600;
+    color: #ff6b9d;
+  }
+
+  .points {
+    color: #16a34a;
+  }
+
+  .status {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .status-success {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+
+  .status-danger {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .status-warning {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+  .date {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .stats-cards {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .recharge-options {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .table-header,
+    .table-row {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .table-header span:nth-child(3),
+    .table-header span:nth-child(4),
+    .table-header span:nth-child(5),
+    .table-row span:nth-child(3),
+    .table-row span:nth-child(4),
+    .table-row span:nth-child(5) {
+      display: none;
+    }
+  }
+</style>

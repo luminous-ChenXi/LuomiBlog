@@ -44,6 +44,23 @@ const adminForm = reactive({
   nickname: ''
 });
 
+// SMTP配置表单
+const smtpForm = reactive({
+  enabled: false,
+  host: '',
+  port: 587,
+  username: '',
+  password: '',
+  fromName: 'LuomiBlog',
+  fromEmail: '',
+  useSsl: true
+});
+
+// 跳过SMTP配置
+const skipSmtp = () => {
+  currentStep.value++;
+};
+
 // 检查安装状态
 const checkInstallStatus = async () => {
   try {
@@ -221,7 +238,7 @@ const saveSiteConfig = async () => {
     ElMessage.warning('请输入网站名称');
     return;
   }
-  
+
   loading.value = true;
   try {
     const response = await api.install.saveSiteConfig(siteForm);
@@ -233,6 +250,67 @@ const saveSiteConfig = async () => {
     }
   } catch (error: any) {
     ElMessage.error(error.message || '站点配置保存失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 测试SMTP配置
+const testSmtp = async () => {
+  if (!smtpForm.host) {
+    ElMessage.warning('请输入SMTP服务器地址');
+    return;
+  }
+  if (!smtpForm.username) {
+    ElMessage.warning('请输入发件人邮箱');
+    return;
+  }
+  if (!smtpForm.password) {
+    ElMessage.warning('请输入邮箱授权码');
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await api.install.testSmtp(smtpForm);
+    if (response.success) {
+      ElMessage.success('测试邮件发送成功，请查收');
+    } else {
+      ElMessage.error(response.message || '测试邮件发送失败');
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '测试邮件发送失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 保存SMTP配置
+const saveSmtpConfig = async () => {
+  if (!smtpForm.host) {
+    ElMessage.warning('请输入SMTP服务器地址');
+    return;
+  }
+  if (!smtpForm.username) {
+    ElMessage.warning('请输入发件人邮箱');
+    return;
+  }
+  if (!smtpForm.password) {
+    ElMessage.warning('请输入邮箱授权码');
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await api.install.saveSmtpConfig(smtpForm);
+    if (response.success) {
+      ElMessage.success('SMTP配置保存成功');
+      currentStep.value++;
+    } else {
+      ElMessage.error(response.message);
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || 'SMTP配置保存失败');
   } finally {
     loading.value = false;
   }
@@ -277,6 +355,7 @@ onMounted(() => {
         <el-step title="数据库配置" />
         <el-step title="初始化数据" />
         <el-step title="站点配置" />
+        <el-step title="SMTP配置" />
         <el-step title="创建管理员" />
         <el-step title="完成安装" />
       </el-steps>
@@ -486,6 +565,95 @@ onMounted(() => {
           <button class="btn-secondary" @click="prevStep">上一步</button>
           <button class="btn-primary" :disabled="loading" @click="saveSiteConfig">
             下一步
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 4: SMTP配置 -->
+    <div v-if="currentStep === 3" class="step-content">
+      <div class="step-card">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <h3 class="card-title">SMTP邮箱配置</h3>
+          <p class="card-desc">配置邮件服务用于发送验证码和通知（可选）</p>
+        </div>
+
+        <div class="smtp-notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <p>SMTP配置用于发送邮箱验证码、密码重置等邮件。如果暂时不需要邮件功能，可以跳过此步骤。</p>
+        </div>
+
+        <div class="install-form">
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input v-model="smtpForm.enabled" type="checkbox" class="checkbox-input" />
+              <span class="checkbox-text">启用SMTP邮件服务</span>
+            </label>
+          </div>
+
+          <template v-if="smtpForm.enabled">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">SMTP服务器地址</label>
+                <input v-model="smtpForm.host" type="text" class="form-input" placeholder="如：smtp.qq.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">SMTP端口</label>
+                <input v-model.number="smtpForm.port" type="number" class="form-input" placeholder="587" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">发件人邮箱</label>
+                <input v-model="smtpForm.username" type="email" class="form-input" placeholder="your@email.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">邮箱授权码/密码</label>
+                <input v-model="smtpForm.password" type="password" class="form-input" placeholder="请输入授权码" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">发件人名称</label>
+                <input v-model="smtpForm.fromName" type="text" class="form-input" placeholder="LuomiBlog" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">发件人地址</label>
+                <input v-model="smtpForm.fromEmail" type="email" class="form-input" placeholder="noreply@yourdomain.com" />
+              </div>
+            </div>
+
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input v-model="smtpForm.useSsl" type="checkbox" class="checkbox-input" />
+                <span class="checkbox-text">使用SSL/TLS加密连接（推荐）</span>
+              </label>
+            </div>
+
+            <div class="smtp-test">
+              <button class="btn-secondary" :disabled="loading" @click="testSmtp">
+                <span v-if="loading" class="btn-loading"></span>
+                <span v-else>测试邮件发送</span>
+              </button>
+              <span class="test-hint">配置完成后建议先测试邮件发送是否正常</span>
+            </div>
+          </template>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-secondary" @click="prevStep">上一步</button>
+          <button class="btn-outline" @click="skipSmtp">跳过此步骤</button>
+          <button v-if="smtpForm.enabled" class="btn-primary" :disabled="loading" @click="saveSmtpConfig">
+            保存并继续
           </button>
         </div>
       </div>
@@ -999,6 +1167,89 @@ onMounted(() => {
   }
 }
 
+/* SMTP配置样式 */
+.smtp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 107, 157, 0.08);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 107, 157, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+.smtp-notice svg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-brand-primary);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.smtp-notice p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-brand-primary);
+  cursor: pointer;
+}
+
+.checkbox-text {
+  user-select: none;
+}
+
+.smtp-test {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.test-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.btn-outline {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+}
+
 @media (max-width: 640px) {
   .install-wizard {
     padding: 1.5rem 1rem;
@@ -1013,7 +1264,8 @@ onMounted(() => {
   }
 
   .btn-primary,
-  .btn-secondary {
+  .btn-secondary,
+  .btn-outline {
     width: 100%;
   }
 
@@ -1023,6 +1275,11 @@ onMounted(() => {
 
   .complete-title {
     font-size: 1.5rem;
+  }
+
+  .smtp-test {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

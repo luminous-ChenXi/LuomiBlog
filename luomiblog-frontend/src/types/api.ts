@@ -186,3 +186,15 @@ export interface SiteConfigRequest {
   defaultLanguage?: string;
   timezone?: string;
 }
+
+// SMTP配置请求
+export interface SmtpConfigRequest {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  fromName: string;
+  fromEmail: string;
+  useSsl: boolean;
+}
