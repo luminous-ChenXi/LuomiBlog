@@ -159,13 +159,17 @@ const relatedArticles = [
 
       <!-- 文章底部 -->
       <footer class="article-footer">
-        <!-- 点赞分享 -->
+        <!-- 点赞分享收藏 -->
         <div class="article-actions">
-          <button class="action-btn like-btn">
+          <button class="action-btn like-btn" onclick="handleLike()">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
             <span>{article.likes}</span>
           </button>
-          <button class="action-btn share-btn">
+          <button class="action-btn favorite-btn" onclick="handleFavorite()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+            收藏
+          </button>
+          <button class="action-btn share-btn" onclick="handleShare()">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
             分享
           </button>
@@ -328,4 +332,64 @@ const relatedArticles = [
     font-size: 13px;
     color: var(--color-text-muted);
   }
+
+  .favorite-btn:hover svg,
+  .favorite-btn.active svg {
+    fill: var(--color-brand-primary);
+  }
 </style>
+
+<script>
+  // 检查用户是否已登录
+  function isUserLoggedIn() {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    return !!token && !!user;
+  }
+
+  // 打开登录弹窗
+  function openLoginModal() {
+    window.dispatchEvent(new CustomEvent('open-login-modal'));
+  }
+
+  // 处理点赞
+  function handleLike() {
+    if (!isUserLoggedIn()) {
+      alert('请先登录后再点赞');
+      openLoginModal();
+      return;
+    }
+    // TODO: 实现点赞功能
+    alert('点赞功能开发中...');
+  }
+
+  // 处理收藏
+  function handleFavorite() {
+    if (!isUserLoggedIn()) {
+      alert('请先登录后再收藏');
+      openLoginModal();
+      return;
+    }
+    // TODO: 实现收藏功能
+    alert('收藏成功！');
+  }
+
+  // 处理分享
+  function handleShare() {
+    if (navigator.share) {
+      navigator.share({
+        title: document.title,
+        url: window.location.href
+      }).catch(() => {
+        // 用户取消分享
+      });
+    } else {
+      // 复制链接到剪贴板
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        alert('链接已复制到剪贴板');
+      }).catch(() => {
+        alert('复制失败，请手动复制');
+      });
+    }
+  }
+</script>

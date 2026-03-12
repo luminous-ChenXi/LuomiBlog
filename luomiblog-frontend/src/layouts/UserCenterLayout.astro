@@ -69,6 +69,18 @@ const menuItems = [
 </Layout>
 
 <script>
+  // 检查登录状态
+  (function checkAuth() {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (!token || !user) {
+      // 未登录，重定向到首页
+      window.location.href = '/';
+      return;
+    }
+  })();
+
   function handleLogout() {
     if (confirm('确定要退出登录吗？')) {
       localStorage.removeItem('token');
