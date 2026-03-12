@@ -1,12 +1,38 @@
 # LuomiBlog
 
+<div align="center">
+
+**AI-Powered Knowledge Base Blog System | AI 知识库博客系统**
+
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.3.0-blue" alt="version">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="license">
-  <img src="https://img.shields.io/badge/tech-Astro%20%2B%20Vue%20%2B%20SpringBoot-orange" alt="tech">
+  <a href="https://github.com/vuejs/core">
+    <img src="https://img.shields.io/badge/vue-3.5.29-brightgreen.svg?style=flat-square&logo=vue.js" alt="vue">
+  </a>
+  <a href="https://github.com/element-plus/element-plus">
+    <img src="https://img.shields.io/badge/element--plus-2.13.5-brightgreen.svg?style=flat-square&logo=element" alt="element-plus">
+  </a>
+  <a href="https://spring.io/projects/spring-boot">
+    <img src="https://img.shields.io/badge/spring--boot-3.4.1-brightgreen.svg?style=flat-square&logo=spring" alt="spring-boot">
+  </a>
+  <a href="https://astro.build/">
+    <img src="https://img.shields.io/badge/astro-5.17.1-brightgreen.svg?style=flat-square&logo=astro" alt="astro">
+  </a>
+  <a href="https://github.com/luminous-ChenXi/LuomiBlog/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license">
+  </a>
+  <a href="https://github.com/luminous-ChenXi/LuomiBlog/releases">
+    <img src="https://img.shields.io/github/release/luminous-ChenXi/LuomiBlog.svg?style=flat-square" alt="GitHub release">
+  </a>
+  <a href="https://coderabbit.ai">
+    <img src="https://img.shields.io/coderabbit/prs/github/luminous-ChenXi/LuomiBlog?labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Reviews">
+  </a>
 </p>
 
-**LuomiBlog** - 一个基于 Astro + Vue + SpringBoot 的 AI 知识库博客系统
+<p align="center">
+  <b>简体中文</b> · <a href="./README_EN.md">English</a>
+</p>
+
+</div>
 
 ## 核心特性
 
