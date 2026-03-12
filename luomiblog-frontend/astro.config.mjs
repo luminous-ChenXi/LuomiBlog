@@ -27,7 +27,8 @@ export default defineConfig({
 
   // 构建配置
   build: {
-    format: 'file'
+    format: 'file',
+    chunkSizeWarningLimit: 1000
   },
 
   // 开发服务器配置
