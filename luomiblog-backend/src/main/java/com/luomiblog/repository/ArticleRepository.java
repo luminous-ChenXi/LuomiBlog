@@ -18,7 +18,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     boolean existsBySlug(String slug);
 
-    @Query("SELECT a FROM Article a WHERE a.status = 'published' AND a.deletedAt IS NULL ORDER BY a.isTop DESC, a.publishedAt DESC")
+    @Query("SELECT a FROM Article a WHERE a.status = 'published' AND a.deletedAt IS NULL ORDER BY a.top DESC, a.publishedAt DESC")
     Page<Article> findPublishedArticles(Pageable pageable);
 
     @Query("SELECT a FROM Article a WHERE a.categoryId = :categoryId AND a.status = 'published' AND a.deletedAt IS NULL")

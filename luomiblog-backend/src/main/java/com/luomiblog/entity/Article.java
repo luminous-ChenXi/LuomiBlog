@@ -77,7 +77,7 @@ public class Article {
     private Integer readingTime;
 
     @Column(name = "is_top", nullable = false)
-    private Boolean isTop;
+    private Boolean top;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;

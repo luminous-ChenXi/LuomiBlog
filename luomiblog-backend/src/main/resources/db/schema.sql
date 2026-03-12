@@ -5,13 +5,6 @@
 -- 字符集: utf8mb4
 -- =============================================
 
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS luomiblog
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_general_ci;
-
-USE luomiblog;
-
 -- =============================================
 -- 1. 权限系统表
 -- =============================================
