@@ -142,3 +142,47 @@ export interface AIAskResponse {
   sources: string[];
   answerId: string;
 }
+
+// 安装状态响应
+export interface InstallStatusResponse {
+  installed: boolean;
+  locked: boolean;
+  message: string;
+}
+
+// 环境检测响应
+export interface EnvironmentCheckResponse {
+  allPassed: boolean;
+  checks: {
+    name: string;
+    passed: boolean;
+    message: string;
+    suggestion: string;
+  }[];
+}
+
+// 数据库配置请求
+export interface DatabaseConfigRequest {
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+}
+
+// 管理员账号请求
+export interface AdminAccountRequest {
+  username: string;
+  password: string;
+  email: string;
+  nickname?: string;
+}
+
+// 站点配置请求
+export interface SiteConfigRequest {
+  siteName: string;
+  siteDescription?: string;
+  defaultTheme?: string;
+  defaultLanguage?: string;
+  timezone?: string;
+}

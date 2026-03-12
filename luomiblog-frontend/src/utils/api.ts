@@ -12,7 +12,12 @@ import type {
   RegisterRequest,
   AuthResponse,
   AIAskRequest,
-  AIAskResponse
+  AIAskResponse,
+  InstallStatusResponse,
+  EnvironmentCheckResponse,
+  DatabaseConfigRequest,
+  AdminAccountRequest,
+  SiteConfigRequest
 } from '../types/api';
 
 // API 基础 URL
@@ -173,6 +178,46 @@ export const api = {
       request<void>('/api/ai/feedback', {
         method: 'POST',
         body: JSON.stringify({ answerId, useful })
+      })
+  },
+
+  // 安装相关
+  install: {
+    getStatus: () =>
+      request<InstallStatusResponse>('/api/install/status'),
+
+    checkEnvironment: () =>
+      request<EnvironmentCheckResponse>('/api/install/check-environment', {
+        method: 'POST'
+      }),
+
+    testDatabase: (data: DatabaseConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/test-database', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    executeSql: (data: DatabaseConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/execute-sql', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    createAdmin: (data: AdminAccountRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/create-admin', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    saveSiteConfig: (data: SiteConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/site-config', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    complete: () =>
+      request<{ success: boolean; message: string }>('/api/install/complete', {
+        method: 'POST'
       })
   }
 };
