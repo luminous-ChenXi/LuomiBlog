@@ -66,4 +66,4 @@ export const useUserStore = () => ({
 });
 
 // 导出单例方法供非组件使用
-export { initAuth, setAuth, clearAuth, getToken, getUser };
+export { initAuth, setAuth, clearAuth, getToken, getUser, isAuthenticated };

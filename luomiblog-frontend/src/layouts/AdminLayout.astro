@@ -108,6 +108,33 @@ const isActive = (href: string) => {
   </body>
 </html>
 
+<script>
+  // 检查管理员权限
+  (function checkAdminAuth() {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (!token || !userStr) {
+      // 未登录，重定向到首页
+      window.location.href = '/';
+      return;
+    }
+    
+    try {
+      const user = JSON.parse(userStr);
+      if (user.role !== 'ADMIN') {
+        // 不是管理员，重定向到首页
+        window.location.href = '/';
+        return;
+      }
+    } catch {
+      // 解析失败，重定向到首页
+      window.location.href = '/';
+      return;
+    }
+  })();
+</script>
+
 <style is:global>
   * {
     margin: 0;

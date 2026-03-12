@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import { api } from '../utils/api';
 import { setAuth } from '../stores/user';
 
@@ -64,6 +65,9 @@ const handleSubmit = async () => {
 
     // 保存认证信息
     setAuth(response);
+
+    // 显示登录成功提示
+    ElMessage.success('登录成功！欢迎回来');
 
     // 关闭弹窗
     handleClose();
