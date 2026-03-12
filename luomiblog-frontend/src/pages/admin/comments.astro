@@ -118,11 +118,7 @@ const getStatusBadge = (status: string) => {
             <div class="comment-header">
               <div class="comment-author">
                 <div class="author-avatar">
-                  {comment.avatar ? (
-                    <img src={comment.avatar} alt={comment.author} />
-                  ) : (
-                    <span class="avatar-placeholder">{comment.author.charAt(0)}</span>
-                  )}
+                  <img src={comment.avatar || '/default-avatar.svg'} alt={comment.author} />
                 </div>
                 <div class="author-info">
                   <span class="author-name">{comment.author}</span>
