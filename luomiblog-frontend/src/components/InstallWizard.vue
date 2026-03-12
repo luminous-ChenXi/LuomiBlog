@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../utils/api';
 
 const currentStep = ref(0);
 const loading = ref(false);
 const installStatus = ref<{ installed: boolean; locked: boolean; message: string } | null>(null);
+const dbTestPassed = ref(false);
 
 // 表单数据
 const envForm = reactive({
@@ -21,6 +22,11 @@ const dbForm = reactive({
   username: '',
   password: ''
 });
+
+// 监听数据库配置变化，重置测试状态
+watch(() => [dbForm.host, dbForm.port, dbForm.database, dbForm.username, dbForm.password], () => {
+  dbTestPassed.value = false;
+}, { deep: true });
 
 const siteForm = reactive({
   siteName: 'LuomiBlog',
@@ -127,10 +133,13 @@ const testDatabase = async () => {
     const response = await api.install.testDatabase(dbForm);
     if (response.success) {
       ElMessage.success('数据库连接成功，MySQL 版本符合要求');
+      dbTestPassed.value = true;
     } else {
       ElMessage.error(response.message || '数据库连接失败或版本过低（需要 MySQL 8.0+）');
+      dbTestPassed.value = false;
     }
   } catch (error: any) {
+    dbTestPassed.value = false;
     if (error.status === 403) {
       ElMessageBox.alert('系统已安装，无法重复安装', '提示', {
         confirmButtonText: '前往首页',
@@ -144,6 +153,15 @@ const testDatabase = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// 下一步（数据库配置步骤）
+const nextStepFromDb = async () => {
+  if (!dbTestPassed.value) {
+    ElMessage.warning('请先测试数据库连接');
+    return;
+  }
+  currentStep.value++;
 };
 
 // 执行 SQL 脚本
@@ -363,7 +381,7 @@ onMounted(() => {
           <button class="btn-secondary" :disabled="loading" @click="testDatabase">
             测试连接
           </button>
-          <button class="btn-primary" :disabled="loading" @click="executeSql">
+          <button class="btn-primary" :disabled="loading || !dbTestPassed" @click="nextStepFromDb">
             下一步
           </button>
         </div>

@@ -3,47 +3,49 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
+const defaultAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=default';
+
 const friendLinks = [
   {
     name: '技术博客',
     description: '分享前沿技术文章，专注后端开发与架构设计',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['技术', '后端']
   },
   {
     name: '设计师小站',
     description: 'UI/UX 设计灵感与教程，让设计更简单',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['设计', 'UI/UX']
   },
   {
     name: '前端工坊',
     description: '前端开发者的聚集地，分享 Vue、React 实战经验',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['前端', 'Vue']
   },
   {
     name: '算法之路',
     description: '算法与数据结构学习笔记，助力编程面试',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['算法', '面试']
   },
   {
     name: '摄影日记',
     description: '记录生活中的美好瞬间，分享摄影技巧',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['摄影', '生活']
   },
   {
     name: '开源社区',
     description: '开源项目推荐与贡献指南，共建技术生态',
     url: 'https://example.com',
-    avatar: '/avatar.png',
+    avatar: defaultAvatar,
     tags: ['开源', '社区']
   }
 ];
@@ -60,7 +62,7 @@ const applyInfo = {
     name: '辰汐博客',
     url: 'https://luminouschenxi.com',
     description: '记录生活，分享技术',
-    avatar: '/avatar.png'
+    avatar: defaultAvatar
   }
 };
 ---

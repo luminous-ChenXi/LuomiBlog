@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useUserStore, clearAuth } from '../stores/user';
 import type { User } from '../types/api';
 
 const userStore = useUserStore();
 const isMenuOpen = ref(false);
+const isClient = ref(false);
+
+// 只在客户端渲染后显示登录状态，避免 hydration 不匹配
+const showAuthenticated = computed(() => {
+  return isClient.value && userStore.isAuthenticated.value;
+});
+
+const showUnauthenticated = computed(() => {
+  return isClient.value && !userStore.isAuthenticated.value;
+});
 
 const handleLoginClick = () => {
   // 触发打开登录弹窗事件
@@ -36,14 +46,22 @@ const handleClickOutside = (e: MouseEvent) => {
 };
 
 onMounted(() => {
+  isClient.value = true;
   document.addEventListener('click', handleClickOutside);
 });
 </script>
 
 <template>
   <div class="user-auth-wrapper">
+    <!-- 服务端渲染时显示占位，避免 hydration 不匹配 -->
+    <div v-if="!isClient" class="auth-links-placeholder">
+      <span class="auth-link-placeholder">登录</span>
+      <span class="auth-divider">or</span>
+      <span class="auth-link-placeholder">注册</span>
+    </div>
+
     <!-- 未登录状态 -->
-    <div v-if="!userStore.isAuthenticated.value" class="auth-links">
+    <div v-else-if="showUnauthenticated" class="auth-links">
       <button class="auth-link login-link" @click="handleLoginClick">
         登录
       </button>
@@ -55,7 +73,7 @@ onMounted(() => {
     </div>
 
     <!-- 已登录状态 -->
-    <div v-else class="user-menu-wrapper">
+    <div v-else-if="showAuthenticated" class="user-menu-wrapper">
       <button class="user-menu-trigger" @click="toggleMenu">
         <div class="user-avatar">
           {{ userStore.user.value?.nickname?.charAt(0) || userStore.user.value?.username.charAt(0) || 'U' }}
@@ -110,6 +128,22 @@ onMounted(() => {
 <style scoped>
 .user-auth-wrapper {
   position: relative;
+}
+
+/* 服务端渲染占位符 */
+.auth-links-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.6;
+}
+
+.auth-link-placeholder {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-tertiary, #999);
 }
 
 /* 未登录状态 */
