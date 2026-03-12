@@ -198,3 +198,9 @@ export interface SmtpConfigRequest {
   fromEmail: string;
   useSsl: boolean;
 }
+
+// 网站图标配置请求
+export interface FaviconConfigRequest {
+  type: 'svg' | 'url';
+  content: string;
+}
