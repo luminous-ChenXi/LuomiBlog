@@ -110,7 +110,7 @@ export interface Comment {
 
 // 登录请求
 export interface LoginRequest {
-  username: string;
+  usernameOrEmail: string;
   password: string;
 }
 
@@ -119,7 +119,6 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
-  confirmPassword: string;
   nickname?: string;
 }
 

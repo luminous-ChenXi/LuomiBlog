@@ -103,7 +103,6 @@ const handleSubmit = async () => {
       username: formData.value.username.trim(),
       email: formData.value.email.trim(),
       password: formData.value.password,
-      confirmPassword: formData.value.confirmPassword,
       nickname: formData.value.username.trim()
     });
 

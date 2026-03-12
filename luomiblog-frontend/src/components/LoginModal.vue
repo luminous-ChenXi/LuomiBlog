@@ -57,10 +57,10 @@ const handleSubmit = async () => {
   loginError.value = '';
 
   try {
-    const response = await api.auth.login({
-      username: form.value.username.trim(),
-      password: form.value.password
-    });
+      const response = await api.auth.login({
+        usernameOrEmail: form.value.username.trim(),
+        password: form.value.password
+      });
 
     // 保存认证信息
     setAuth(response);
