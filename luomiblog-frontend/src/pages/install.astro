@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import InstallWizard from '../components/InstallWizard.vue';
+
+// 安装页面不需要显示导航栏
+---
+
+<Layout title="LuomiBlog 安装向导">
+  <div class="install-page">
+    <div class="install-container">
+      <div class="install-header">
+        <h1 class="install-title">LuomiBlog 安装向导</h1>
+        <p class="install-subtitle">欢迎使用 LuomiBlog，请按照以下步骤完成安装</p>
+      </div>
+      
+      <InstallWizard client:load />
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .install-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem 1rem;
+  }
+
+  .install-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .install-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: white;
+  }
+
+  .install-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .install-subtitle {
+    font-size: 1.125rem;
+    opacity: 0.9;
+  }
+
+  @media (max-width: 640px) {
+    .install-title {
+      font-size: 1.875rem;
+    }
+
+    .install-subtitle {
+      font-size: 1rem;
+    }
+  }
+</style>
