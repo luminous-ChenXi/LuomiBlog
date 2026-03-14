@@ -208,26 +208,33 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--color-border, #e5e5e5);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-card, white);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .user-menu-trigger:hover {
+  border-color: var(--color-primary, #F9A8C8);
+  box-shadow: 0 2px 8px rgba(249, 168, 200, 0.15);
+}
+
+/* 暗色主题且未滚动时 - 使用半透明背景 */
+:global([data-theme="dark"]) .user-menu-trigger {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:global([data-theme="dark"]) .user-menu-trigger:hover {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-:global(.navbar.scrolled) .user-menu-trigger {
+/* 暗色主题滚动后 - 使用正常背景 */
+:global([data-theme="dark"]) :global(.navbar.scrolled) .user-menu-trigger {
   border: 1px solid var(--color-border, #e5e5e5);
-  background: var(--color-card-bg, white);
-}
-
-:global(.navbar.scrolled) .user-menu-trigger:hover {
-  border-color: var(--color-primary, #F9A8C8);
-  box-shadow: 0 2px 8px rgba(249, 168, 200, 0.15);
+  background: var(--color-card, white);
 }
 
 .user-avatar {
@@ -246,25 +253,33 @@ onMounted(() => {
 .user-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: white;
+  color: var(--color-text, #333);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-:global(.navbar.scrolled) .user-name {
+:global([data-theme="dark"]) .user-name {
+  color: white;
+}
+
+:global([data-theme="dark"]) :global(.navbar.scrolled) .user-name {
   color: var(--color-text, #333);
 }
 
 .dropdown-arrow {
   width: 16px;
   height: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-secondary, #666);
   transition: transform 0.2s ease;
 }
 
-:global(.navbar.scrolled) .dropdown-arrow {
+:global([data-theme="dark"]) .dropdown-arrow {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+:global([data-theme="dark"]) :global(.navbar.scrolled) .dropdown-arrow {
   color: var(--color-text-secondary, #666);
 }
 
