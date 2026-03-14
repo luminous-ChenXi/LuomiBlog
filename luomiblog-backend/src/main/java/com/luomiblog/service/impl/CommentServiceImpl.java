@@ -3,7 +3,6 @@ package com.luomiblog.service.impl;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.entity.Comment;
-import com.luomiblog.entity.User;
 import com.luomiblog.repository.CommentRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.service.CommentService;

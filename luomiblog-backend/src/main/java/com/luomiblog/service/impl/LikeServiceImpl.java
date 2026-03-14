@@ -7,7 +7,6 @@ import com.luomiblog.entity.ArticleLike;
 import com.luomiblog.entity.Comment;
 import com.luomiblog.entity.CommentLike;
 import com.luomiblog.repository.*;
-import com.luomiblog.service.CommentService;
 import com.luomiblog.service.LikeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
