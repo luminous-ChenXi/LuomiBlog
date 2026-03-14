@@ -23,4 +23,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     @Query("SELECT c FROM Category c WHERE c.parentId = :parentId AND c.deletedAt IS NULL ORDER BY c.sortOrder ASC")
     List<Category> findByParentId(Long parentId);
+
+    List<Category> findAllByDeletedAtIsNullOrderBySortOrderAsc();
 }
