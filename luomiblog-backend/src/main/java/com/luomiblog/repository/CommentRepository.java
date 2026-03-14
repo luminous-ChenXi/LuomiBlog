@@ -30,4 +30,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query("SELECT c FROM Comment c WHERE c.userId = :userId AND c.deletedAt IS NULL ORDER BY c.createdAt DESC")
     Page<Comment> findByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    Page<Comment> findByArticleIdAndStatusAndDeletedAtIsNull(Long articleId, String status, Pageable pageable);
+
+    List<Comment> findByArticleIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(Long articleId, String status);
+
+    Page<Comment> findByUserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
 }

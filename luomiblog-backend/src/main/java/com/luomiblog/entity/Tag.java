@@ -31,6 +31,12 @@ public class Tag {
     @Column(name = "description", length = 255)
     private String description;
 
+    @Column(name = "type", nullable = false, length = 20)
+    private String type;
+
+    @Column(name = "article_count", nullable = false)
+    private Integer articleCount;
+
     @Column(name = "usage_count", nullable = false)
     private Integer usageCount;
 

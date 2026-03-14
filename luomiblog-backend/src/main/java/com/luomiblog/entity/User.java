@@ -31,6 +31,14 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    public void setPassword(String password) {
+        this.passwordHash = password;
+    }
+
     @Column(name = "nickname", length = 50)
     private String nickname;
 
@@ -39,6 +47,12 @@ public class User {
 
     @Column(name = "bio", length = 500)
     private String bio;
+
+    @Column(name = "signature", length = 255)
+    private String signature;
+
+    @Column(name = "location", length = 120)
+    private String location;
 
     @Column(name = "website", length = 255)
     private String website;
