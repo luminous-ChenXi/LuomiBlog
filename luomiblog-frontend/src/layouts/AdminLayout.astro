@@ -193,9 +193,9 @@ const isActive = (href: string) => {
 <script>
   // 检查管理员权限
   (function checkAdminAuth() {
-    const authLayer = document.getElementById('auth-check-layer');
-    const noPermissionLayer = document.getElementById('no-permission-layer');
-    const adminLayout = document.querySelector('.admin-layout');
+    const authLayer = document.getElementById('auth-check-layer') as HTMLElement | null;
+    const noPermissionLayer = document.getElementById('no-permission-layer') as HTMLElement | null;
+    const adminLayout = document.querySelector('.admin-layout') as HTMLElement | null;
     
     // 先隐藏管理后台内容
     if (adminLayout) {

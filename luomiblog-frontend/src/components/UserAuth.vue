@@ -100,7 +100,7 @@ onMounted(() => {
           </svg>
           个人中心
         </a>
-        <a v-if="['admin', 'blogger'].includes(userStore.user.value?.role?.toLowerCase())" 
+        <a v-if="userStore.user.value?.role && ['admin', 'blogger'].includes(userStore.user.value.role.toLowerCase())" 
            href="/admin" 
            class="dropdown-item"
         >
