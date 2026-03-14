@@ -171,9 +171,9 @@ const isActive = (href: string) => {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* 移动端菜单按钮 */
+  /* 移动端菜单按钮 - 始终显示 */
   .mobile-menu-btn {
-    display: none;
+    display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -184,6 +184,7 @@ const isActive = (href: string) => {
     border: none;
     cursor: pointer;
     gap: 5px;
+    flex-shrink: 0;
   }
 
   .hamburger-bar {
@@ -194,14 +195,17 @@ const isActive = (href: string) => {
     transition: all 0.3s ease;
   }
 
+  /* 暗色主题 - 未滚动时：白色 */
   [data-theme="dark"] .hamburger-bar {
     background: rgba(255, 255, 255, 0.9);
   }
 
+  /* 明亮主题 - 未滚动时：深色 */
   [data-theme="light"] .hamburger-bar {
-    background: var(--color-text-secondary);
+    background: var(--color-text);
   }
 
+  /* 滚动后：使用主题文字颜色 */
   .navbar.scrolled .hamburger-bar {
     background: var(--color-text-secondary);
   }
@@ -547,12 +551,12 @@ const isActive = (href: string) => {
       padding: 8px 16px;
     }
 
-    .mobile-menu-btn {
-      display: flex;
-    }
-
     .desktop-nav {
       display: none;
+    }
+
+    .mobile-menu-btn {
+      display: flex;
     }
 
     .navbar-brand {
