@@ -25,7 +25,8 @@ const isActive = (href: string) => {
   if (href === '/') {
     return currentPath === '/';
   }
-  return currentPath.startsWith(href);
+  // 精确匹配路径，避免 /a 匹配 /archive
+  return currentPath === href || currentPath.startsWith(href + '/');
 };
 ---
 
@@ -201,8 +202,9 @@ const isActive = (href: string) => {
   }
 
   [data-theme="dark"] .nav-link.active {
-    color: white;
-    background: rgba(255, 255, 255, 0.15);
+    color: white !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    font-weight: 700 !important;
   }
 
   /* 未滚动时 - 明亮主题：深色文字 */
@@ -217,8 +219,9 @@ const isActive = (href: string) => {
   }
 
   [data-theme="light"] .nav-link.active {
-    color: var(--color-brand-primary);
-    background: rgba(255, 107, 157, 0.15);
+    color: var(--color-brand-primary) !important;
+    background: rgba(255, 107, 157, 0.15) !important;
+    font-weight: 700 !important;
   }
 
   /* 滚动后 - 使用主题颜色 */
