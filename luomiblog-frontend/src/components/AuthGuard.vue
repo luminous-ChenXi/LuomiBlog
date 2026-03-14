@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
-import { isAuthenticated, getUser } from '../stores/user';
+import { useUserStore } from '../stores/user';
 
 interface Props {
   requireAuth?: boolean;
@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
   redirectTo: '/login'
 });
 
+const userStore = useUserStore();
 const isAuthorized = ref(false);
 const isLoading = ref(true);
 
@@ -26,7 +27,7 @@ const checkAuth = () => {
   isLoading.value = true;
   
   // 检查是否需要登录
-  if (props.requireAuth && !isAuthenticated()) {
+  if (props.requireAuth && !userStore.isAuthenticated.value) {
     ElMessage.warning('请先登录');
     window.location.href = props.redirectTo;
     return;
@@ -34,8 +35,9 @@ const checkAuth = () => {
   
   // 检查是否需要管理员权限
   if (props.requireAdmin) {
-    const user = getUser();
-    if (!user || user.role !== 'ADMIN') {
+    const user = userStore.user.value;
+    const role = user?.role?.toLowerCase();
+    if (!user || (role !== 'admin' && role !== 'blogger')) {
       ElMessage.error('您没有权限访问此页面');
       window.location.href = '/';
       return;
