@@ -3,7 +3,6 @@ package com.luomiblog.service.impl;
 import com.luomiblog.dto.PasswordChangeRequest;
 import com.luomiblog.dto.UserProfileRequest;
 import com.luomiblog.dto.UserProfileResponse;
-import com.luomiblog.entity.Role;
 import com.luomiblog.entity.User;
 import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
