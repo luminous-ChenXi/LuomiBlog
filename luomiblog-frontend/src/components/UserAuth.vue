@@ -208,14 +208,24 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-border, #e5e5e5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 24px;
-  background: var(--color-card-bg, white);
+  background: rgba(255, 255, 255, 0.15);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .user-menu-trigger:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+:global(.navbar.scrolled) .user-menu-trigger {
+  border: 1px solid var(--color-border, #e5e5e5);
+  background: var(--color-card-bg, white);
+}
+
+:global(.navbar.scrolled) .user-menu-trigger:hover {
   border-color: var(--color-primary, #F9A8C8);
   box-shadow: 0 2px 8px rgba(249, 168, 200, 0.15);
 }
@@ -236,18 +246,26 @@ onMounted(() => {
 .user-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text, #333);
+  color: white;
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+:global(.navbar.scrolled) .user-name {
+  color: var(--color-text, #333);
+}
+
 .dropdown-arrow {
   width: 16px;
   height: 16px;
-  color: var(--color-text-secondary, #666);
+  color: rgba(255, 255, 255, 0.8);
   transition: transform 0.2s ease;
+}
+
+:global(.navbar.scrolled) .dropdown-arrow {
+  color: var(--color-text-secondary, #666);
 }
 
 .dropdown-arrow.open {
@@ -260,7 +278,7 @@ onMounted(() => {
   top: calc(100% + 0.5rem);
   right: 0;
   min-width: 180px;
-  background: var(--color-card-bg, white);
+  background: var(--color-card, white);
   border: 1px solid var(--color-border, #e5e5e5);
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
