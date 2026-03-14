@@ -8,7 +8,7 @@ const orders = [
   { id: 'ORD202402200004', type: 'AI服务', amount: 20, points: 200, status: 'cancelled', date: '2026-02-20 09:20:00', payMethod: '-' },
 ];
 
-const statusMap = {
+const statusMap: Record<string, { label: string; class: string }> = {
   completed: { label: '已完成', class: 'status-success' },
   pending: { label: '待支付', class: 'status-warning' },
   cancelled: { label: '已取消', class: 'status-danger' },
