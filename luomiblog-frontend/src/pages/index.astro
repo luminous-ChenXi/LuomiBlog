@@ -64,44 +64,27 @@ import Footer from '../components/Footer.astro';
     grid-template-columns: 1fr 360px;
     gap: 40px;
     padding: 0 24px;
-    align-items: start;
+    align-items: stretch; /* 两侧高度对齐 */
   }
 
   /* 文章区域 - 左侧 */
   .articles-section {
     min-width: 0;
-    min-height: 600px; /* 最小高度，确保右侧组件不会超出 */
+    height: 100%; /* 占满容器高度 */
   }
 
   /* 右侧侧边栏 */
   .right-sidebar {
     position: relative;
     height: 100%;
-    max-height: fit-content; /* 限制最大高度 */
   }
 
   .sidebar-content {
-    position: sticky;
-    top: 100px;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    max-height: calc(100vh - 120px); /* 限制最大高度，避免超出视口 */
-    overflow-y: auto; /* 内容过多时可滚动 */
-    scrollbar-width: thin; /* 细滚动条 */
-  }
-
-  .sidebar-content::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .sidebar-content::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .sidebar-content::-webkit-scrollbar-thumb {
-    background: var(--color-border, #e0e0e0);
-    border-radius: 2px;
+    /* 移除滚动条，完全展开 */
+    overflow-y: visible;
   }
 
   .sidebar-item {
@@ -143,6 +126,7 @@ import Footer from '../components/Footer.astro';
     .content-container {
       grid-template-columns: 1fr;
       gap: 32px;
+      align-items: start;
     }
 
     .right-sidebar {
@@ -151,8 +135,6 @@ import Footer from '../components/Footer.astro';
     }
 
     .sidebar-content {
-      position: relative;
-      top: 0;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
@@ -160,6 +142,10 @@ import Footer from '../components/Footer.astro';
 
     .sidebar-item {
       animation: none;
+    }
+
+    .articles-section {
+      height: auto;
     }
   }
 
@@ -174,22 +160,4 @@ import Footer from '../components/Footer.astro';
   }
 </style>
 
-<script>
-  // 获取文章区域和侧边栏
-  const articlesSection = document.getElementById('articles-section');
-  const sidebar = document.getElementById('right-sidebar');
-  
-  if (articlesSection && sidebar) {
-    // 监听文章区域高度变化，调整侧边栏
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === articlesSection) {
-          const articleHeight = entry.contentRect.height;
-          sidebar.style.minHeight = `${articleHeight}px`;
-        }
-      }
-    });
-    
-    resizeObserver.observe(articlesSection);
-  }
-</script>
+
