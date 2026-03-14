@@ -32,13 +32,20 @@ const isActive = (href: string) => {
 
 <header class="navbar" id="navbar">
   <div class="navbar-container">
+    <!-- 移动端汉堡菜单按钮 -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="打开菜单">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
+
     <!-- 左侧：网站名 -->
     <div class="navbar-brand">
       <a href="/" class="brand-link">辰汐小站</a>
     </div>
 
-    <!-- 中间：导航菜单 -->
-    <nav class="navbar-nav">
+    <!-- 中间：导航菜单 (桌面端) -->
+    <nav class="navbar-nav desktop-nav">
       {navItems.slice(0, 7).map((item) => (
         <a 
           href={item.href} 
@@ -83,6 +90,32 @@ const isActive = (href: string) => {
     </div>
   </div>
 </header>
+
+<!-- 移动端侧边栏菜单 -->
+<div class="mobile-sidebar" id="mobile-sidebar">
+  <div class="mobile-sidebar-overlay" id="mobile-sidebar-overlay"></div>
+  <div class="mobile-sidebar-content">
+    <div class="mobile-sidebar-header">
+      <a href="/" class="mobile-brand-link">辰汐小站</a>
+      <button class="mobile-close-btn" id="mobile-close-btn" aria-label="关闭菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <nav class="mobile-nav">
+      {navItems.map((item) => (
+        <a 
+          href={item.href} 
+          class={`mobile-nav-link ${isActive(item.href) ? 'active' : ''}`}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  </div>
+</div>
 
 <style>
   /* 导航栏基础样式 */
@@ -136,6 +169,41 @@ const isActive = (href: string) => {
     justify-content: space-between;
     padding: 8px 0;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 移动端菜单按钮 */
+  .mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    gap: 5px;
+  }
+
+  .hamburger-bar {
+    display: block;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  [data-theme="dark"] .hamburger-bar {
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  [data-theme="light"] .hamburger-bar {
+    background: var(--color-text-secondary);
+  }
+
+  .navbar.scrolled .hamburger-bar {
+    background: var(--color-text-secondary);
   }
 
   /* 品牌名 */
@@ -202,15 +270,15 @@ const isActive = (href: string) => {
   }
 
   [data-theme="dark"] .nav-link.active {
-    color: white !important;
-    background: rgba(255, 255, 255, 0.15) !important;
-    font-weight: 700 !important;
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: 600;
   }
 
   /* 未滚动时 - 明亮主题：深色文字 */
   [data-theme="light"] .nav-link {
     color: var(--color-text-secondary);
-    font-weight: 600;
+    font-weight: 500;
   }
 
   [data-theme="light"] .nav-link:hover {
@@ -219,9 +287,9 @@ const isActive = (href: string) => {
   }
 
   [data-theme="light"] .nav-link.active {
-    color: var(--color-brand-primary) !important;
-    background: rgba(255, 107, 157, 0.15) !important;
-    font-weight: 700 !important;
+    color: var(--color-brand-primary);
+    background: rgba(255, 107, 157, 0.15);
+    font-weight: 600;
   }
 
   /* 滚动后 - 使用主题颜色 */
@@ -291,129 +359,6 @@ const isActive = (href: string) => {
     color: var(--color-brand-primary);
   }
 
-  /* 登录注册区域 */
-  .auth-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .auth-links {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    transition: all 0.3s ease;
-  }
-
-  /* 未滚动时 - 暗色主题 */
-  [data-theme="dark"] .auth-links {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  [data-theme="dark"] .auth-links:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  /* 未滚动时 - 明亮主题 */
-  [data-theme="light"] .auth-links {
-    background: rgba(0, 0, 0, 0.05);
-  }
-
-  [data-theme="light"] .auth-links:hover {
-    background: rgba(255, 107, 157, 0.1);
-  }
-
-  /* 滚动后 */
-  .navbar.scrolled .auth-links {
-    background: rgba(0, 0, 0, 0.05);
-  }
-
-  .navbar.scrolled .auth-links:hover {
-    background: rgba(255, 107, 157, 0.1);
-  }
-
-  .auth-link {
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    padding: 2px 4px;
-  }
-
-  /* 未滚动时 - 暗色主题 */
-  [data-theme="dark"] .auth-link {
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  [data-theme="dark"] .auth-link:hover {
-    color: white;
-  }
-
-  /* 未滚动时 - 明亮主题 */
-  [data-theme="light"] .auth-link {
-    color: var(--color-text-secondary);
-  }
-
-  [data-theme="light"] .auth-link:hover {
-    color: var(--color-brand-primary);
-  }
-
-  /* 滚动后 */
-  .navbar.scrolled .auth-link {
-    color: var(--color-text-secondary);
-  }
-
-  .navbar.scrolled .auth-link:hover {
-    color: var(--color-brand-primary);
-  }
-
-  .auth-divider {
-    font-size: 0.75rem;
-    opacity: 0.5;
-  }
-
-  /* 未滚动时 - 暗色主题 */
-  [data-theme="dark"] .auth-divider {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  /* 未滚动时 - 明亮主题 */
-  [data-theme="light"] .auth-divider {
-    color: var(--color-text-muted);
-  }
-
-  /* 滚动后 */
-  .navbar.scrolled .auth-divider {
-    color: var(--color-text-muted);
-  }
-
-  /* NEW 标签 */
-  .new-tag {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    font-size: 0.625rem;
-    font-weight: 700;
-    color: white;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
-    padding: 2px 6px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-  }
-
   /* 下拉菜单 */
   .nav-more-dropdown {
     position: relative;
@@ -467,29 +412,183 @@ const isActive = (href: string) => {
     color: var(--color-brand-primary);
   }
 
-  /* 响应式 */
+  /* 移动端侧边栏 */
+  .mobile-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    pointer-events: none;
+    visibility: hidden;
+    transition: visibility 0.3s ease;
+  }
+
+  .mobile-sidebar.open {
+    pointer-events: auto;
+    visibility: visible;
+  }
+
+  .mobile-sidebar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .mobile-sidebar.open .mobile-sidebar-overlay {
+    opacity: 1;
+  }
+
+  .mobile-sidebar-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 80vw;
+    background: var(--color-card);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-sidebar.open .mobile-sidebar-content {
+    transform: translateX(0);
+  }
+
+  .mobile-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .mobile-brand-link {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .mobile-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-close-btn:hover {
+    background: rgba(255, 107, 157, 0.1);
+    color: var(--color-brand-primary);
+  }
+
+  .mobile-nav {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  .mobile-nav-link {
+    display: block;
+    padding: 12px 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+  }
+
+  .mobile-nav-link:hover {
+    background: rgba(255, 107, 157, 0.08);
+    color: var(--color-brand-primary);
+  }
+
+  .mobile-nav-link.active {
+    background: rgba(255, 107, 157, 0.12);
+    color: var(--color-brand-primary);
+    font-weight: 600;
+  }
+
+  /* 响应式 - 移动端 */
   @media (max-width: 768px) {
-    .auth-wrapper {
+    .navbar {
+      padding: 12px 16px;
+    }
+
+    .navbar.scrolled {
+      padding: 8px 16px;
+    }
+
+    .navbar-container {
+      padding: 0;
+    }
+
+    .navbar.scrolled .navbar-container {
+      border-radius: 12px;
+      padding: 8px 16px;
+    }
+
+    .mobile-menu-btn {
+      display: flex;
+    }
+
+    .desktop-nav {
       display: none;
+    }
+
+    .navbar-brand {
+      flex: 1;
+      justify-content: flex-start;
+      padding-left: 12px;
+    }
+
+    .navbar-actions {
+      flex: 0 0 auto;
+      gap: 4px;
+    }
+
+    .action-btn {
+      width: 36px;
+      height: 36px;
     }
   }
 
-  /* 响应式 */
-  @media (max-width: 768px) {
-    .navbar-container {
-      flex-wrap: wrap;
-      gap: 12px;
+  @media (max-width: 480px) {
+    .brand-link {
+      font-size: 1.1rem;
     }
 
-    .navbar-brand,
     .navbar-actions {
-      flex: 0 0 auto;
+      gap: 2px;
     }
 
-    .navbar-nav {
-      flex: 1 1 100%;
-      order: 3;
-      justify-content: center;
+    .action-btn {
+      width: 32px;
+      height: 32px;
+    }
+
+    .action-btn svg {
+      width: 16px;
+      height: 16px;
     }
   }
 </style>
@@ -507,6 +606,51 @@ const isActive = (href: string) => {
       }
     });
   }
+
+  // 移动端侧边栏控制
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileSidebar = document.getElementById('mobile-sidebar');
+  const mobileCloseBtn = document.getElementById('mobile-close-btn');
+  const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+
+  function openMobileSidebar() {
+    if (mobileSidebar) {
+      mobileSidebar.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeMobileSidebar() {
+    if (mobileSidebar) {
+      mobileSidebar.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }
+
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', openMobileSidebar);
+  }
+
+  if (mobileCloseBtn) {
+    mobileCloseBtn.addEventListener('click', closeMobileSidebar);
+  }
+
+  if (mobileOverlay) {
+    mobileOverlay.addEventListener('click', closeMobileSidebar);
+  }
+
+  // 点击移动端导航链接后自动关闭侧边栏
+  const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+  mobileNavLinks.forEach(link => {
+    link.addEventListener('click', closeMobileSidebar);
+  });
+
+  // ESC 键关闭侧边栏
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileSidebar?.classList.contains('open')) {
+      closeMobileSidebar();
+    }
+  });
 
   // 登录弹窗控制 - 使用全局函数
   const loginBtn = document.getElementById('login-btn');
