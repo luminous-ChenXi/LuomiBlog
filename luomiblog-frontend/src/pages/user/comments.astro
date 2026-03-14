@@ -43,7 +43,7 @@ const comments = [
   },
 ];
 
-const statusMap = {
+const statusMap: Record<string, { label: string; class: string }> = {
   approved: { label: '已通过', class: 'status-success' },
   pending: { label: '审核中', class: 'status-warning' },
   rejected: { label: '未通过', class: 'status-danger' },
