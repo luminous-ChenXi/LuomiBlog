@@ -8,6 +8,7 @@ const currentStep = ref(0);
 const loading = ref(false);
 const installStatus = ref<{ installed: boolean; locked: boolean; hasData: boolean; message: string } | null>(null);
 const dbTestPassed = ref(false);
+const sqlExecuted = ref(false); // 标记SQL脚本是否已执行
 
 // 表单数据
 const envForm = reactive({
@@ -32,6 +33,15 @@ const dbForm = reactive({
 watch(() => [dbForm.host, dbForm.port, dbForm.database, dbForm.username, dbForm.password], () => {
   dbTestPassed.value = false;
 }, { deep: true });
+
+// 监听步骤变化，防止跳过SQL初始化步骤
+watch(currentStep, (newStep, oldStep) => {
+  // 如果用户试图从第3步（初始化数据）跳到第7步（创建管理员）或更后，但SQL未执行
+  if (newStep >= 6 && oldStep < 6 && !sqlExecuted.value) {
+    ElMessage.warning('请先完成数据库初始化步骤');
+    currentStep.value = 2; // 强制回到第3步（初始化数据）
+  }
+});
 
 const siteForm = reactive({
   siteName: 'LuomiBlog',
@@ -416,6 +426,7 @@ const executeSql = async () => {
     const response = await api.install.executeSql(dbForm);
     if (response.success) {
       ElMessage.success('数据库初始化成功');
+      sqlExecuted.value = true; // 标记SQL已执行
       currentStep.value++;
     } else {
       ElMessage.error(response.message);
@@ -433,17 +444,23 @@ const createAdmin = async () => {
     ElMessage.warning('请填写完整的管理员信息');
     return;
   }
-  
+
   if (adminForm.password !== adminForm.confirmPassword) {
     ElMessage.error('两次输入的密码不一致');
     return;
   }
-  
+
   if (adminForm.password.length < 8) {
     ElMessage.error('密码长度至少8位');
     return;
   }
-  
+
+  // 检查SQL脚本是否已执行
+  if (!sqlExecuted.value) {
+    ElMessage.error('请先完成数据库初始化步骤');
+    return;
+  }
+
   loading.value = true;
   try {
     const response = await api.install.createAdmin(adminForm);
