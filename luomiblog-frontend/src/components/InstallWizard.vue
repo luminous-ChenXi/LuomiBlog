@@ -158,11 +158,41 @@ const checkInstallStatus = async () => {
       return;
     }
     
-    // 如果未安装，正常显示安装向导
-    // 注意：现在只要没有 install.lock 文件就可以重新安装
-    // 数据库中的数据会在安装过程中被覆盖
+    // 如果有数据但未锁定，需要二次验证
+    if (response.hasData) {
+      showReinstallVerify.value = true;
+    }
   } catch (error) {
     console.error('检查安装状态失败', error);
+  }
+};
+
+// 重新安装验证
+const showReinstallVerify = ref(false);
+const verifyPassword = ref('');
+const verifying = ref(false);
+
+const verifyReinstall = async () => {
+  if (!verifyPassword.value) {
+    ElMessage.warning('请输入管理员密码');
+    return;
+  }
+  
+  verifying.value = true;
+  try {
+    const response = await api.install.verifyReinstall(verifyPassword.value);
+    if (response.success) {
+      ElMessage.success('验证通过，可以重新安装');
+      showReinstallVerify.value = false;
+      // 刷新页面以获取新的安装状态
+      window.location.reload();
+    } else {
+      ElMessage.error(response.message || '验证失败');
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '验证失败，请检查密码是否正确');
+  } finally {
+    verifying.value = false;
   }
 };
 
@@ -416,6 +446,56 @@ onMounted(() => {
 
 <template>
   <div class="install-wizard">
+    <!-- 重新安装验证对话框 -->
+    <div v-if="showReinstallVerify" class="reinstall-verify-overlay">
+      <div class="reinstall-verify-dialog">
+        <div class="verify-header">
+          <div class="verify-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <h3 class="verify-title">重新安装验证</h3>
+          <p class="verify-desc">检测到系统已有数据，需要验证管理员身份才能重新安装</p>
+        </div>
+        
+        <div class="verify-form">
+          <div class="form-group">
+            <label class="form-label">请输入当前管理员密码</label>
+            <input 
+              v-model="verifyPassword" 
+              type="password" 
+              class="form-input" 
+              placeholder="输入管理员密码以验证身份"
+              @keyup.enter="verifyReinstall"
+            />
+          </div>
+          
+          <div class="verify-actions">
+            <a href="/" class="btn-secondary">返回首页</a>
+            <button 
+              class="btn-primary" 
+              :disabled="verifying || !verifyPassword" 
+              @click="verifyReinstall"
+            >
+              <span v-if="verifying" class="btn-loading"></span>
+              <span v-else>验证并继续</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="verify-warning">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>重新安装将清除所有现有数据，请谨慎操作</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 步骤条 -->
     <div class="steps-container">
       <el-steps :active="currentStep" class="steps" align-center>
@@ -1431,6 +1511,110 @@ onMounted(() => {
   color: var(--color-brand-primary);
 }
 
+/* 重新安装验证对话框 */
+.reinstall-verify-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.reinstall-verify-dialog {
+  background: var(--color-card);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.verify-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.verify-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.1) 0%, rgba(78, 205, 196, 0.1) 100%);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: var(--color-brand-primary);
+}
+
+.verify-title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.verify-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.verify-form {
+  margin-bottom: 1.5rem;
+}
+
+.verify-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.verify-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.verify-warning svg {
+  width: 16px;
+  height: 16px;
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.verify-warning span {
+  font-size: 0.8125rem;
+  color: #ef4444;
+  line-height: 1.5;
+}
+
 @media (max-width: 640px) {
   .install-wizard {
     padding: 1.5rem 1rem;
@@ -1461,6 +1645,15 @@ onMounted(() => {
   .smtp-test {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .reinstall-verify-dialog {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .verify-actions {
+    flex-direction: column;
   }
 }
 

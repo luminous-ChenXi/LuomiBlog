@@ -117,4 +117,28 @@ public class InstallController {
             return ApiResponse.error(500, "安装完成操作失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 验证重新安装权限
+     * 需要提供当前管理员密码进行二次验证
+     */
+    @PostMapping("/verify-reinstall")
+    public ApiResponse<Map<String, Object>> verifyReinstallPermission(@RequestBody Map<String, String> request) {
+        String password = request.get("password");
+        if (password == null || password.isEmpty()) {
+            return ApiResponse.error(400, "请提供验证密码");
+        }
+
+        boolean verified = installService.verifyReinstallPermission(password);
+        if (verified) {
+            // 验证通过后重置安装状态
+            installService.resetInstallation();
+            return ApiResponse.success(Map.of(
+                "success", true,
+                "message", "验证通过，可以重新安装"
+            ));
+        } else {
+            return ApiResponse.error(403, "验证失败：密码不正确");
+        }
+    }
 }
