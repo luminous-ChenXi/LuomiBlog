@@ -235,6 +235,15 @@ const executeReinstall = async () => {
   const option = reinstallOptions.value.find(o => o.code === selectedReinstallOption.value);
   if (!option) return;
 
+  // 检查数据库配置是否已填写
+  if (!dbForm.host || !dbForm.database || !dbForm.username) {
+    ElMessage.warning('请先完成数据库配置');
+    showReinstallOptions.value = false;
+    // 跳转到数据库配置步骤
+    currentStep.value = 1;
+    return;
+  }
+
   // 全新安装需要确认
   if (selectedReinstallOption.value === 'fresh_install') {
     try {
@@ -272,6 +281,11 @@ const executeReinstall = async () => {
         locked: false,
         message: '重新安装准备完成'
       };
+
+      // 如果选择的是保留数据或更新结构，直接进入下一步
+      if (selectedReinstallOption.value !== 'fresh_install') {
+        currentStep.value = 2; // 跳到初始化数据步骤
+      }
     } else {
       ElMessage.error(response.message || '重新安装失败');
     }
