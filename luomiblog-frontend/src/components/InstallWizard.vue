@@ -172,6 +172,12 @@ const showReinstallVerify = ref(false);
 const verifyPassword = ref('');
 const verifying = ref(false);
 
+// 重新安装选项
+const showReinstallOptions = ref(false);
+const reinstallOptions = ref<Array<{ code: string; name: string; description: string }>>([]);
+const selectedReinstallOption = ref('');
+const executingReinstall = ref(false);
+
 const verifyReinstall = async () => {
   if (!verifyPassword.value) {
     ElMessage.warning('请输入管理员密码');
@@ -182,16 +188,22 @@ const verifyReinstall = async () => {
   try {
     const response = await api.install.verifyReinstall(verifyPassword.value);
     if (response.success) {
-      ElMessage.success('验证通过，可以重新安装');
+      ElMessage.success('验证通过');
       showReinstallVerify.value = false;
-      // 更新安装状态，允许继续安装
-      installStatus.value = {
-        ...installStatus.value!,
-        hasData: false,
-        installed: false,
-        locked: false,
-        message: '验证通过，可以重新安装'
-      };
+
+      // 如果需要选择安装选项，显示选项对话框
+      if (response.needsOptions) {
+        await loadReinstallOptions();
+      } else {
+        // 不需要选项，直接继续安装
+        installStatus.value = {
+          ...installStatus.value!,
+          hasData: false,
+          installed: false,
+          locked: false,
+          message: '验证通过，可以重新安装'
+        };
+      }
     } else {
       ElMessage.error(response.message || '验证失败');
     }
@@ -199,6 +211,74 @@ const verifyReinstall = async () => {
     ElMessage.error(error.message || '验证失败，请检查密码是否正确');
   } finally {
     verifying.value = false;
+  }
+};
+
+// 加载重新安装选项
+const loadReinstallOptions = async () => {
+  try {
+    const response = await api.install.getReinstallOptions();
+    reinstallOptions.value = response.options;
+    showReinstallOptions.value = true;
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载安装选项失败');
+  }
+};
+
+// 执行重新安装
+const executeReinstall = async () => {
+  if (!selectedReinstallOption.value) {
+    ElMessage.warning('请选择安装方式');
+    return;
+  }
+
+  const option = reinstallOptions.value.find(o => o.code === selectedReinstallOption.value);
+  if (!option) return;
+
+  // 全新安装需要确认
+  if (selectedReinstallOption.value === 'fresh_install') {
+    try {
+      await ElMessageBox.confirm(
+        '全新安装将删除所有现有数据（包括用户、文章、评论等），此操作不可恢复！',
+        '警告：数据将永久丢失',
+        {
+          confirmButtonText: '确认删除所有数据',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      );
+    } catch {
+      return; // 用户取消
+    }
+  }
+
+  executingReinstall.value = true;
+  try {
+    const response = await api.install.executeReinstall(
+      selectedReinstallOption.value,
+      dbForm
+    );
+
+    if (response.success) {
+      ElMessage.success(response.message);
+      showReinstallOptions.value = false;
+
+      // 更新安装状态
+      installStatus.value = {
+        ...installStatus.value!,
+        hasData: false,
+        installed: false,
+        locked: false,
+        message: '重新安装准备完成'
+      };
+    } else {
+      ElMessage.error(response.message || '重新安装失败');
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '重新安装失败');
+  } finally {
+    executingReinstall.value = false;
   }
 };
 
@@ -497,7 +577,67 @@ onMounted(() => {
             <line x1="12" y1="9" x2="12" y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <span>重新安装将清除所有现有数据，请谨慎操作</span>
+          <span>重新安装可能需要清除现有数据，请谨慎操作</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重新安装选项对话框 -->
+    <div v-if="showReinstallOptions" class="reinstall-options-overlay">
+      <div class="reinstall-options-dialog">
+        <div class="options-header">
+          <div class="options-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          </div>
+          <h3 class="options-title">选择安装方式</h3>
+          <p class="options-desc">检测到系统已有数据，请选择您需要的安装方式</p>
+        </div>
+
+        <div class="options-list">
+          <div
+            v-for="option in reinstallOptions"
+            :key="option.code"
+            class="option-card"
+            :class="{ active: selectedReinstallOption === option.code, danger: option.code === 'fresh_install' }"
+            @click="selectedReinstallOption = option.code"
+          >
+            <div class="option-radio">
+              <div class="radio-circle" :class="{ checked: selectedReinstallOption === option.code }">
+                <div v-if="selectedReinstallOption === option.code" class="radio-dot"></div>
+              </div>
+            </div>
+            <div class="option-content">
+              <h4 class="option-name">{{ option.name }}</h4>
+              <p class="option-description">{{ option.description }}</p>
+            </div>
+            <div v-if="option.code === 'fresh_install'" class="option-warning-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="options-actions">
+          <button
+            class="btn-secondary"
+            @click="showReinstallOptions = false"
+          >
+            取消
+          </button>
+          <button
+            class="btn-primary"
+            :class="{ danger: selectedReinstallOption === 'fresh_install' }"
+            :disabled="executingReinstall || !selectedReinstallOption"
+            @click="executeReinstall"
+          >
+            <span v-if="executingReinstall" class="btn-loading"></span>
+            <span v-else>确认并继续</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1806,6 +1946,205 @@ onMounted(() => {
   .favicon-preview-box {
     width: 80px;
     height: 80px;
+  }
+}
+
+/* 重新安装选项对话框样式 */
+.reinstall-options-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.reinstall-options-dialog {
+  background: var(--color-card);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.options-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.options-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-secondary));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+  color: white;
+}
+
+.options-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.options-desc {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--color-bg-secondary);
+}
+
+.option-card:hover {
+  border-color: var(--color-brand-primary);
+  background: var(--color-card);
+}
+
+.option-card.active {
+  border-color: var(--color-brand-primary);
+  background: rgba(255, 107, 157, 0.05);
+}
+
+.option-card.danger {
+  border-color: #ef4444;
+}
+
+.option-card.danger:hover {
+  border-color: #dc2626;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.option-card.danger.active {
+  border-color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.option-radio {
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+}
+
+.radio-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.radio-circle.checked {
+  border-color: var(--color-brand-primary);
+}
+
+.option-card.danger .radio-circle.checked {
+  border-color: #dc2626;
+}
+
+.radio-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-brand-primary);
+  border-radius: 50%;
+}
+
+.option-card.danger .radio-dot {
+  background: #dc2626;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 0.375rem;
+}
+
+.option-description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.option-warning-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.options-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.options-actions .btn-primary.danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.options-actions .btn-primary.danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+@media (max-width: 640px) {
+  .reinstall-options-dialog {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .options-actions {
+    flex-direction: column;
+  }
+
+  .option-card {
+    padding: 1rem;
   }
 }
 </style>

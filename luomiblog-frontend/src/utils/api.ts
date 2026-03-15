@@ -241,9 +241,24 @@ export const api = {
       }),
 
     verifyReinstall: (password: string) =>
-      request<{ success: boolean; message: string }>('/api/install/verify-reinstall', {
+      request<{ success: boolean; message: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
         method: 'POST',
         body: JSON.stringify({ password })
+      }),
+
+    getReinstallOptions: () =>
+      request<{
+        needsOptions: boolean;
+        options: Array<{ code: string; name: string; description: string }>;
+        warning: string | null;
+      }>('/api/install/reinstall-options', {
+        method: 'GET'
+      }),
+
+    executeReinstall: (option: string, database?: DatabaseConfigRequest) =>
+      request<{ success: boolean; message: string; option: string }>('/api/install/reinstall', {
+        method: 'POST',
+        body: JSON.stringify({ option, database })
       })
   }
 };

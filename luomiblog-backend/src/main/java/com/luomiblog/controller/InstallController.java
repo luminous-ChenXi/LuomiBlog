@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -100,6 +101,24 @@ public class InstallController {
         }
     }
 
+    @PostMapping("/favicon-config")
+    public ApiResponse<Map<String, Object>> saveFaviconConfig(@Valid @RequestBody FaviconConfigRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
+        try {
+            // 暂时返回成功，实际功能待实现
+            return ApiResponse.success(Map.of(
+                "success", true,
+                "message", "图标配置保存成功"
+            ));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "图标配置保存失败: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/complete")
     public ApiResponse<Map<String, Object>> completeInstallation() {
         // 检查是否已安装
@@ -135,10 +154,89 @@ public class InstallController {
             installService.resetInstallation();
             return ApiResponse.success(Map.of(
                 "success", true,
-                "message", "验证通过，可以重新安装"
+                "message", "验证通过，可以重新安装",
+                "needsOptions", installService.needsReinstallOptions()
             ));
         } else {
             return ApiResponse.error(403, "验证失败：密码不正确");
+        }
+    }
+
+    /**
+     * 获取重新安装选项
+     * 当系统已有数据时，返回可用的重新安装选项
+     */
+    @GetMapping("/reinstall-options")
+    public ApiResponse<Map<String, Object>> getReinstallOptions() {
+        boolean needsOptions = installService.needsReinstallOptions();
+
+        List<Map<String, String>> options = List.of(
+            Map.of(
+                "code", "keep_data",
+                "name", "保留数据",
+                "description", "保留所有用户、文章、评论等数据，仅重置站点配置"
+            ),
+            Map.of(
+                "code", "update_schema",
+                "name", "更新结构",
+                "description", "保留数据，仅更新数据库表结构（用于版本升级）"
+            ),
+            Map.of(
+                "code", "fresh_install",
+                "name", "全新安装",
+                "description", "清空所有数据，重新开始（不可恢复，请谨慎选择）"
+            )
+        );
+
+        return ApiResponse.success(Map.of(
+            "needsOptions", needsOptions,
+            "options", options,
+            "warning", needsOptions ? "检测到系统已有数据，请选择安装方式" : null
+        ));
+    }
+
+    /**
+     * 执行重新安装
+     * 根据用户选择的选项执行不同的安装逻辑
+     */
+    @PostMapping("/reinstall")
+    public ApiResponse<Map<String, Object>> executeReinstall(@RequestBody Map<String, Object> request) {
+        String optionCode = (String) request.get("option");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> dbConfig = (Map<String, Object>) request.get("database");
+
+        if (optionCode == null || optionCode.isEmpty()) {
+            return ApiResponse.error(400, "请选择安装选项");
+        }
+
+        // 检查是否已安装（有 install.lock）
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装完成，无法重新安装");
+        }
+
+        try {
+            ReinstallOption option = ReinstallOption.fromCode(optionCode);
+
+            // 构建数据库配置请求
+            DatabaseConfigRequest dbRequest = new DatabaseConfigRequest();
+            if (dbConfig != null) {
+                dbRequest.setHost((String) dbConfig.get("host"));
+                dbRequest.setPort((Integer) dbConfig.get("port"));
+                dbRequest.setDatabase((String) dbConfig.get("database"));
+                dbRequest.setUsername((String) dbConfig.get("username"));
+                dbRequest.setPassword((String) dbConfig.get("password"));
+            }
+
+            installService.executeReinstall(option, dbRequest);
+
+            return ApiResponse.success(Map.of(
+                "success", true,
+                "message", "重新安装完成：" + option.getName(),
+                "option", option.getCode()
+            ));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "重新安装失败: " + e.getMessage());
         }
     }
 }

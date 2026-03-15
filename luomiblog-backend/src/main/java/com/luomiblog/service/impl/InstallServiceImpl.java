@@ -297,6 +297,108 @@ public class InstallServiceImpl implements InstallService {
         }
     }
 
+    @Override
+    public boolean needsReinstallOptions() {
+        // 当没有 install.lock 但有数据时，需要显示重新安装选项
+        return !isInstallLocked() && userRepository.count() > 0;
+    }
+
+    @Override
+    @Transactional
+    public void executeReinstall(ReinstallOption option, DatabaseConfigRequest request) {
+        log.info("执行重新安装，选项: {}", option.getName());
+
+        switch (option) {
+            case KEEP_DATA:
+                // 保留数据，仅执行 schema.sql（使用 IF NOT EXISTS）
+                // 不执行 data.sql，避免覆盖现有数据
+                executeSchemaOnly();
+                break;
+
+            case UPDATE_SCHEMA:
+                // 更新表结构，保留数据
+                executeSchemaOnly();
+                break;
+
+            case FRESH_INSTALL:
+            default:
+                // 全新安装：清空数据并重新执行所有脚本
+                executeFreshInstall(request);
+                break;
+        }
+
+        log.info("重新安装完成，选项: {}", option.getName());
+    }
+
+    /**
+     * 仅执行 schema.sql（使用 IF NOT EXISTS，不会删除现有数据）
+     */
+    private void executeSchemaOnly() {
+        try {
+            executeSqlFile("db/schema.sql");
+            log.info("数据库结构更新完成（保留数据）");
+        } catch (Exception e) {
+            log.error("更新数据库结构失败", e);
+            throw new RuntimeException("更新数据库结构失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 全新安装：清空所有数据
+     */
+    private void executeFreshInstall(DatabaseConfigRequest request) {
+        try {
+            // 警告：这会删除所有数据！
+            log.warn("执行全新安装，将清空所有数据");
+
+            // 获取当前数据源
+            DataSource dataSource = createDataSource(request);
+            JdbcTemplate template = new JdbcTemplate(dataSource);
+
+            // 删除所有表（危险操作！）
+            dropAllTables(template);
+
+            // 重新执行所有脚本
+            executeSqlScripts(request);
+
+            log.info("全新安装完成");
+        } catch (Exception e) {
+            log.error("全新安装失败", e);
+            throw new RuntimeException("全新安装失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 删除所有表（仅用于全新安装）
+     */
+    private void dropAllTables(JdbcTemplate template) {
+        log.warn("正在删除所有数据库表...");
+
+        // 禁用外键检查
+        template.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+        // 获取所有表名
+        List<String> tables = template.queryForList(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()",
+            String.class
+        );
+
+        // 删除每个表
+        for (String table : tables) {
+            try {
+                template.execute("DROP TABLE IF EXISTS `" + table + "`");
+                log.debug("已删除表: {}", table);
+            } catch (Exception e) {
+                log.warn("删除表 {} 失败: {}", table, e.getMessage());
+            }
+        }
+
+        // 启用外键检查
+        template.execute("SET FOREIGN_KEY_CHECKS = 1");
+
+        log.warn("所有表已删除");
+    }
+
     private boolean isInstallLocked() {
         return new File(INSTALL_LOCK_FILE).exists();
     }

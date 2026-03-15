@@ -31,4 +31,19 @@ public interface InstallService {
      * 删除安装锁文件，允许重新安装
      */
     void resetInstallation();
+
+    /**
+     * 执行重新安装
+     * 根据用户选择的选项执行不同的安装逻辑
+     * @param option 重新安装选项
+     * @param request 数据库配置
+     */
+    void executeReinstall(ReinstallOption option, DatabaseConfigRequest request);
+
+    /**
+     * 检查是否需要显示重新安装选项
+     * 当系统已有数据但 install.lock 不存在时返回 true
+     * @return 是否需要显示选项
+     */
+    boolean needsReinstallOptions();
 }
