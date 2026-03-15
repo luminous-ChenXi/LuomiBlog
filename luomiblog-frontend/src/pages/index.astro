@@ -83,8 +83,10 @@ import Footer from '../components/Footer.astro';
     display: flex;
     flex-direction: column;
     gap: 20px;
-    /* 移除滚动条，完全展开 */
-    overflow-y: visible;
+    /* 粘性定位 */
+    position: sticky;
+    top: 100px; /* 距离顶部 100px，为导航栏留空间 */
+    align-self: flex-start; /* 防止拉伸 */
   }
 
   .sidebar-item {
