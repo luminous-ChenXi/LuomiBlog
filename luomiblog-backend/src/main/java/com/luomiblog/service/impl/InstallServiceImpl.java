@@ -48,7 +48,16 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public InstallStatusResponse getInstallStatus() {
         boolean locked = isInstallLocked();
-        boolean hasData = userRepository.count() > 0;
+        boolean hasData = false;
+
+        // 检查是否有数据（捕获异常，因为数据库可能未配置）
+        try {
+            hasData = userRepository.count() > 0;
+        } catch (Exception e) {
+            // 数据库未配置或连接失败，认为没有数据
+            log.debug("无法检查用户数据，数据库可能未配置: {}", e.getMessage());
+            hasData = false;
+        }
 
         // 安全策略：
         // 1. 如果有 install.lock 文件，认为已安装完成
