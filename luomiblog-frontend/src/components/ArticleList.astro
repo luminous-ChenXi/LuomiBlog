@@ -181,6 +181,20 @@ const articles = sortedPosts.map(post => ({
     gap: 20px;
   }
 
+  /* 网格视图模式 - 两列 */
+  .article-grid[data-view-mode="grid"] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  /* 列表视图模式 - 单列 */
+  .article-grid[data-view-mode="list"] {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
   .empty-state {
     grid-column: 1 / -1;
     display: flex;
