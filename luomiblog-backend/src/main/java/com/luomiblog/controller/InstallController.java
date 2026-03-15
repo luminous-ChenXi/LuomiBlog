@@ -199,11 +199,11 @@ public class InstallController {
             )
         );
 
-        return ApiResponse.success(Map.of(
-            "needsOptions", needsOptions,
-            "options", options,
-            "warning", needsOptions ? "检测到系统已有数据，请选择安装方式" : null
-        ));
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("needsOptions", needsOptions);
+        result.put("options", options);
+        result.put("warning", needsOptions ? "检测到系统已有数据，请选择安装方式" : null);
+        return ApiResponse.success(result);
     }
 
     /**
