@@ -186,10 +186,11 @@ const verifyReinstall = async () => {
       showReinstallVerify.value = false;
       // 更新安装状态，允许继续安装
       installStatus.value = {
-        ...installStatus.value,
+        ...installStatus.value!,
         hasData: false,
         installed: false,
-        locked: false
+        locked: false,
+        message: '验证通过，可以重新安装'
       };
     } else {
       ElMessage.error(response.message || '验证失败');
