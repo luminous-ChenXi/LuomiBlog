@@ -8,6 +8,7 @@ category: '前端架构'
 cover: 'https://picsum.photos/seed/vue/800/500'
 views: 312
 comments: 15
+likes: 78
 slug: 'vue3-composition-api'
 ---
 

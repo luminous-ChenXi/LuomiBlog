@@ -8,6 +8,7 @@ category: '后端开发'
 cover: 'https://picsum.photos/seed/springboot/800/500'
 views: 256
 comments: 23
+likes: 67
 slug: 'spring-boot-3-2-features'
 ---
 
