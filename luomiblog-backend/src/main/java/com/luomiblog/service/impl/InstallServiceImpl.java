@@ -479,7 +479,13 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public boolean needsReinstallOptions() {
         // 当没有 install.lock 但有数据时，需要显示重新安装选项
-        return !isInstallLocked() && userRepository.count() > 0;
+        try {
+            return !isInstallLocked() && userRepository.count() > 0;
+        } catch (Exception e) {
+            // 数据库未配置或连接失败，不需要显示重新安装选项
+            log.debug("无法检查用户数据，数据库可能未配置: {}", e.getMessage());
+            return false;
+        }
     }
 
     @Override
