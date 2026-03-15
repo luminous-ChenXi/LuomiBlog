@@ -238,6 +238,12 @@ export const api = {
     complete: () =>
       request<{ success: boolean; message: string }>('/api/install/complete', {
         method: 'POST'
+      }),
+
+    verifyReinstall: (password: string) =>
+      request<{ success: boolean; message: string }>('/api/install/verify-reinstall', {
+        method: 'POST',
+        body: JSON.stringify({ password })
       })
   }
 };

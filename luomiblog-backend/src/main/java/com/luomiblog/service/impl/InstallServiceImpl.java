@@ -48,11 +48,35 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public InstallStatusResponse getInstallStatus() {
         boolean locked = isInstallLocked();
+        boolean hasData = userRepository.count() > 0;
+
+        // 安全策略：
+        // 1. 如果有 install.lock 文件，认为已安装完成
+        // 2. 如果没有 install.lock 但有数据，需要二次验证才能重新安装
+        // 3. 如果都没有，可以正常安装
+        if (locked) {
+            return InstallStatusResponse.builder()
+                    .installed(true)
+                    .locked(true)
+                    .hasData(true)
+                    .message("系统已安装完成")
+                    .build();
+        }
+
+        if (hasData) {
+            return InstallStatusResponse.builder()
+                    .installed(false)
+                    .locked(false)
+                    .hasData(true)
+                    .message("系统已有数据，需要验证才能重新安装")
+                    .build();
+        }
 
         return InstallStatusResponse.builder()
-                .installed(locked)
-                .locked(locked)
-                .message(locked ? "系统已安装" : "系统未安装")
+                .installed(false)
+                .locked(false)
+                .hasData(false)
+                .message("系统未安装")
                 .build();
     }
 
@@ -199,6 +223,35 @@ public class InstallServiceImpl implements InstallService {
         } catch (IOException e) {
             log.error("创建安装锁失败", e);
             throw new RuntimeException("安装完成操作失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public boolean verifyReinstallPermission(String verificationPassword) {
+        if (verificationPassword == null || verificationPassword.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // 尝试验证管理员密码
+            // 查找第一个管理员用户（通常是安装时创建的用户）
+            User adminUser = userRepository.findAll().stream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (adminUser != null) {
+                // 验证输入的密码是否匹配管理员密码
+                if (passwordEncoder.matches(verificationPassword, adminUser.getPasswordHash())) {
+                    log.info("重新安装权限验证通过：管理员密码验证成功");
+                    return true;
+                }
+            }
+
+            log.warn("重新安装权限验证失败：密码不匹配");
+            return false;
+        } catch (Exception e) {
+            log.error("验证重新安装权限时发生错误", e);
+            return false;
         }
     }
 
