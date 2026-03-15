@@ -467,12 +467,12 @@ onMounted(() => {
         
         <div class="verify-form">
           <div class="form-group">
-            <label class="form-label">请输入当前管理员密码</label>
+            <label class="form-label">请输入任意管理员或博主账号的密码</label>
             <input 
               v-model="verifyPassword" 
               type="password" 
               class="form-input" 
-              placeholder="输入管理员密码以验证身份"
+              placeholder="输入管理员或博主密码以验证身份"
               @keyup.enter="verifyReinstall"
             />
           </div>

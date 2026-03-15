@@ -233,22 +233,40 @@ public class InstallServiceImpl implements InstallService {
         }
 
         try {
-            // 尝试验证管理员密码
-            // 查找第一个管理员用户（通常是安装时创建的用户）
-            User adminUser = userRepository.findAll().stream()
-                    .findFirst()
-                    .orElse(null);
+            // 获取管理员和博主角色
+            Role adminRole = roleRepository.findByCode("admin").orElse(null);
+            Role bloggerRole = roleRepository.findByCode("blogger").orElse(null);
 
-            if (adminUser != null) {
-                // 验证输入的密码是否匹配管理员密码
-                if (passwordEncoder.matches(verificationPassword, adminUser.getPasswordHash())) {
-                    log.info("重新安装权限验证通过：管理员密码验证成功");
-                    return true;
-                }
+            if (adminRole == null && bloggerRole == null) {
+                log.warn("系统中未找到管理员或博主角色");
+                return false;
             }
 
-            log.warn("重新安装权限验证失败：密码不匹配");
-            return false;
+            // 验证逻辑：遍历所有管理员/博主用户，验证密码是否匹配任意一个
+            // 这样多个管理员中的任何一个都可以验证通过
+            Integer adminRoleId = adminRole != null ? adminRole.getId() : null;
+            Integer bloggerRoleId = bloggerRole != null ? bloggerRole.getId() : null;
+
+            // 获取所有管理员和博主用户
+            boolean verified = userRepository.findAll().stream()
+                    .filter(user -> {
+                        Integer userRoleId = user.getRoleId();
+                        return userRoleId != null &&
+                               (userRoleId.equals(adminRoleId) || userRoleId.equals(bloggerRoleId));
+                    })
+                    .anyMatch(user -> {
+                        boolean matches = passwordEncoder.matches(verificationPassword, user.getPasswordHash());
+                        if (matches) {
+                            log.info("重新安装权限验证通过：用户 '{}' 验证成功", user.getUsername());
+                        }
+                        return matches;
+                    });
+
+            if (!verified) {
+                log.warn("重新安装权限验证失败：密码与任何管理员/博主账号不匹配");
+            }
+
+            return verified;
         } catch (Exception e) {
             log.error("验证重新安装权限时发生错误", e);
             return false;
