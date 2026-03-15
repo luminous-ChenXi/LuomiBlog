@@ -28,15 +28,15 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
-    private String passwordHash;
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
 
     public String getPassword() {
-        return passwordHash;
+        return password;
     }
 
     public void setPassword(String password) {
-        this.passwordHash = password;
+        this.password = password;
     }
 
     @Column(name = "nickname", length = 50)
