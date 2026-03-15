@@ -48,12 +48,11 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public InstallStatusResponse getInstallStatus() {
         boolean locked = isInstallLocked();
-        boolean hasAdmin = userRepository.count() > 0;
 
         return InstallStatusResponse.builder()
-                .installed(locked || hasAdmin)
+                .installed(locked)
                 .locked(locked)
-                .message(locked ? "系统已安装" : (hasAdmin ? "系统已初始化但未锁定" : "系统未安装"))
+                .message(locked ? "系统已安装" : "系统未安装")
                 .build();
     }
 
@@ -200,6 +199,30 @@ public class InstallServiceImpl implements InstallService {
         } catch (IOException e) {
             log.error("创建安装锁失败", e);
             throw new RuntimeException("安装完成操作失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void resetInstallation() {
+        try {
+            // 删除安装锁文件
+            File lockFile = new File(INSTALL_LOCK_FILE);
+            if (lockFile.exists()) {
+                lockFile.delete();
+                log.info("已删除安装锁文件");
+            }
+
+            // 删除自定义配置文件
+            File configFile = new File(CUSTOM_CONFIG_FILE);
+            if (configFile.exists()) {
+                configFile.delete();
+                log.info("已删除自定义配置文件");
+            }
+
+            log.info("安装状态已重置");
+        } catch (Exception e) {
+            log.error("重置安装状态失败", e);
+            throw new RuntimeException("重置安装状态失败: " + e.getMessage(), e);
         }
     }
 

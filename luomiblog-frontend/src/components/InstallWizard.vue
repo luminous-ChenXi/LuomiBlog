@@ -158,18 +158,9 @@ const checkInstallStatus = async () => {
       return;
     }
     
-    // 如果已安装但未锁定（有用户数据），显示提示并跳转
-    if (response.installed) {
-      ElMessageBox.alert('系统已初始化，如需重新安装请清空数据库用户表', '提示', {
-        confirmButtonText: '前往首页',
-        showClose: false,
-        closeOnClickModal: false,
-        closeOnPressEscape: false,
-        callback: () => {
-          window.location.href = '/';
-        }
-      });
-    }
+    // 如果未安装，正常显示安装向导
+    // 注意：现在只要没有 install.lock 文件就可以重新安装
+    // 数据库中的数据会在安装过程中被覆盖
   } catch (error) {
     console.error('检查安装状态失败', error);
   }
