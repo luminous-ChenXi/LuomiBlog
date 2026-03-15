@@ -199,6 +199,22 @@ export const api = {
         body: JSON.stringify(data)
       }),
 
+    checkDatabase: (data: DatabaseConfigRequest) =>
+      request<{
+        connected: boolean;
+        message: string;
+        mysqlVersion: string;
+        databaseName: string;
+        hasExistingData: boolean;
+        existingDataMessage: string;
+        existingTables: string[];
+        needsReinstallOptions: boolean;
+        logs: string[];
+      }>('/api/install/check-database', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
     executeSql: (data: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/execute-sql', {
         method: 'POST',

@@ -83,43 +83,104 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public EnvironmentCheckResponse checkEnvironment() {
         List<EnvironmentCheckResponse.CheckItem> checks = new ArrayList<>();
+        List<String> logs = new ArrayList<>();
         boolean allPassed = true;
 
+        logs.add("[INFO] 开始环境检测...");
+        logs.add("[INFO] 检测时间: " + LocalDateTime.now());
+        logs.add("[INFO] 操作系统: " + System.getProperty("os.name") + " " + System.getProperty("os.version"));
+
         // 检查 Java 版本
+        logs.add("[INFO] 正在检查 Java 版本...");
         String javaVersion = System.getProperty("java.version");
+        String javaVendor = System.getProperty("java.vendor");
         int majorVersion = parseJavaVersion(javaVersion);
         boolean javaVersionOk = majorVersion >= 17;
+
+        List<String> javaDetails = new ArrayList<>();
+        javaDetails.add("Java 版本: " + javaVersion);
+        javaDetails.add("Java 厂商: " + javaVendor);
+        javaDetails.add("主版本号: " + majorVersion);
+
+        if (javaVersionOk) {
+            logs.add("[INFO] ✓ Java 版本检查通过: " + javaVersion);
+        } else {
+            logs.add("[ERROR] ✗ Java 版本过低: " + javaVersion + "，需要 Java 17+");
+        }
+
         checks.add(EnvironmentCheckResponse.CheckItem.builder()
                 .name("Java 版本")
                 .passed(javaVersionOk)
                 .message("当前 Java 版本: " + javaVersion)
                 .suggestion(javaVersionOk ? null : "需要 Java 17 或更高版本")
+                .details(javaDetails)
                 .build());
         allPassed &= javaVersionOk;
 
         // 检查后端服务配置
+        logs.add("[INFO] 正在检查后端服务配置...");
         boolean backendConfigOk = checkBackendConfiguration();
+
+        List<String> backendDetails = new ArrayList<>();
+        backendDetails.add("服务状态: " + (backendConfigOk ? "运行中" : "异常"));
+        backendDetails.add("配置文件: application.yml");
+
+        if (backendConfigOk) {
+            logs.add("[INFO] ✓ 后端服务运行正常");
+        } else {
+            logs.add("[ERROR] ✗ 后端服务配置异常");
+        }
+
         checks.add(EnvironmentCheckResponse.CheckItem.builder()
                 .name("后端服务")
                 .passed(backendConfigOk)
                 .message(backendConfigOk ? "后端服务运行正常" : "后端服务配置异常")
                 .suggestion(backendConfigOk ? null : "请确保后端服务已正确启动")
+                .details(backendDetails)
                 .build());
         allPassed &= backendConfigOk;
 
         // 检查 MySQL 驱动
+        logs.add("[INFO] 正在检查 MySQL 驱动...");
         boolean mysqlDriverOk = checkMysqlDriver();
+
+        List<String> driverDetails = new ArrayList<>();
+        driverDetails.add("驱动类: com.mysql.cj.jdbc.Driver");
+        driverDetails.add("驱动状态: " + (mysqlDriverOk ? "已加载" : "未找到"));
+
+        if (mysqlDriverOk) {
+            logs.add("[INFO] ✓ MySQL 驱动已加载");
+        } else {
+            logs.add("[ERROR] ✗ MySQL 驱动未找到");
+        }
+
         checks.add(EnvironmentCheckResponse.CheckItem.builder()
                 .name("MySQL 驱动")
                 .passed(mysqlDriverOk)
                 .message(mysqlDriverOk ? "MySQL 驱动已加载" : "MySQL 驱动未找到")
                 .suggestion(mysqlDriverOk ? null : "请检查依赖配置")
+                .details(driverDetails)
                 .build());
         allPassed &= mysqlDriverOk;
+
+        // 检查安装状态
+        logs.add("[INFO] 正在检查安装状态...");
+        InstallStatusResponse status = getInstallStatus();
+        logs.add("[INFO] 安装状态: " + status.getMessage());
+        if (status.isLocked()) {
+            logs.add("[WARN] 系统已安装完成，install.lock 存在");
+        } else if (status.isHasData()) {
+            logs.add("[WARN] 检测到已有数据，可能需要重新安装验证");
+        } else {
+            logs.add("[INFO] 系统未安装，可以进行全新安装");
+        }
+
+        logs.add("[INFO] 环境检测完成，结果: " + (allPassed ? "通过" : "未通过"));
 
         return EnvironmentCheckResponse.builder()
                 .allPassed(allPassed)
                 .checks(checks)
+                .logs(logs)
                 .build();
     }
 
@@ -142,6 +203,115 @@ public class InstallServiceImpl implements InstallService {
         } catch (Exception e) {
             log.error("数据库连接测试失败", e);
             return false;
+        }
+    }
+
+    @Override
+    public DatabaseCheckResponse checkDatabase(DatabaseConfigRequest request) {
+        List<String> logs = new ArrayList<>();
+        logs.add("[INFO] 开始检查数据库连接...");
+        logs.add("[INFO] 目标数据库: " + request.getHost() + ":" + request.getPort() + "/" + request.getDatabase());
+
+        try (Connection connection = createDataSource(request).getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            String version = metaData.getDatabaseProductVersion();
+            int majorVersion = metaData.getDatabaseMajorVersion();
+
+            logs.add("[INFO] 数据库连接成功");
+            logs.add("[INFO] MySQL 版本: " + version);
+            logs.add("[INFO] 数据库名称: " + request.getDatabase());
+
+            // 检查 MySQL 版本
+            if (majorVersion < 8) {
+                logs.add("[ERROR] ✗ MySQL 版本过低: " + majorVersion + "，需要 8.0+");
+                return DatabaseCheckResponse.builder()
+                        .connected(true)
+                        .message("MySQL 版本过低，需要 8.0 或更高版本")
+                        .mysqlVersion(version)
+                        .databaseName(request.getDatabase())
+                        .hasExistingData(false)
+                        .needsReinstallOptions(false)
+                        .logs(logs)
+                        .build();
+            }
+
+            logs.add("[INFO] ✓ MySQL 版本检查通过");
+
+            // 检查是否已有数据
+            logs.add("[INFO] 正在检查数据库中是否已有数据...");
+            List<String> existingTables = new ArrayList<>();
+            boolean hasExistingData = false;
+
+            try {
+                // 查询数据库中的表
+                java.sql.ResultSet tables = metaData.getTables(request.getDatabase(), null, "%", new String[]{"TABLE"});
+                while (tables.next()) {
+                    String tableName = tables.getString("TABLE_NAME");
+                    existingTables.add(tableName);
+                }
+                tables.close();
+
+                // 检查关键表是否存在
+                boolean hasUsersTable = existingTables.stream()
+                        .anyMatch(t -> t.equalsIgnoreCase("users") || t.equalsIgnoreCase("user"));
+                boolean hasArticlesTable = existingTables.stream()
+                        .anyMatch(t -> t.equalsIgnoreCase("articles") || t.equalsIgnoreCase("article"));
+
+                hasExistingData = !existingTables.isEmpty();
+
+                if (hasExistingData) {
+                    logs.add("[WARN] 检测到 " + existingTables.size() + " 个现有表");
+                    logs.add("[WARN] 关键表 - 用户表: " + (hasUsersTable ? "存在" : "不存在"));
+                    logs.add("[WARN] 关键表 - 文章表: " + (hasArticlesTable ? "存在" : "不存在"));
+
+                    // 检查是否有用户数据
+                    if (hasUsersTable) {
+                        try {
+                            JdbcTemplate template = new JdbcTemplate(createDataSource(request));
+                            Integer userCount = template.queryForObject(
+                                    "SELECT COUNT(*) FROM " + existingTables.stream()
+                                            .filter(t -> t.equalsIgnoreCase("users") || t.equalsIgnoreCase("user"))
+                                            .findFirst().orElse("users"),
+                                    Integer.class
+                            );
+                            logs.add("[WARN] 现有用户数量: " + userCount);
+                        } catch (Exception e) {
+                            logs.add("[WARN] 无法读取用户数量: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    logs.add("[INFO] 数据库为空，可以进行全新安装");
+                }
+
+            } catch (Exception e) {
+                logs.add("[WARN] 检查表信息时出错: " + e.getMessage());
+            }
+
+            logs.add("[INFO] 数据库检查完成");
+
+            return DatabaseCheckResponse.builder()
+                    .connected(true)
+                    .message("数据库连接成功")
+                    .mysqlVersion(version)
+                    .databaseName(request.getDatabase())
+                    .hasExistingData(hasExistingData)
+                    .existingDataMessage(hasExistingData ?
+                            "检测到数据库中已有 " + existingTables.size() + " 个表，可能包含现有数据" :
+                            "数据库为空")
+                    .existingTables(existingTables)
+                    .needsReinstallOptions(hasExistingData && !isInstallLocked())
+                    .logs(logs)
+                    .build();
+
+        } catch (Exception e) {
+            logs.add("[ERROR] 数据库连接失败: " + e.getMessage());
+            return DatabaseCheckResponse.builder()
+                    .connected(false)
+                    .message("数据库连接失败: " + e.getMessage())
+                    .hasExistingData(false)
+                    .needsReinstallOptions(false)
+                    .logs(logs)
+                    .build();
         }
     }
 

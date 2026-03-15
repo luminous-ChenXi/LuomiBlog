@@ -80,14 +80,6 @@ const menuItems = [
       return;
     }
   })();
-
-  function handleLogout() {
-    if (confirm('确定要退出登录吗？')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
-    }
-  }
 </script>
 
 <style>

@@ -16,6 +16,10 @@ const envForm = reactive({
   mysqlDriver: false
 });
 
+// 环境检测日志
+const envLogs = ref<string[]>([]);
+const showEnvLogs = ref(false);
+
 const dbForm = reactive({
   host: 'localhost',
   port: 3306,
@@ -299,8 +303,13 @@ const executeReinstall = async () => {
 // 环境检测
 const checkEnvironment = async () => {
   loading.value = true;
+  envLogs.value = [];
+  showEnvLogs.value = true;
   try {
     const response = await api.install.checkEnvironment();
+
+    // 保存日志
+    envLogs.value = response.logs || [];
 
     const javaCheck = response.checks.find(c => c.name === 'Java 版本');
     const backendCheck = response.checks.find(c => c.name === '后端服务');
@@ -312,7 +321,9 @@ const checkEnvironment = async () => {
 
     if (response.allPassed) {
       ElMessage.success('环境检测通过');
-      currentStep.value++;
+      setTimeout(() => {
+        currentStep.value++;
+      }, 500);
     } else {
       const failedChecks = response.checks.filter(c => !c.passed);
       const messages = failedChecks.map(c => `${c.name}: ${c.suggestion}`).join('\n');
@@ -321,6 +332,7 @@ const checkEnvironment = async () => {
       });
     }
   } catch (error: any) {
+    envLogs.value.push(`[ERROR] 环境检测失败: ${error.message || '未知错误'}`);
     if (error.status === 403) {
       ElMessageBox.alert('系统已安装，无法重复安装', '提示', {
         confirmButtonText: '前往首页',
@@ -336,6 +348,10 @@ const checkEnvironment = async () => {
   }
 };
 
+// 数据库检查日志
+const dbCheckLogs = ref<string[]>([]);
+const showDbCheckLogs = ref(false);
+
 // 测试数据库连接
 const testDatabase = async () => {
   if (!dbForm.host || !dbForm.database || !dbForm.username) {
@@ -344,17 +360,31 @@ const testDatabase = async () => {
   }
 
   loading.value = true;
+  dbCheckLogs.value = [];
+  showDbCheckLogs.value = true;
   try {
-    const response = await api.install.testDatabase(dbForm);
-    if (response.success) {
-      ElMessage.success('数据库连接成功，MySQL 版本符合要求');
+    const response = await api.install.checkDatabase(dbForm);
+
+    // 保存日志
+    dbCheckLogs.value = response.logs || [];
+
+    if (response.connected) {
+      ElMessage.success(`数据库连接成功，MySQL ${response.mysqlVersion}`);
       dbTestPassed.value = true;
+
+      // 如果检测到已有数据，显示重新安装选项
+      if (response.needsReinstallOptions) {
+        ElMessage.warning(response.existingDataMessage || '检测到数据库已有数据');
+        // 加载重新安装选项
+        await loadReinstallOptions();
+      }
     } else {
-      ElMessage.error(response.message || '数据库连接失败或版本过低（需要 MySQL 8.0+）');
+      ElMessage.error(response.message || '数据库连接失败');
       dbTestPassed.value = false;
     }
   } catch (error: any) {
     dbTestPassed.value = false;
+    dbCheckLogs.value.push(`[ERROR] 数据库检查失败: ${error.message || '未知错误'}`);
     if (error.status === 403) {
       ElMessageBox.alert('系统已安装，无法重复安装', '提示', {
         confirmButtonText: '前往首页',
@@ -716,6 +746,34 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- 日志输出区域 -->
+        <div v-if="showEnvLogs && envLogs.length > 0" class="env-logs-section">
+          <div class="logs-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <span>检测日志</span>
+          </div>
+          <div class="logs-content">
+            <div
+              v-for="(log, index) in envLogs"
+              :key="index"
+              class="log-line"
+              :class="{
+                'log-info': log.includes('[INFO]'),
+                'log-error': log.includes('[ERROR]'),
+                'log-warn': log.includes('[WARN]')
+              }"
+            >
+              {{ log }}
+            </div>
+          </div>
+        </div>
+
         <div class="step-actions">
           <button class="btn-primary" :disabled="loading" @click="checkEnvironment">
             <span v-if="loading" class="btn-loading"></span>
@@ -761,6 +819,34 @@ onMounted(() => {
           <div class="form-group">
             <label class="form-label">数据库密码</label>
             <input v-model="dbForm.password" type="password" class="form-input" placeholder="请输入数据库密码" />
+          </div>
+        </div>
+
+        <!-- 数据库检查日志 -->
+        <div v-if="showDbCheckLogs && dbCheckLogs.length > 0" class="env-logs-section">
+          <div class="logs-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <span>连接日志</span>
+          </div>
+          <div class="logs-content">
+            <div
+              v-for="(log, index) in dbCheckLogs"
+              :key="index"
+              class="log-line"
+              :class="{
+                'log-info': log.includes('[INFO]'),
+                'log-error': log.includes('[ERROR]'),
+                'log-warn': log.includes('[WARN]')
+              }"
+            >
+              {{ log }}
+            </div>
           </div>
         </div>
 
@@ -2147,6 +2233,57 @@ onMounted(() => {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
 }
 
+/* 环境检测日志样式 */
+.env-logs-section {
+  margin-top: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+}
+
+.logs-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.logs-header svg {
+  color: var(--color-brand-primary);
+}
+
+.logs-content {
+  padding: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.log-line {
+  padding: 0.25rem 0;
+  word-break: break-all;
+}
+
+.log-info {
+  color: var(--color-text-secondary);
+}
+
+.log-error {
+  color: #ef4444;
+}
+
+.log-warn {
+  color: #f59e0b;
+}
+
 @media (max-width: 640px) {
   .reinstall-options-dialog {
     padding: 1.5rem;
@@ -2159,6 +2296,10 @@ onMounted(() => {
 
   .option-card {
     padding: 1rem;
+  }
+
+  .logs-content {
+    max-height: 150px;
   }
 }
 </style>

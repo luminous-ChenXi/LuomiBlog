@@ -47,6 +47,17 @@ public class InstallController {
         ));
     }
 
+    @PostMapping("/check-database")
+    public ApiResponse<DatabaseCheckResponse> checkDatabase(@Valid @RequestBody DatabaseConfigRequest request) {
+        // 检查是否已安装
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
+        DatabaseCheckResponse response = installService.checkDatabase(request);
+        return ApiResponse.success(response);
+    }
+
     @PostMapping("/execute-sql")
     public ApiResponse<Map<String, Object>> executeSqlScripts(@Valid @RequestBody DatabaseConfigRequest request) {
         // 检查是否已安装

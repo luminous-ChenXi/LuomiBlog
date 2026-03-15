@@ -10,6 +10,14 @@ public interface InstallService {
 
     boolean testDatabaseConnection(DatabaseConfigRequest request);
 
+    /**
+     * 检查数据库连接并获取详细信息
+     * 包括是否已有数据、MySQL版本等信息
+     * @param request 数据库配置
+     * @return 数据库检查结果
+     */
+    DatabaseCheckResponse checkDatabase(DatabaseConfigRequest request);
+
     void executeSqlScripts(DatabaseConfigRequest request);
 
     void createAdminAccount(AdminAccountRequest request);
