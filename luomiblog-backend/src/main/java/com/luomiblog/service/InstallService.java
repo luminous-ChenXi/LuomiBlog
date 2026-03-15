@@ -17,4 +17,10 @@ public interface InstallService {
     void saveSiteConfig(SiteConfigRequest request);
 
     void completeInstallation();
+
+    /**
+     * 重置安装状态（仅开发环境使用）
+     * 删除安装锁文件，允许重新安装
+     */
+    void resetInstallation();
 }
