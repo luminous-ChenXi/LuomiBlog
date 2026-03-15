@@ -147,6 +147,7 @@ export interface AIAskResponse {
 export interface InstallStatusResponse {
   installed: boolean;
   locked: boolean;
+  hasData: boolean;
   message: string;
 }
 
