@@ -1,0 +1,10 @@
+# LuomiBlog 自定义配置文件（由安装向导生成）
+# 生成时间: 2026-03-15T16:05:27.164298900
+# 警告: 此文件由系统自动生成，手动修改可能被覆盖
+
+blog:
+  name: LuomiBlog
+  description: 一个基于 Astro + Vue + SpringBoot 的 AI 知识库博客
+  theme: auto
+  language: zh
+  timezone: Asia/Shanghai
