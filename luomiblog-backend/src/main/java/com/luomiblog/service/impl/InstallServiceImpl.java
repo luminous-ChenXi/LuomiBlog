@@ -342,6 +342,15 @@ public class InstallServiceImpl implements InstallService {
     @Override
     @Transactional
     public void createAdminAccount(AdminAccountRequest request) {
+        // 检查数据库表是否存在
+        try {
+            // 尝试查询 users 表，如果表不存在会抛出异常
+            userRepository.count();
+        } catch (Exception e) {
+            log.error("数据库表不存在，请先执行 SQL 脚本初始化数据库", e);
+            throw new RuntimeException("数据库表不存在，请先执行 SQL 脚本初始化数据库");
+        }
+
         // 检查是否已存在管理员
         if (userRepository.count() > 0) {
             throw new RuntimeException("管理员账号已存在");
