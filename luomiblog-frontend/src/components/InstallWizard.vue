@@ -725,8 +725,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 4: SMTP配置 -->
-    <div v-if="currentStep === 3" class="step-content">
+    <!-- 步骤 5: SMTP配置 -->
+    <div v-if="currentStep === 4" class="step-content">
       <div class="step-card">
         <div class="card-header">
           <div class="card-icon">
@@ -814,8 +814,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 5: 网站图标配置 -->
-    <div v-if="currentStep === 4" class="step-content">
+    <!-- 步骤 6: 网站图标配置 -->
+    <div v-if="currentStep === 5" class="step-content">
       <div class="step-card">
         <div class="card-header">
           <div class="card-icon">
@@ -926,8 +926,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 6: 创建管理员 -->
-    <div v-if="currentStep === 5" class="step-content">
+    <!-- 步骤 7: 创建管理员 -->
+    <div v-if="currentStep === 6" class="step-content">
       <div class="step-card">
         <div class="card-header">
           <div class="card-icon">
@@ -973,8 +973,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 步骤 7: 完成安装 -->
-    <div v-if="currentStep === 6" class="step-content">
+    <!-- 步骤 8: 完成安装 -->
+    <div v-if="currentStep === 7" class="step-content">
       <div class="step-card complete-card">
         <div class="complete-icon">
           <div class="success-circle">
