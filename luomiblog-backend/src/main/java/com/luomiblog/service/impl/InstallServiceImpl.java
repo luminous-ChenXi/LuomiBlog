@@ -342,39 +342,59 @@ public class InstallServiceImpl implements InstallService {
     @Override
     @Transactional
     public void createAdminAccount(AdminAccountRequest request) {
-        // 检查数据库表是否存在
+        // 使用 JDBC 直接执行 SQL，不依赖 JPA Repository
         try {
-            // 尝试查询 users 表，如果表不存在会抛出异常
-            userRepository.count();
+            // 检查 users 表是否存在
+            Integer tableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
+                Integer.class
+            );
+            if (tableCount == null || tableCount == 0) {
+                throw new RuntimeException("数据库表不存在，请先执行 SQL 脚本初始化数据库");
+            }
+
+            // 检查是否已存在管理员
+            Integer userCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users",
+                Integer.class
+            );
+            if (userCount != null && userCount > 0) {
+                throw new RuntimeException("管理员账号已存在");
+            }
+
+            // 获取 admin 角色 ID
+            Long adminRoleId;
+            try {
+                adminRoleId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM roles WHERE code = 'admin'",
+                    Long.class
+                );
+            } catch (Exception e) {
+                throw new RuntimeException("admin 角色不存在，请先执行 SQL 脚本");
+            }
+
+            // 使用 JDBC 直接插入管理员账号
+            String sql = "INSERT INTO users (username, email, password_hash, nickname, role_id, status, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+            String passwordHash = passwordEncoder.encode(request.getPassword());
+            String nickname = request.getNickname() != null ? request.getNickname() : request.getUsername();
+
+            jdbcTemplate.update(sql,
+                request.getUsername(),
+                request.getEmail(),
+                passwordHash,
+                nickname,
+                adminRoleId,
+                "active",
+                true
+            );
+
+            log.info("管理员账号创建成功: {}", request.getUsername());
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("数据库表不存在，请先执行 SQL 脚本初始化数据库", e);
-            throw new RuntimeException("数据库表不存在，请先执行 SQL 脚本初始化数据库");
+            log.error("创建管理员账号失败", e);
+            throw new RuntimeException("创建管理员账号失败: " + e.getMessage());
         }
-
-        // 检查是否已存在管理员
-        if (userRepository.count() > 0) {
-            throw new RuntimeException("管理员账号已存在");
-        }
-
-        // 获取 admin 角色
-        Role adminRole = roleRepository.findByCode("admin")
-                .orElseThrow(() -> new RuntimeException("admin 角色不存在，请先执行 SQL 脚本"));
-
-        // 创建管理员账号
-        User admin = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .nickname(request.getNickname() != null ? request.getNickname() : request.getUsername())
-                .roleId(adminRole.getId())
-                .status("active")
-                .emailVerified(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        userRepository.save(admin);
-        log.info("管理员账号创建成功: {}", request.getUsername());
     }
 
     @Override
