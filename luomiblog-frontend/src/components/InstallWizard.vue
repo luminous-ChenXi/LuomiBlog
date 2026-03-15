@@ -160,15 +160,28 @@ const checkInstallStatus = async () => {
     
     // 如果已安装且已锁定，直接跳转到首页
     if (response.locked) {
-      ElMessageBox.alert('系统已安装完成', '提示', {
-        confirmButtonText: '前往首页',
-        showClose: false,
-        closeOnClickModal: false,
-        closeOnPressEscape: false,
-        callback: () => {
-          window.location.href = '/';
+      ElMessageBox.alert(
+        '<div style="text-align: left;">' +
+        '<p style="margin-bottom: 12px; font-weight: 500;">系统已安装完成</p>' +
+        '<p style="margin-bottom: 8px; color: #666; font-size: 13px;">如需重新安装，请按以下步骤操作：</p>' +
+        '<ol style="margin: 0; padding-left: 16px; color: #666; font-size: 13px; line-height: 1.8;">' +
+        '<li>删除后端目录下的 <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">install.lock</code> 文件</li>' +
+        '<li>重新访问安装页面</li>' +
+        '<li>输入管理员/博主密码进行验证</li>' +
+        '</ol>' +
+        '</div>',
+        '提示',
+        {
+          confirmButtonText: '前往首页',
+          showClose: false,
+          closeOnClickModal: false,
+          closeOnPressEscape: false,
+          dangerouslyUseHTMLString: true,
+          callback: () => {
+            window.location.href = '/';
+          }
         }
-      });
+      );
       return;
     }
     
@@ -296,8 +309,13 @@ const executeReinstall = async () => {
         message: '重新安装准备完成'
       };
 
-      // 如果选择的是保留数据或更新结构，直接进入下一步
-      if (selectedReinstallOption.value !== 'fresh_install') {
+      // 如果选择的是保留数据或更新结构，进入初始化数据步骤
+      // 如果选择的是全新安装，数据库已清空并初始化完成，直接进入站点配置步骤
+      if (selectedReinstallOption.value === 'fresh_install') {
+        sqlExecuted.value = true; // 标记SQL已执行
+        currentStep.value = 3; // 跳到站点配置步骤
+        ElMessage.success('全新安装完成，请配置站点信息');
+      } else {
         currentStep.value = 2; // 跳到初始化数据步骤
       }
     } else {

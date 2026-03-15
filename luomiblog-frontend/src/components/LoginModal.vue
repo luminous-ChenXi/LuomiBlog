@@ -75,7 +75,20 @@ const handleSubmit = async () => {
     // 跳转到个人中心
     window.location.href = '/user';
   } catch (error: any) {
-    loginError.value = error.message || '登录失败，请检查用户名和密码';
+    const errorMessage = error.message || '';
+    
+    // 根据错误类型显示人性化提示
+    if (errorMessage.includes('密码') || errorMessage.includes('password') || errorMessage.includes('Bad credentials')) {
+      loginError.value = '密码错误，请重新输入。如果忘记密码，可以联系管理员重置。';
+    } else if (errorMessage.includes('用户') || errorMessage.includes('username') || errorMessage.includes('不存在')) {
+      loginError.value = '该用户名或邮箱未注册，请先注册账号。';
+    } else if (errorMessage.includes('锁定') || errorMessage.includes('locked')) {
+      loginError.value = '账号已被锁定，请联系管理员解锁。';
+    } else if (errorMessage.includes('禁用') || errorMessage.includes('disabled')) {
+      loginError.value = '账号已被禁用，如有疑问请联系管理员。';
+    } else {
+      loginError.value = '登录失败，请检查用户名和密码是否正确。';
+    }
   } finally {
     submitting.value = false;
   }
@@ -412,20 +425,32 @@ onUnmounted(() => {
 /* 登录错误提示 */
 .login-error {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: #fef2f2;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 1rem 1rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
   border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #dc2626;
+  border-radius: 12px;
+  color: #991b1b;
   font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  animation: shake 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.08);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .login-error svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+  margin-top: 1px;
+  color: #dc2626;
 }
 
 .form-item {

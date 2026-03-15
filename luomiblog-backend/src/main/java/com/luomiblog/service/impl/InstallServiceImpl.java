@@ -394,7 +394,7 @@ public class InstallServiceImpl implements InstallService {
             }
 
             // 使用 JDBC 直接插入管理员账号
-            String sql = "INSERT INTO users (username, email, password_hash, nickname, role_id, status, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+            String sql = "INSERT INTO users (username, email, password, nickname, role_id, status, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
             String passwordHash = passwordEncoder.encode(request.getPassword());
             String nickname = request.getNickname() != null ? request.getNickname() : request.getUsername();
 
@@ -483,7 +483,7 @@ public class InstallServiceImpl implements InstallService {
                                (userRoleId.equals(adminRoleId) || userRoleId.equals(bloggerRoleId));
                     })
                     .anyMatch(user -> {
-                        boolean matches = passwordEncoder.matches(verificationPassword, user.getPasswordHash());
+                        boolean matches = passwordEncoder.matches(verificationPassword, user.getPassword());
                         if (matches) {
                             log.info("重新安装权限验证通过：用户 '{}' 验证成功", user.getUsername());
                         }
