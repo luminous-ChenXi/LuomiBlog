@@ -2,7 +2,6 @@ package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.install.*;
 import com.luomiblog.entity.Role;
-import com.luomiblog.entity.User;
 import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.service.InstallService;
