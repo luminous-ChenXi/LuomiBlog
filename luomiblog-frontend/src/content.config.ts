@@ -12,6 +12,7 @@ const blogCollection = defineCollection({
     cover: z.string().optional(),
     views: z.number().default(0),
     comments: z.number().default(0),
+    likes: z.number().default(0),
     pinned: z.boolean().default(false),
   }),
 });

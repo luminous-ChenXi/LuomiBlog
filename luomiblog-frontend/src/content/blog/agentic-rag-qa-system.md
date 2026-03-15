@@ -8,6 +8,7 @@ category: 'AI 技术'
 cover: 'https://picsum.photos/seed/ai/800/500'
 views: 256
 comments: 23
+likes: 89
 slug: 'agentic-rag-qa-system'
 pinned: true
 ---

@@ -8,6 +8,7 @@ category: '后端开发'
 cover: 'https://picsum.photos/seed/database/800/500'
 views: 189
 comments: 8
+likes: 34
 slug: 'lightweight-blog-database-design'
 ---
 

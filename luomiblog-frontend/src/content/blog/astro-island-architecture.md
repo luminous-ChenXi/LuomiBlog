@@ -8,6 +8,7 @@ category: '前端架构'
 cover: 'https://picsum.photos/seed/astro/800/500'
 views: 128
 comments: 12
+likes: 45
 slug: 'astro-island-architecture'
 pinned: true
 ---

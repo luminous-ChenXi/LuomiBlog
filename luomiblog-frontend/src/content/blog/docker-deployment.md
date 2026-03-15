@@ -8,6 +8,7 @@ category: 'DevOps'
 cover: 'https://picsum.photos/seed/docker/800/500'
 views: 178
 comments: 6
+likes: 52
 slug: 'docker-deployment'
 ---
 
