@@ -722,9 +722,6 @@ import Layout from '../layouts/Layout.astro';
 </style>
 
 <script>
-  // 步骤控制
-  let currentStep = 1;
-
   const stepContents = document.querySelectorAll('.step-content');
   const stepItems = document.querySelectorAll('.step-item');
   const stepLine = document.querySelector('.step-line');
@@ -820,8 +817,6 @@ import Layout from '../layouts/Layout.astro';
 
   // 更新步骤显示
   function updateStep(step: number) {
-    currentStep = step;
-
     // 更新步骤内容
     stepContents.forEach((content, index) => {
       if (index + 1 === step) {

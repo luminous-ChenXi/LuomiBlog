@@ -159,7 +159,9 @@ export interface EnvironmentCheckResponse {
     passed: boolean;
     message: string;
     suggestion: string;
+    details?: string[];
   }[];
+  logs?: string[];
 }
 
 // 数据库配置请求
