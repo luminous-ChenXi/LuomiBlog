@@ -56,7 +56,7 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(user.getUsername());
 
-        return buildAuthResponse(token, user, memberRole.getName());
+        return buildAuthResponse(token, user, memberRole.getCode());
     }
 
     @Override
@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(authentication);
 
-        return buildAuthResponse(token, user, role.getName());
+        return buildAuthResponse(token, user, role.getCode());
     }
 
     @Override
@@ -97,10 +97,10 @@ public class AuthServiceImpl implements AuthService {
 
         String newToken = jwtUtil.generateToken(username);
 
-        return buildAuthResponse(newToken, user, role.getName());
+        return buildAuthResponse(newToken, user, role.getCode());
     }
 
-    private AuthResponse buildAuthResponse(String token, User user, String roleName) {
+    private AuthResponse buildAuthResponse(String token, User user, String roleCode) {
         return AuthResponse.builder()
                 .token(token)
                 .tokenType("Bearer")
@@ -111,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
                         .email(user.getEmail())
                         .nickname(user.getNickname())
                         .avatarUrl(user.getAvatarUrl())
-                        .role(roleName)
+                        .role(roleCode)
                         .build())
                 .build();
     }
