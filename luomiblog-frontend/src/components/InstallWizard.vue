@@ -6,7 +6,7 @@ import type { FaviconConfigRequest } from '../types/api';
 
 const currentStep = ref(0);
 const loading = ref(false);
-const installStatus = ref<{ installed: boolean; locked: boolean; message: string } | null>(null);
+const installStatus = ref<{ installed: boolean; locked: boolean; hasData: boolean; message: string } | null>(null);
 const dbTestPassed = ref(false);
 
 // 表单数据
@@ -177,15 +177,20 @@ const verifyReinstall = async () => {
     ElMessage.warning('请输入管理员密码');
     return;
   }
-  
+
   verifying.value = true;
   try {
     const response = await api.install.verifyReinstall(verifyPassword.value);
     if (response.success) {
       ElMessage.success('验证通过，可以重新安装');
       showReinstallVerify.value = false;
-      // 刷新页面以获取新的安装状态
-      window.location.reload();
+      // 更新安装状态，允许继续安装
+      installStatus.value = {
+        ...installStatus.value,
+        hasData: false,
+        installed: false,
+        locked: false
+      };
     } else {
       ElMessage.error(response.message || '验证失败');
     }
