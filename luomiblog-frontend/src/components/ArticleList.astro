@@ -1,75 +1,31 @@
 ---
 import ArticleCard from './ArticleCard.astro';
 import ViewModeSwitcher from './ViewModeSwitcher.vue';
+import { getCollection } from 'astro:content';
 
-const articles = [
-  {
-    title: "深入理解 Astro 岛屿架构",
-    summary: "Astro 的岛屿架构是一种革命性的前端架构模式，它允许开发者在静态生成的页面中按需加载交互式组件...",
-    date: "2026-02-26",
-    category: "前端架构",
-    tags: ["Astro", "性能优化", "静态生成"],
-    slug: "astro-island-architecture",
-    views: 128,
-    comments: 12,
-    cover: "https://picsum.photos/seed/astro/800/500"
-  },
-  {
-    title: "Spring Boot 3.2 新特性探索",
-    summary: "Spring Boot 3.2 带来了许多令人兴奋的新特性，包括虚拟线程支持、RestClient、JdbcClient 等...",
-    date: "2026-02-28",
-    category: "后端开发",
-    tags: ["Spring Boot", "Java", "后端"],
-    slug: "spring-boot-3-2-features",
-    views: 256,
-    comments: 23,
-    cover: "https://picsum.photos/seed/springboot/800/500"
-  },
-  {
-    title: "基于 Agentic RAG 的智能问答系统",
-    summary: "RAG（检索增强生成）技术结合 Agent 智能体，能够基于博主原创内容提供精准的问答服务...",
-    date: "2026-02-25",
-    category: "AI 技术",
-    tags: ["RAG", "AI", "阿里云百炼"],
-    slug: "agentic-rag-qa-system",
-    views: 256,
-    comments: 23,
-    cover: "https://picsum.photos/seed/ai/800/500"
-  },
-  {
-    title: "轻量级博客的数据库设计",
-    summary: "如何在 2核4G 的轻量服务器上设计高效的数据库架构？本文分享 MySQL 分区表、索引优化...",
-    date: "2026-02-24",
-    category: "后端开发",
-    tags: ["MySQL", "数据库", "性能优化"],
-    slug: "lightweight-blog-database-design",
-    views: 189,
-    comments: 8,
-    cover: "https://picsum.photos/seed/database/800/500"
-  },
-  {
-    title: "Vue 3 Composition API 最佳实践",
-    summary: "深入理解 Vue 3 Composition API，掌握组合式函数的设计模式与代码组织技巧...",
-    date: "2026-02-22",
-    category: "前端架构",
-    tags: ["Vue", "JavaScript", "前端"],
-    slug: "vue3-composition-api",
-    views: 312,
-    comments: 15,
-    cover: "https://picsum.photos/seed/vue/800/500"
-  },
-  {
-    title: "Docker 容器化部署实战",
-    summary: "从零开始学习 Docker，掌握容器化部署的核心概念与实战技巧...",
-    date: "2026-02-20",
-    category: "DevOps",
-    tags: ["Docker", "DevOps", "部署"],
-    slug: "docker-deployment",
-    views: 178,
-    comments: 6,
-    cover: "https://picsum.photos/seed/docker/800/500"
-  }
-];
+// 获取所有文章
+const allPosts = await getCollection('blog');
+
+// 按日期排序（最新的在前）
+const sortedPosts = allPosts.sort((a, b) => {
+  const dateA = new Date(a.data.pubDate).getTime();
+  const dateB = new Date(b.data.pubDate).getTime();
+  return dateB - dateA;
+});
+
+// 转换为 ArticleCard 需要的格式
+const articles = sortedPosts.map(post => ({
+  title: post.data.title,
+  summary: post.data.description,
+  date: new Date(post.data.pubDate).toISOString().split('T')[0],
+  category: post.data.category || '未分类',
+  tags: post.data.tags || [],
+  slug: post.slug,
+  views: post.data.views || 0,
+  comments: post.data.comments || 0,
+  cover: post.data.cover,
+  author: post.data.author || '辰汐',
+}));
 ---
 
 <section class="article-section" id="article-section">
@@ -95,9 +51,19 @@ const articles = [
       </div>
     </div>
     <div class="article-grid" id="article-grid">
-      {articles.map(article => (
-        <ArticleCard {...article} />
-      ))}
+      {articles.length > 0 ? (
+        articles.map(article => (
+          <ArticleCard {...article} />
+        ))
+      ) : (
+        <div class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <p>暂无文章</p>
+        </div>
+      )}
     </div>
   </div>
 </section>
@@ -198,8 +164,6 @@ const articles = [
   .view-all:hover {
     border-color: var(--color-brand-primary);
     color: var(--color-brand-primary);
-    transform: translateX(4px);
-    box-shadow: var(--shadow-md);
   }
 
   .view-all svg {
@@ -210,110 +174,56 @@ const articles = [
     transform: translateX(4px);
   }
 
-  /* 网格模式 */
   .article-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 28px;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
   }
 
-  /* 列表模式 */
   .article-grid[data-view-mode="list"] {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-  }
-
-  .article-grid[data-view-mode="list"] :global(.article-card) {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 0;
-    animation: listModeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .article-grid :global(.article-card) {
-    animation: gridModeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes listModeIn {
-    0% {
-      opacity: 0;
-      transform: translateX(-20px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes gridModeIn {
-    0% {
-      opacity: 0;
-      transform: scale(0.95) translateY(10px);
-    }
-    100% {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-
-  .article-grid[data-view-mode="list"] :global(.card-image) {
-    height: 100%;
-    min-height: 200px;
-    transition: all 0.4s ease;
-  }
-
-  .article-grid[data-view-mode="list"] :global(.card-content) {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    transition: all 0.4s ease;
+    padding: 80px 20px;
+    color: var(--color-text-tertiary);
+    gap: 16px;
   }
 
-  .article-grid[data-view-mode="list"] :global(.card-title) {
-    font-size: 1.25rem;
-    transition: all 0.3s ease;
+  .empty-state svg {
+    opacity: 0.5;
   }
 
-  .article-grid[data-view-mode="list"] :global(.card-summary) {
-    -webkit-line-clamp: 2;
-    transition: all 0.3s ease;
+  @media (max-width: 1200px) {
+    .article-grid {
+      gap: 20px;
+    }
   }
 
   @media (max-width: 968px) {
-    .article-grid[data-view-mode="list"] :global(.article-card) {
-      grid-template-columns: 200px 1fr;
-    }
-  }
-
-  @media (max-width: 768px) {
     .article-section {
-      padding: 20px 0 60px;
-    }
-
-    .article-grid {
-      grid-template-columns: 1fr;
+      padding: 32px 0 60px;
     }
 
     .section-header {
       flex-direction: column;
       align-items: flex-start;
       gap: 20px;
+      margin-bottom: 32px;
     }
 
-    .section-actions {
-      width: 100%;
-      justify-content: space-between;
+    .section-title {
+      font-size: 1.5rem;
     }
 
-    .article-grid[data-view-mode="list"] :global(.article-card) {
+    .article-grid {
       grid-template-columns: 1fr;
-    }
-
-    .article-grid[data-view-mode="list"] :global(.card-image) {
-      height: 180px;
+      gap: 20px;
     }
   }
 </style>
