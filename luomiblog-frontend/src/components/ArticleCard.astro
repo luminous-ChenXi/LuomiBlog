@@ -44,14 +44,14 @@ const {
           </svg>
         </div>
       )}
+      <div class="card-category">
+        <span class="category-dot"></span>
+        {category}
+      </div>
     </div>
   </a>
   
   <div class="card-content">
-    <div class="card-header">
-      <span class="card-category">{category}</span>
-    </div>
-    
     <h3 class="card-title">
       <a href={`/article/${slug}`}>{title}</a>
     </h3>
@@ -59,6 +59,14 @@ const {
     <p class="card-summary">{summary}</p>
     
     <div class="card-footer">
+      <div class="card-author">
+        <img src={avatar} alt={author} class="author-avatar" />
+        <div class="author-info">
+          <span class="author-name">{author}</span>
+          <span class="post-date">{date}</span>
+        </div>
+      </div>
+      
       <div class="card-meta">
         <div class="meta-item" title="阅读量">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -80,17 +88,12 @@ const {
           <span>{comments}</span>
         </div>
       </div>
-      
-      <div class="card-author">
-        <img src={avatar} alt={author} class="author-avatar" />
-        <span class="author-name">{author}</span>
-        <span class="post-date">{date}</span>
-      </div>
     </div>
   </div>
 </article>
 
 <style>
+  /* 默认列表模式 - 横向布局 */
   .article-card {
     display: flex;
     background: var(--color-card);
@@ -145,6 +148,34 @@ const {
     opacity: 0.6;
   }
 
+  .card-category {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-brand-primary);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  [data-theme="dark"] .card-category {
+    background: rgba(26, 26, 46, 0.95);
+  }
+
+  .category-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--color-brand-primary);
+    border-radius: 50%;
+  }
+
   .card-content {
     flex: 1;
     padding: 20px 24px;
@@ -152,23 +183,6 @@ const {
     flex-direction: column;
     justify-content: space-between;
     min-width: 0;
-  }
-
-  .card-header {
-    margin-bottom: 8px;
-  }
-
-  .card-category {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: rgba(255, 107, 157, 0.08);
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-brand-primary);
-    border: 1px solid rgba(255, 107, 157, 0.15);
   }
 
   .card-title {
@@ -209,43 +223,33 @@ const {
     border-top: 1px solid var(--color-border);
   }
 
-  .card-meta {
-    display: flex;
-    gap: 16px;
-    flex-shrink: 0;
-  }
-
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--color-text-muted);
-    font-size: 0.8125rem;
-    font-weight: 500;
-  }
-
-  .meta-item svg {
-    color: var(--color-brand-primary);
-    opacity: 0.7;
-  }
-
   .card-author {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
+    gap: 10px;
   }
 
   .author-avatar {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: 1px solid var(--color-border);
+    border: 2px solid var(--color-border);
+    transition: border-color var(--transition-fast);
+  }
+
+  .article-card:hover .author-avatar {
+    border-color: var(--color-brand-primary);
+  }
+
+  .author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .author-name {
     font-size: 0.8125rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-text);
   }
 
@@ -254,10 +258,48 @@ const {
     color: var(--color-text-muted);
   }
 
-  .post-date::before {
-    content: '·';
-    margin: 0 6px;
+  .card-meta {
+    display: flex;
+    gap: 12px;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .meta-item svg {
+    color: var(--color-brand-primary);
+    opacity: 0.7;
+  }
+
+  /* 网格模式 - 纵向卡片布局 */
+  :global(.article-grid[data-view-mode="grid"]) .article-card {
+    flex-direction: column;
+    height: auto;
+  }
+
+  :global(.article-grid[data-view-mode="grid"]) .card-image-link {
+    width: 100%;
+    height: 180px;
+  }
+
+  :global(.article-grid[data-view-mode="grid"]) .card-content {
+    padding: 20px;
+  }
+
+  :global(.article-grid[data-view-mode="grid"]) .card-summary {
+    -webkit-line-clamp: 2;
+  }
+
+  :global(.article-grid[data-view-mode="grid"]) .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   /* 响应式 */
