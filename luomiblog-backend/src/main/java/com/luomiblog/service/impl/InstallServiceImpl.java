@@ -325,13 +325,16 @@ public class InstallServiceImpl implements InstallService {
     }
 
     @Override
-    @Transactional
     public void executeSqlScripts(DatabaseConfigRequest request) {
+        // 使用用户配置的数据源执行 SQL 脚本
+        DataSource dataSource = createDataSource(request);
+        JdbcTemplate template = new JdbcTemplate(dataSource);
+
         try {
             // 执行 schema.sql
-            executeSqlFile("db/schema.sql");
+            executeSqlFile("db/schema.sql", template);
             // 执行 data.sql
-            executeSqlFile("db/data.sql");
+            executeSqlFile("db/data.sql", template);
             log.info("SQL 脚本执行成功");
         } catch (Exception e) {
             log.error("SQL 脚本执行失败", e);
@@ -526,12 +529,12 @@ public class InstallServiceImpl implements InstallService {
             case KEEP_DATA:
                 // 保留数据，仅执行 schema.sql（使用 IF NOT EXISTS）
                 // 不执行 data.sql，避免覆盖现有数据
-                executeSchemaOnly();
+                executeSchemaOnly(request);
                 break;
 
             case UPDATE_SCHEMA:
                 // 更新表结构，保留数据
-                executeSchemaOnly();
+                executeSchemaOnly(request);
                 break;
 
             case FRESH_INSTALL:
@@ -547,9 +550,11 @@ public class InstallServiceImpl implements InstallService {
     /**
      * 仅执行 schema.sql（使用 IF NOT EXISTS，不会删除现有数据）
      */
-    private void executeSchemaOnly() {
+    private void executeSchemaOnly(DatabaseConfigRequest request) {
         try {
-            executeSqlFile("db/schema.sql");
+            DataSource dataSource = createDataSource(request);
+            JdbcTemplate template = new JdbcTemplate(dataSource);
+            executeSqlFile("db/schema.sql", template);
             log.info("数据库结构更新完成（保留数据）");
         } catch (Exception e) {
             log.error("更新数据库结构失败", e);
@@ -662,7 +667,7 @@ public class InstallServiceImpl implements InstallService {
         return dataSource;
     }
 
-    private void executeSqlFile(String resourcePath) throws IOException {
+    private void executeSqlFile(String resourcePath, JdbcTemplate template) throws IOException {
         Resource resource = new ClassPathResource(resourcePath);
         if (!resource.exists()) {
             log.warn("SQL 文件不存在: {}", resourcePath);
@@ -678,7 +683,8 @@ public class InstallServiceImpl implements InstallService {
             String trimmed = statement.trim();
             if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
                 try {
-                    jdbcTemplate.execute(trimmed);
+                    template.execute(trimmed);
+                    log.debug("SQL 执行成功: {}", trimmed.substring(0, Math.min(50, trimmed.length())) + "...");
                 } catch (Exception e) {
                     log.warn("SQL 执行警告: {}", e.getMessage());
                     // 忽略已存在的表错误
