@@ -281,25 +281,63 @@ const {
   :global(.article-grid[data-view-mode="grid"]) .article-card {
     flex-direction: column;
     height: auto;
+    animation: cardToGrid 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes cardToGrid {
+    0% {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    50% {
+      transform: scale(1.01);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   :global(.article-grid[data-view-mode="grid"]) .card-image-link {
     width: 100%;
     height: 180px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   :global(.article-grid[data-view-mode="grid"]) .card-content {
     padding: 20px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   :global(.article-grid[data-view-mode="grid"]) .card-summary {
     -webkit-line-clamp: 2;
+    transition: all 0.4s ease;
   }
 
   :global(.article-grid[data-view-mode="grid"]) .card-footer {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+    transition: all 0.4s ease;
+  }
+
+  /* 列表模式动画 */
+  :global(.article-grid[data-view-mode="list"]) .article-card {
+    animation: cardToList 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes cardToList {
+    0% {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    50% {
+      transform: scale(1.01);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   /* 响应式 */

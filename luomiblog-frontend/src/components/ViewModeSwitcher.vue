@@ -91,9 +91,48 @@ const toggleMode = () => {
   bottom: 4px;
   background: #ffffff;
   border-radius: 50%;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
   z-index: 2;
+}
+
+/* 切换时的弹性动画 */
+.view-mode-switch input:checked + .switch-slider:before {
+  animation: sliderBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes sliderBounce {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  40% {
+    transform: translateX(36px) scale(0.9);
+  }
+  60% {
+    transform: translateX(36px) scale(1.05);
+  }
+  100% {
+    transform: translateX(36px) scale(1);
+  }
+}
+
+.view-mode-switch input:not(:checked) + .switch-slider:before {
+  animation: sliderBounceBack 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes sliderBounceBack {
+  0% {
+    transform: translateX(36px) scale(1);
+  }
+  40% {
+    transform: translateX(0) scale(0.9);
+  }
+  60% {
+    transform: translateX(0) scale(1.05);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
 }
 
 .icon {
@@ -121,12 +160,49 @@ const toggleMode = () => {
 
 .view-mode-switch input:checked + .switch-slider .grid-icon {
   color: #6b7280;
-  transform: scale(0.9);
+  transform: scale(0.9) rotate(-10deg);
+  animation: iconFadeOut 0.3s ease;
 }
 
 .view-mode-switch input:checked + .switch-slider .list-icon {
   color: #ff6b9d;
-  transform: scale(1.1);
+  transform: scale(1.1) rotate(0deg);
+  animation: iconPopIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 切换回网格模式 */
+.view-mode-switch input:not(:checked) + .switch-slider .grid-icon {
+  animation: iconPopIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.view-mode-switch input:not(:checked) + .switch-slider .list-icon {
+  transform: scale(0.9) rotate(10deg);
+  animation: iconFadeOut 0.3s ease;
+}
+
+@keyframes iconPopIn {
+  0% {
+    transform: scale(0.5) rotate(-20deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1.1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes iconFadeOut {
+  0% {
+    transform: scale(1.1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9) rotate(-10deg);
+    opacity: 0.7;
+  }
 }
 
 /* 悬停效果 */

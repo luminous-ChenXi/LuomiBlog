@@ -179,6 +179,24 @@ const articles = sortedPosts.map(post => ({
     display: flex;
     flex-direction: column;
     gap: 20px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 文章卡片动画 */
+  .article-grid :global(.article-card) {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: cardFadeIn 0.5s ease-out;
+  }
+
+  @keyframes cardFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* 网格视图模式 - 两列 */
@@ -186,6 +204,18 @@ const articles = sortedPosts.map(post => ({
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
+    animation: gridLayoutIn 0.4s ease-out;
+  }
+
+  @keyframes gridLayoutIn {
+    from {
+      gap: 40px;
+      opacity: 0.8;
+    }
+    to {
+      gap: 24px;
+      opacity: 1;
+    }
   }
 
   /* 列表视图模式 - 单列 */
@@ -193,6 +223,18 @@ const articles = sortedPosts.map(post => ({
     display: flex;
     flex-direction: column;
     gap: 20px;
+    animation: listLayoutIn 0.4s ease-out;
+  }
+
+  @keyframes listLayoutIn {
+    from {
+      gap: 40px;
+      opacity: 0.8;
+    }
+    to {
+      gap: 20px;
+      opacity: 1;
+    }
   }
 
   .empty-state {
