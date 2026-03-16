@@ -325,6 +325,9 @@ public class InstallServiceImpl implements InstallService {
 
     @Override
     public void executeSqlScripts(DatabaseConfigRequest request) {
+        log.info("开始执行 SQL 脚本，数据库: {}@{}:{}/{}",
+            request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
+
         // 使用用户配置的数据源执行 SQL 脚本
         DataSource dataSource = createDataSource(request);
         JdbcTemplate template = new JdbcTemplate(dataSource);
@@ -335,6 +338,21 @@ public class InstallServiceImpl implements InstallService {
             // 执行 data.sql
             executeSqlFile("db/data.sql", template);
             log.info("SQL 脚本执行成功");
+
+            // 验证表是否创建成功
+            try {
+                Integer tableCount = template.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
+                    Integer.class
+                );
+                if (tableCount == null || tableCount == 0) {
+                    throw new RuntimeException("验证失败：users 表未创建成功");
+                }
+                log.info("验证成功：users 表已创建");
+            } catch (Exception e) {
+                log.error("验证表创建失败", e);
+                throw new RuntimeException("验证表创建失败: " + e.getMessage());
+            }
         } catch (Exception e) {
             log.error("SQL 脚本执行失败", e);
             throw new RuntimeException("SQL 脚本执行失败: " + e.getMessage(), e);
@@ -669,12 +687,16 @@ public class InstallServiceImpl implements InstallService {
     private void executeSqlFile(String resourcePath, JdbcTemplate template) throws IOException {
         Resource resource = new ClassPathResource(resourcePath);
         if (!resource.exists()) {
-            log.warn("SQL 文件不存在: {}", resourcePath);
-            return;
+            log.error("SQL 文件不存在: {}", resourcePath);
+            throw new RuntimeException("SQL 文件不存在: " + resourcePath);
         }
 
         byte[] bytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
         String sql = new String(bytes, StandardCharsets.UTF_8);
+
+        log.info("开始执行 SQL 文件: {}", resourcePath);
+        int successCount = 0;
+        int errorCount = 0;
 
         // 分割 SQL 语句并执行
         String[] statements = sql.split(";");
@@ -683,12 +705,29 @@ public class InstallServiceImpl implements InstallService {
             if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
                 try {
                     template.execute(trimmed);
+                    successCount++;
                     log.debug("SQL 执行成功: {}", trimmed.substring(0, Math.min(50, trimmed.length())) + "...");
                 } catch (Exception e) {
-                    log.warn("SQL 执行警告: {}", e.getMessage());
-                    // 忽略已存在的表错误
+                    errorCount++;
+                    // 只忽略"表已存在"的错误，其他错误需要记录
+                    String errorMsg = e.getMessage();
+                    if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("Duplicate entry"))) {
+                        log.debug("SQL 执行警告(可忽略): {}", errorMsg);
+                    } else {
+                        log.error("SQL 执行失败: {}, 错误: {}", trimmed.substring(0, Math.min(50, trimmed.length())), errorMsg);
+                        // 如果是关键错误，抛出异常
+                        if (errorMsg != null && (errorMsg.contains("Access denied") || errorMsg.contains("doesn't exist"))) {
+                            throw new RuntimeException("SQL 执行失败: " + errorMsg);
+                        }
+                    }
                 }
             }
+        }
+
+        log.info("SQL 文件执行完成: {}, 成功: {}, 失败: {}", resourcePath, successCount, errorCount);
+
+        if (errorCount > 0 && successCount == 0) {
+            throw new RuntimeException("SQL 脚本执行失败，所有语句都失败了");
         }
     }
 
