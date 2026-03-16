@@ -594,8 +594,29 @@ public class InstallServiceImpl implements InstallService {
             // 删除所有表（危险操作！）
             dropAllTables(template);
 
-            // 重新执行所有脚本
-            executeSqlScripts(request);
+            // 重新执行所有脚本（使用同一个template）
+            log.info("开始执行 SQL 脚本，数据库: {}@{}:{}/{}",
+                request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
+
+            // 执行 schema.sql
+            executeSqlFile("db/schema.sql", template);
+            // 执行 data.sql
+            executeSqlFile("db/data.sql", template);
+
+            // 验证表是否创建成功
+            try {
+                Integer tableCount = template.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
+                    Integer.class
+                );
+                if (tableCount == null || tableCount == 0) {
+                    throw new RuntimeException("验证失败：users 表未创建成功");
+                }
+                log.info("验证成功：users 表已创建");
+            } catch (Exception e) {
+                log.error("验证表创建失败", e);
+                throw new RuntimeException("验证表创建失败: " + e.getMessage());
+            }
 
             log.info("全新安装完成");
         } catch (Exception e) {
@@ -697,37 +718,53 @@ public class InstallServiceImpl implements InstallService {
         log.info("开始执行 SQL 文件: {}", resourcePath);
         int successCount = 0;
         int errorCount = 0;
+        int skipCount = 0;
+        String lastError = null;
 
         // 分割 SQL 语句并执行
         String[] statements = sql.split(";");
-        for (String statement : statements) {
+        log.info("SQL 文件共包含 {} 个语句块", statements.length);
+
+        for (int i = 0; i < statements.length; i++) {
+            String statement = statements[i];
             String trimmed = statement.trim();
-            if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
-                try {
-                    template.execute(trimmed);
-                    successCount++;
-                    log.debug("SQL 执行成功: {}", trimmed.substring(0, Math.min(50, trimmed.length())) + "...");
-                } catch (Exception e) {
-                    errorCount++;
-                    // 只忽略"表已存在"的错误，其他错误需要记录
-                    String errorMsg = e.getMessage();
-                    if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("Duplicate entry"))) {
-                        log.debug("SQL 执行警告(可忽略): {}", errorMsg);
-                    } else {
-                        log.error("SQL 执行失败: {}, 错误: {}", trimmed.substring(0, Math.min(50, trimmed.length())), errorMsg);
-                        // 如果是关键错误，抛出异常
-                        if (errorMsg != null && (errorMsg.contains("Access denied") || errorMsg.contains("doesn't exist"))) {
-                            throw new RuntimeException("SQL 执行失败: " + errorMsg);
-                        }
-                    }
+
+            // 跳过空语句和注释
+            if (trimmed.isEmpty() || trimmed.startsWith("--") || trimmed.startsWith("/*") || trimmed.startsWith("*")) {
+                skipCount++;
+                continue;
+            }
+
+            // 提取语句类型（CREATE TABLE, INSERT等）用于日志
+            String stmtType = trimmed.split("\\s+")[0].toUpperCase();
+            String preview = trimmed.substring(0, Math.min(50, trimmed.length())).replaceAll("\\s+", " ");
+
+            try {
+                template.execute(trimmed);
+                successCount++;
+                log.debug("SQL 执行成功 [{}]: {}", stmtType, preview + "...");
+            } catch (Exception e) {
+                errorCount++;
+                String errorMsg = e.getMessage();
+                if (lastError == null) {
+                    lastError = errorMsg;
+                }
+
+                // 只忽略"表已存在"的错误
+                if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("Duplicate entry"))) {
+                    log.debug("SQL 执行警告(可忽略) [{}]: {} - {}", stmtType, preview, errorMsg);
+                } else {
+                    log.error("SQL 执行失败 [{}]: {} - 错误: {}", stmtType, preview, errorMsg);
                 }
             }
         }
 
-        log.info("SQL 文件执行完成: {}, 成功: {}, 失败: {}", resourcePath, successCount, errorCount);
+        log.info("SQL 文件执行完成: {}, 总计: {}, 成功: {}, 失败: {}, 跳过: {}",
+            resourcePath, statements.length, successCount, errorCount, skipCount);
 
+        // 如果所有语句都失败了，抛出异常
         if (errorCount > 0 && successCount == 0) {
-            throw new RuntimeException("SQL 脚本执行失败，所有语句都失败了");
+            throw new RuntimeException("SQL 脚本执行失败，所有语句都失败了" + (lastError != null ? ": " + lastError : ""));
         }
     }
 
