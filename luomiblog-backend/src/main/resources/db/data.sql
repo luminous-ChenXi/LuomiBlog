@@ -1,62 +1,62 @@
--- =============================================
--- LuomiBlog 数据库初始数据脚�?-- 版本: V1.2
+﻿-- =============================================
+-- LuomiBlog 鏁版嵁搴撳垵濮嬫暟鎹剼鏈?-- 鐗堟湰: V1.2
 -- =============================================
 
 -- =============================================
--- 1. 初始化角色数�?-- =============================================
+-- 1. 鍒濆鍖栬鑹叉暟鎹?-- =============================================
 
 INSERT IGNORE INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`) VALUES
-(1, 'visitor', '访客', '未登录的匿名用户', 0, 1),
-(2, 'member', '会员', '注册登录的用�?, 1, 1),
-(3, 'blogger', '博主', '可以写文章的用户', 10, 1),
-(4, 'admin', '管理�?, '全站管理�?, 100, 1);
+(1, 'visitor', '璁垮', '鏈櫥褰曠殑鍖垮悕鐢ㄦ埛', 0, 1),
+(2, 'member', '浼氬憳', '娉ㄥ唽鐧诲綍鐨勭敤鎴?, 1, 1),
+(3, 'blogger', '鍗氫富', '鍙互鍐欐枃绔犵殑鐢ㄦ埛', 10, 1),
+(4, 'admin', '绠＄悊鍛?, '鍏ㄧ珯绠＄悊鍛?, 100, 1);
 
 -- =============================================
--- 2. 初始化权限数�?-- =============================================
+-- 2. 鍒濆鍖栨潈闄愭暟鎹?-- =============================================
 
 INSERT IGNORE INTO `permissions` (`code`, `name`, `type`, `description`, `sort_order`) VALUES
--- 文章权限
-('article:view', '查看文章', 'api', '查看文章列表和详�?, 1),
-('article:create', '创建文章', 'api', '创建新文�?, 2),
-('article:update', '更新文章', 'api', '更新自己的文�?, 3),
-('article:delete', '删除文章', 'api', '删除文章', 4),
-('article:manage', '管理文章', 'api', '管理所有文�?, 5),
--- 评论权限
-('comment:view', '查看评论', 'api', '查看评论列表', 10),
-('comment:create', '创建评论', 'api', '发表评论', 11),
-('comment:delete', '删除评论', 'api', '删除评论', 12),
-('comment:manage', '管理评论', 'api', '审核和管理评�?, 13),
--- 用户权限
-('user:view', '查看用户', 'api', '查看用户信息', 20),
-('user:update', '更新用户', 'api', '更新用户信息', 21),
-('user:manage', '管理用户', 'api', '管理所有用�?, 22),
--- 系统权限
-('system:view', '查看数据概览', 'api', '查看统计数据', 30),
-('system:config', '系统配置', 'api', '修改系统配置', 31),
--- 协作权限
-('suggestion:create', '提交建议', 'api', '提交编辑建议', 40),
-('suggestion:review', '审核建议', 'api', '审核编辑建议', 41),
--- 收藏权限
-('favorite:create', '收藏文章', 'api', '收藏文章', 50),
-('favorite:delete', '取消收藏', 'api', '取消收藏文章', 51),
-('favorite:view', '查看收藏', 'api', '查看收藏列表', 52),
--- 芙贝币权�?('coin:view', '查看芙贝�?, 'api', '查看芙贝币余额和记录', 60),
-('checkin:create', '每日签到', 'api', '每日签到获取芙贝�?, 61),
--- 赞赏/打赏权限
-('reward:view', '查看赞赏', 'api', '查看赞赏二维�?, 70),
-('reward:config', '配置赞赏', 'api', '配置文章赞赏', 71),
-('reward:give', '打赏文章', 'api', '使用芙贝币打赏文�?, 72),
--- 点赞权限
-('article:like', '点赞文章', 'api', '点赞文章', 80),
-('comment:like', '点赞评论', 'api', '点赞评论', 81),
--- 文章状态管理权�?('article:publish', '发布文章', 'api', '更改文章发布状�?, 90),
-('article:unpublish', '取消发布', 'api', '取消文章发布状�?, 91);
+-- 鏂囩珷鏉冮檺
+('article:view', '鏌ョ湅鏂囩珷', 'api', '鏌ョ湅鏂囩珷鍒楄〃鍜岃鎯?, 1),
+('article:create', '鍒涘缓鏂囩珷', 'api', '鍒涘缓鏂版枃绔?, 2),
+('article:update', '鏇存柊鏂囩珷', 'api', '鏇存柊鑷繁鐨勬枃绔?, 3),
+('article:delete', '鍒犻櫎鏂囩珷', 'api', '鍒犻櫎鏂囩珷', 4),
+('article:manage', '绠＄悊鏂囩珷', 'api', '绠＄悊鎵€鏈夋枃绔?, 5),
+-- 璇勮鏉冮檺
+('comment:view', '鏌ョ湅璇勮', 'api', '鏌ョ湅璇勮鍒楄〃', 10),
+('comment:create', '鍒涘缓璇勮', 'api', '鍙戣〃璇勮', 11),
+('comment:delete', '鍒犻櫎璇勮', 'api', '鍒犻櫎璇勮', 12),
+('comment:manage', '绠＄悊璇勮', 'api', '瀹℃牳鍜岀鐞嗚瘎璁?, 13),
+-- 鐢ㄦ埛鏉冮檺
+('user:view', '鏌ョ湅鐢ㄦ埛', 'api', '鏌ョ湅鐢ㄦ埛淇℃伅', 20),
+('user:update', '鏇存柊鐢ㄦ埛', 'api', '鏇存柊鐢ㄦ埛淇℃伅', 21),
+('user:manage', '绠＄悊鐢ㄦ埛', 'api', '绠＄悊鎵€鏈夌敤鎴?, 22),
+-- 绯荤粺鏉冮檺
+('system:view', '鏌ョ湅鏁版嵁姒傝', 'api', '鏌ョ湅缁熻鏁版嵁', 30),
+('system:config', '绯荤粺閰嶇疆', 'api', '淇敼绯荤粺閰嶇疆', 31),
+-- 鍗忎綔鏉冮檺
+('suggestion:create', '鎻愪氦寤鸿', 'api', '鎻愪氦缂栬緫寤鸿', 40),
+('suggestion:review', '瀹℃牳寤鸿', 'api', '瀹℃牳缂栬緫寤鸿', 41),
+-- 鏀惰棌鏉冮檺
+('favorite:create', '鏀惰棌鏂囩珷', 'api', '鏀惰棌鏂囩珷', 50),
+('favorite:delete', '鍙栨秷鏀惰棌', 'api', '鍙栨秷鏀惰棌鏂囩珷', 51),
+('favorite:view', '鏌ョ湅鏀惰棌', 'api', '鏌ョ湅鏀惰棌鍒楄〃', 52),
+-- 鑺欒礉甯佹潈闄?('coin:view', '鏌ョ湅鑺欒礉甯?, 'api', '鏌ョ湅鑺欒礉甯佷綑棰濆拰璁板綍', 60),
+('checkin:create', '姣忔棩绛惧埌', 'api', '姣忔棩绛惧埌鑾峰彇鑺欒礉甯?, 61),
+-- 璧炶祻/鎵撹祻鏉冮檺
+('reward:view', '鏌ョ湅璧炶祻', 'api', '鏌ョ湅璧炶祻浜岀淮鐮?, 70),
+('reward:config', '閰嶇疆璧炶祻', 'api', '閰嶇疆鏂囩珷璧炶祻', 71),
+('reward:give', '鎵撹祻鏂囩珷', 'api', '浣跨敤鑺欒礉甯佹墦璧忔枃绔?, 72),
+-- 鐐硅禐鏉冮檺
+('article:like', '鐐硅禐鏂囩珷', 'api', '鐐硅禐鏂囩珷', 80),
+('comment:like', '鐐硅禐璇勮', 'api', '鐐硅禐璇勮', 81),
+-- 鏂囩珷鐘舵€佺鐞嗘潈闄?('article:publish', '鍙戝竷鏂囩珷', 'api', '鏇存敼鏂囩珷鍙戝竷鐘舵€?, 90),
+('article:unpublish', '鍙栨秷鍙戝竷', 'api', '鍙栨秷鏂囩珷鍙戝竷鐘舵€?, 91);
 
 -- =============================================
--- 3. 分配角色权限
+-- 3. 鍒嗛厤瑙掕壊鏉冮檺
 -- =============================================
 
--- 访客：查看文�?评论、点赞、收藏、查看赞�?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+-- 璁垮锛氭煡鐪嬫枃绔?璇勮銆佺偣璧炪€佹敹钘忋€佹煡鐪嬭禐璧?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, id FROM `permissions` WHERE `code` IN (
   'article:view', 'comment:view',
   'article:like', 'comment:like',
@@ -64,7 +64,7 @@ SELECT 1, id FROM `permissions` WHERE `code` IN (
   'reward:view'
 );
 
--- 会员：继承访客权�?+ 评论、提交建议、签到、打赏（使用芙贝币）
+-- 浼氬憳锛氱户鎵胯瀹㈡潈闄?+ 璇勮銆佹彁浜ゅ缓璁€佺鍒般€佹墦璧忥紙浣跨敤鑺欒礉甯侊級
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions` WHERE `code` IN (
   'article:view', 'comment:view', 'comment:create',
@@ -75,7 +75,7 @@ SELECT 2, id FROM `permissions` WHERE `code` IN (
   'reward:view', 'reward:give'
 );
 
--- 博主：继承会员权�?+ 写文章、管理文章、更改文章状态、数据概览、后台访�?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+-- 鍗氫富锛氱户鎵夸細鍛樻潈闄?+ 鍐欐枃绔犮€佺鐞嗘枃绔犮€佹洿鏀规枃绔犵姸鎬併€佹暟鎹瑙堛€佸悗鍙拌闂?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, id FROM `permissions` WHERE `code` IN (
   'article:view', 'article:create', 'article:update', 'article:delete',
   'article:publish', 'article:unpublish',
@@ -89,26 +89,26 @@ SELECT 3, id FROM `permissions` WHERE `code` IN (
   'article:manage', 'comment:manage'
 );
 
--- 管理员：所有权�?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+-- 绠＄悊鍛橈細鎵€鏈夋潈闄?INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 4, id FROM `permissions`;
 
 -- =============================================
--- 4. 初始化管理面板菜�?-- =============================================
+-- 4. 鍒濆鍖栫鐞嗛潰鏉胯彍鍗?-- =============================================
 
 INSERT IGNORE INTO `admin_menu` (`name`, `code`, `path`, `icon`, `permission_code`, `visible_roles`, `sort_order`) VALUES
-('数据概览', 'dashboard', '/admin', 'LayoutDashboard', 'system:view', '["admin","blogger"]', 1),
-('文章管理', 'article_manage', '/admin/articles', 'FileText', 'article:manage', '["admin","blogger"]', 2),
-('评论管理', 'comment_manage', '/admin/comments', 'MessageSquare', 'comment:manage', '["admin","blogger"]', 3),
-('编辑建议', 'suggestions', '/admin/suggestions', 'GitPullRequest', 'suggestion:review', '["admin","blogger"]', 4),
-('用户管理', 'user_manage', '/admin/users', 'Users', 'user:manage', '["admin"]', 5),
-('附件管理', 'attachments', '/admin/attachments', 'Image', 'article:manage', '["admin","blogger"]', 6),
-('芙贝币管�?, 'coin_manage', '/admin/coins', 'Coins', 'system:config', '["admin"]', 7),
-('系统设置', 'system_settings', '/admin/settings', 'Settings', 'system:config', '["admin"]', 8),
-('AI配置', 'ai_config', '/admin/ai', 'Cpu', 'system:config', '["admin"]', 9),
-('数据统计', 'analytics', '/admin/analytics', 'BarChart3', 'system:view', '["admin","blogger"]', 10);
+('鏁版嵁姒傝', 'dashboard', '/admin', 'LayoutDashboard', 'system:view', '["admin","blogger"]', 1),
+('鏂囩珷绠＄悊', 'article_manage', '/admin/articles', 'FileText', 'article:manage', '["admin","blogger"]', 2),
+('璇勮绠＄悊', 'comment_manage', '/admin/comments', 'MessageSquare', 'comment:manage', '["admin","blogger"]', 3),
+('缂栬緫寤鸿', 'suggestions', '/admin/suggestions', 'GitPullRequest', 'suggestion:review', '["admin","blogger"]', 4),
+('鐢ㄦ埛绠＄悊', 'user_manage', '/admin/users', 'Users', 'user:manage', '["admin"]', 5),
+('闄勪欢绠＄悊', 'attachments', '/admin/attachments', 'Image', 'article:manage', '["admin","blogger"]', 6),
+('鑺欒礉甯佺鐞?, 'coin_manage', '/admin/coins', 'Coins', 'system:config', '["admin"]', 7),
+('绯荤粺璁剧疆', 'system_settings', '/admin/settings', 'Settings', 'system:config', '["admin"]', 8),
+('AI閰嶇疆', 'ai_config', '/admin/ai', 'Cpu', 'system:config', '["admin"]', 9),
+('鏁版嵁缁熻', 'analytics', '/admin/analytics', 'BarChart3', 'system:view', '["admin","blogger"]', 10);
 
 -- =============================================
--- 5. 初始化系统配�?-- =============================================
+-- 5. 鍒濆鍖栫郴缁熼厤缃?-- =============================================
 
 INSERT IGNORE INTO `system_config` (
   `id`, `site_name`, `site_description`, `default_language`, `default_theme`,
@@ -117,7 +117,7 @@ INSERT IGNORE INTO `system_config` (
 ) VALUES (
   1,
   'LuomiBlog',
-  '一个基�?Astro + Vue + SpringBoot �?AI 知识库博�?,
+  '涓€涓熀浜?Astro + Vue + SpringBoot 鐨?AI 鐭ヨ瘑搴撳崥瀹?,
   'zh',
   'auto',
   1,
@@ -129,158 +129,159 @@ INSERT IGNORE INTO `system_config` (
 );
 
 -- =============================================
--- 6. 初始化默认分�?-- =============================================
+-- 6. 鍒濆鍖栭粯璁ゅ垎绫?-- =============================================
 
 INSERT IGNORE INTO `article_category` (`name`, `slug`, `description`, `sort_order`) VALUES
-('技术分�?, 'tech', '技术文章、开发经验分�?, 1),
-('生活随笔', 'life', '日常生活、个人感�?, 2),
-('学习笔记', 'notes', '学习过程中的笔记整理', 3),
-('项目总结', 'projects', '项目开发总结与复�?, 4);
+('鎶€鏈垎浜?, 'tech', '鎶€鏈枃绔犮€佸紑鍙戠粡楠屽垎浜?, 1),
+('鐢熸椿闅忕瑪', 'life', '鏃ュ父鐢熸椿銆佷釜浜烘劅鎮?, 2),
+('瀛︿範绗旇', 'notes', '瀛︿範杩囩▼涓殑绗旇鏁寸悊', 3),
+('椤圭洰鎬荤粨', 'projects', '椤圭洰寮€鍙戞€荤粨涓庡鐩?, 4);
 
 -- =============================================
--- 7. 初始化默认标�?-- =============================================
+-- 7. 鍒濆鍖栭粯璁ゆ爣绛?-- =============================================
 
 INSERT IGNORE INTO `tags` (`name`, `slug`, `type`, `description`) VALUES
-('Astro', 'astro', 'system', 'Astro 静态站点生成器'),
-('Vue', 'vue', 'system', 'Vue.js 前端框架'),
-('SpringBoot', 'springboot', 'system', 'Spring Boot 后端框架'),
-('AI', 'ai', 'system', '人工智能相关'),
-('RAG', 'rag', 'system', '检索增强生�?),
-('MySQL', 'mysql', 'system', 'MySQL 数据�?),
-('前端', 'frontend', 'system', '前端开�?),
-('后端', 'backend', 'system', '后端开�?),
-('DevOps', 'devops', 'system', '运维部署');
+('Astro', 'astro', 'system', 'Astro 闈欐€佺珯鐐圭敓鎴愬櫒'),
+('Vue', 'vue', 'system', 'Vue.js 鍓嶇妗嗘灦'),
+('SpringBoot', 'springboot', 'system', 'Spring Boot 鍚庣妗嗘灦'),
+('AI', 'ai', 'system', '浜哄伐鏅鸿兘鐩稿叧'),
+('RAG', 'rag', 'system', '妫€绱㈠寮虹敓鎴?),
+('MySQL', 'mysql', 'system', 'MySQL 鏁版嵁搴?),
+('鍓嶇', 'frontend', 'system', '鍓嶇寮€鍙?),
+('鍚庣', 'backend', 'system', '鍚庣寮€鍙?),
+('DevOps', 'devops', 'system', '杩愮淮閮ㄧ讲');
 
 -- =============================================
--- 8. 初始化国际化字符�?-- =============================================
+-- 8. 鍒濆鍖栧浗闄呭寲瀛楃涓?-- =============================================
 
 INSERT IGNORE INTO `i18n_strings` (`key`, `language`, `value`, `context`) VALUES
--- 通用
+-- 閫氱敤
 ('site.name', 'zh', 'LuomiBlog', 'site'),
 ('site.name', 'en', 'LuomiBlog', 'site'),
 ('site.name', 'ja', 'LuomiBlog', 'site'),
-('nav.home', 'zh', '首页', 'nav'),
+('nav.home', 'zh', '棣栭〉', 'nav'),
 ('nav.home', 'en', 'Home', 'nav'),
-('nav.home', 'ja', 'ホー�?, 'nav'),
-('nav.archive', 'zh', '归档', 'nav'),
+('nav.home', 'ja', '銉涖兗銉?, 'nav'),
+('nav.archive', 'zh', '褰掓。', 'nav'),
 ('nav.archive', 'en', 'Archive', 'nav'),
-('nav.archive', 'ja', 'アーカイ�?, 'nav'),
-('nav.about', 'zh', '关于', 'nav'),
+('nav.archive', 'ja', '銈兗銈偆銉?, 'nav'),
+('nav.about', 'zh', '鍏充簬', 'nav'),
 ('nav.about', 'en', 'About', 'nav'),
-('nav.about', 'ja', 'について', 'nav'),
--- 文章
-('article.read_more', 'zh', '阅读更多', 'article'),
+('nav.about', 'ja', '銇仱銇勩仸', 'nav'),
+-- 鏂囩珷
+('article.read_more', 'zh', '闃呰鏇村', 'article'),
 ('article.read_more', 'en', 'Read More', 'article'),
-('article.read_more', 'ja', '続きを読む', 'article'),
-('article.min_read', 'zh', '分钟阅读', 'article'),
+('article.read_more', 'ja', '缍氥亶銈掕銈€', 'article'),
+('article.min_read', 'zh', '鍒嗛挓闃呰', 'article'),
 ('article.min_read', 'en', 'min read', 'article'),
-('article.min_read', 'ja', '分で読めます', 'article'),
-('article.original', 'zh', '原创', 'article'),
+('article.min_read', 'ja', '鍒嗐仹瑾倎銇俱仚', 'article'),
+('article.original', 'zh', '鍘熷垱', 'article'),
 ('article.original', 'en', 'Original', 'article'),
-('article.original', 'ja', 'オリジナ�?, 'article'),
-('article.reprint', 'zh', '转载', 'article'),
+('article.original', 'ja', '銈儶銈搞儕銉?, 'article'),
+('article.reprint', 'zh', '杞浇', 'article'),
 ('article.reprint', 'en', 'Reprint', 'article'),
-('article.reprint', 'ja', '転載', 'article'),
-('article.difficulty', 'zh', '难度', 'article'),
+('article.reprint', 'ja', '杌㈣級', 'article'),
+('article.difficulty', 'zh', '闅惧害', 'article'),
 ('article.difficulty', 'en', 'Difficulty', 'article'),
-('article.difficulty', 'ja', '難易�?, 'article'),
-('article.recommended', 'zh', '推荐', 'article'),
+('article.difficulty', 'ja', '闆ｆ槗搴?, 'article'),
+('article.recommended', 'zh', '鎺ㄨ崘', 'article'),
 ('article.recommended', 'en', 'Recommended', 'article'),
-('article.recommended', 'ja', 'おすすめ', 'article'),
-('article.word_count', 'zh', '字数', 'article'),
+('article.recommended', 'ja', '銇娿仚銇欍倎', 'article'),
+('article.word_count', 'zh', '瀛楁暟', 'article'),
 ('article.word_count', 'en', 'Words', 'article'),
-('article.word_count', 'ja', '文字�?, 'article'),
-('article.view_count', 'zh', '阅读', 'article'),
+('article.word_count', 'ja', '鏂囧瓧鏁?, 'article'),
+('article.view_count', 'zh', '闃呰', 'article'),
 ('article.view_count', 'en', 'Views', 'article'),
-('article.view_count', 'ja', '閲覧', 'article'),
-('article.like_count', 'zh', '点赞', 'article'),
+('article.view_count', 'ja', '闁茶Η', 'article'),
+('article.like_count', 'zh', '鐐硅禐', 'article'),
 ('article.like_count', 'en', 'Likes', 'article'),
-('article.like_count', 'ja', 'いい�?, 'article'),
--- 评论
-('comment.title', 'zh', '评论', 'comment'),
+('article.like_count', 'ja', '銇勩亜銇?, 'article'),
+-- 璇勮
+('comment.title', 'zh', '璇勮', 'comment'),
 ('comment.title', 'en', 'Comments', 'comment'),
-('comment.title', 'ja', 'コメント', 'comment'),
-('comment.placeholder', 'zh', '写下你的想法...', 'comment'),
+('comment.title', 'ja', '銈炽儭銉炽儓', 'comment'),
+('comment.placeholder', 'zh', '鍐欎笅浣犵殑鎯虫硶...', 'comment'),
 ('comment.placeholder', 'en', 'Write your thoughts...', 'comment'),
-('comment.placeholder', 'ja', 'あなたの考えを書いてください...', 'comment'),
-('comment.submit', 'zh', '发表评论', 'comment'),
+('comment.placeholder', 'ja', '銇傘仾銇熴伄鑰冦亪銈掓浉銇勩仸銇忋仩銇曘亜...', 'comment'),
+('comment.submit', 'zh', '鍙戣〃璇勮', 'comment'),
 ('comment.submit', 'en', 'Post Comment', 'comment'),
-('comment.submit', 'ja', 'コメントを投�?, 'comment'),
--- AI助手
-('ai.title', 'zh', 'AI 助手', 'ai'),
+('comment.submit', 'ja', '銈炽儭銉炽儓銈掓姇绋?, 'comment'),
+-- AI鍔╂墜
+('ai.title', 'zh', 'AI 鍔╂墜', 'ai'),
 ('ai.title', 'en', 'AI Assistant', 'ai'),
-('ai.title', 'ja', 'AI アシスタント', 'ai'),
-('ai.placeholder', 'zh', '有问题问我吧...', 'ai'),
+('ai.title', 'ja', 'AI 銈偡銈广偪銉炽儓', 'ai'),
+('ai.placeholder', 'zh', '鏈夐棶棰橀棶鎴戝惂...', 'ai'),
 ('ai.placeholder', 'en', 'Ask me anything...', 'ai'),
-('ai.placeholder', 'ja', '何でも聞いてください...', 'ai'),
-('ai.tag', 'zh', 'RAG 增强', 'ai'),
+('ai.placeholder', 'ja', '浣曘仹銈傝仦銇勩仸銇忋仩銇曘亜...', 'ai'),
+('ai.tag', 'zh', 'RAG 澧炲己', 'ai'),
 ('ai.tag', 'en', 'RAG Enhanced', 'ai'),
-('ai.tag', 'ja', 'RAG 強化', 'ai'),
--- 收藏
-('favorite.title', 'zh', '我的收藏', 'favorite'),
+('ai.tag', 'ja', 'RAG 寮峰寲', 'ai'),
+-- 鏀惰棌
+('favorite.title', 'zh', '鎴戠殑鏀惰棌', 'favorite'),
 ('favorite.title', 'en', 'My Favorites', 'favorite'),
-('favorite.title', 'ja', 'お気に入�?, 'favorite'),
-('favorite.add', 'zh', '收藏文章', 'favorite'),
+('favorite.title', 'ja', '銇婃皸銇叆銈?, 'favorite'),
+('favorite.add', 'zh', '鏀惰棌鏂囩珷', 'favorite'),
 ('favorite.add', 'en', 'Add to Favorites', 'favorite'),
-('favorite.add', 'ja', 'お気に入りに追加', 'favorite'),
-('favorite.remove', 'zh', '取消收藏', 'favorite'),
+('favorite.add', 'ja', '銇婃皸銇叆銈娿伀杩藉姞', 'favorite'),
+('favorite.remove', 'zh', '鍙栨秷鏀惰棌', 'favorite'),
 ('favorite.remove', 'en', 'Remove from Favorites', 'favorite'),
-('favorite.remove', 'ja', 'お気に入りから削�?, 'favorite'),
--- 芙贝�?签到
-('coin.name', 'zh', '芙贝�?, 'coin'),
+('favorite.remove', 'ja', '銇婃皸銇叆銈娿亱銈夊墛闄?, 'favorite'),
+-- 鑺欒礉甯?绛惧埌
+('coin.name', 'zh', '鑺欒礉甯?, 'coin'),
 ('coin.name', 'en', 'Furbe Coins', 'coin'),
-('coin.name', 'ja', 'フルベコイン', 'coin'),
-('coin.balance', 'zh', '余额', 'coin'),
+('coin.name', 'ja', '銉曘儷銉欍偝銈ゃ兂', 'coin'),
+('coin.balance', 'zh', '浣欓', 'coin'),
 ('coin.balance', 'en', 'Balance', 'coin'),
-('coin.balance', 'ja', '残高', 'coin'),
-('checkin.title', 'zh', '每日签到', 'coin'),
+('coin.balance', 'ja', '娈嬮珮', 'coin'),
+('checkin.title', 'zh', '姣忔棩绛惧埌', 'coin'),
 ('checkin.title', 'en', 'Daily Check-in', 'coin'),
-('checkin.title', 'ja', '毎日チェックイン', 'coin'),
-('checkin.button', 'zh', '签到', 'coin'),
+('checkin.title', 'ja', '姣庢棩銉併偋銉冦偗銈ゃ兂', 'coin'),
+('checkin.button', 'zh', '绛惧埌', 'coin'),
 ('checkin.button', 'en', 'Check In', 'coin'),
-('checkin.button', 'ja', 'チェックイン', 'coin'),
-('checkin.success', 'zh', '签到成功！获�?{coins} 芙贝�?, 'coin'),
+('checkin.button', 'ja', '銉併偋銉冦偗銈ゃ兂', 'coin'),
+('checkin.success', 'zh', '绛惧埌鎴愬姛锛佽幏寰?{coins} 鑺欒礉甯?, 'coin'),
 ('checkin.success', 'en', 'Check-in successful! Earned {coins} coins', 'coin'),
-('checkin.success', 'ja', 'チェックイン成功！{coins}コイン獲�?, 'coin'),
-('checkin.consecutive', 'zh', '连续签到 {days} �?, 'coin'),
+('checkin.success', 'ja', '銉併偋銉冦偗銈ゃ兂鎴愬姛锛亄coins}銈炽偆銉崇嵅寰?, 'coin'),
+('checkin.consecutive', 'zh', '杩炵画绛惧埌 {days} 澶?, 'coin'),
 ('checkin.consecutive', 'en', '{days} days streak', 'coin'),
-('checkin.consecutive', 'ja', '{days}日連続チェックイン', 'coin'),
--- 用户资料
-('profile.title', 'zh', '个人资料', 'profile'),
+('checkin.consecutive', 'ja', '{days}鏃ラ€ｇ稓銉併偋銉冦偗銈ゃ兂', 'coin'),
+-- 鐢ㄦ埛璧勬枡
+('profile.title', 'zh', '涓汉璧勬枡', 'profile'),
 ('profile.title', 'en', 'Profile', 'profile'),
-('profile.title', 'ja', 'プロフィール', 'profile'),
-('profile.identity', 'zh', '身份头衔', 'profile'),
+('profile.title', 'ja', '銉椼儹銉曘偅銉笺儷', 'profile'),
+('profile.identity', 'zh', '韬唤澶磋', 'profile'),
 ('profile.identity', 'en', 'Identity Title', 'profile'),
-('profile.identity', 'ja', '身分タイトル', 'profile'),
-('profile.company', 'zh', '公司', 'profile'),
+('profile.identity', 'ja', '韬垎銈裤偆銉堛儷', 'profile'),
+('profile.company', 'zh', '鍏徃', 'profile'),
 ('profile.company', 'en', 'Company', 'profile'),
-('profile.company', 'ja', '会社', 'profile'),
-('profile.job', 'zh', '职位', 'profile'),
+('profile.company', 'ja', '浼氱ぞ', 'profile'),
+('profile.job', 'zh', '鑱屼綅', 'profile'),
 ('profile.job', 'en', 'Job Title', 'profile'),
-('profile.job', 'ja', '職位', 'profile'),
-('profile.skills', 'zh', '技�?, 'profile'),
+('profile.job', 'ja', '鑱蜂綅', 'profile'),
+('profile.skills', 'zh', '鎶€鑳?, 'profile'),
 ('profile.skills', 'en', 'Skills', 'profile'),
-('profile.skills', 'ja', 'スキ�?, 'profile'),
-('profile.website', 'zh', '个人网站', 'profile'),
+('profile.skills', 'ja', '銈广偔銉?, 'profile'),
+('profile.website', 'zh', '涓汉缃戠珯', 'profile'),
 ('profile.website', 'en', 'Website', 'profile'),
-('profile.website', 'ja', 'ウェブサイト', 'profile'),
--- 赞赏
-('reward.title', 'zh', '赞赏', 'reward'),
+('profile.website', 'ja', '銈︺偋銉栥偟銈ゃ儓', 'profile'),
+-- 璧炶祻
+('reward.title', 'zh', '璧炶祻', 'reward'),
 ('reward.title', 'en', 'Reward', 'reward'),
-('reward.title', 'ja', '報酬', 'reward'),
-('reward.wechat', 'zh', '微信支付', 'reward'),
+('reward.title', 'ja', '鍫遍叕', 'reward'),
+('reward.wechat', 'zh', '寰俊鏀粯', 'reward'),
 ('reward.wechat', 'en', 'WeChat Pay', 'reward'),
 ('reward.wechat', 'ja', 'WeChat Pay', 'reward'),
-('reward.alipay', 'zh', '支付�?, 'reward'),
+('reward.alipay', 'zh', '鏀粯瀹?, 'reward'),
 ('reward.alipay', 'en', 'Alipay', 'reward'),
 ('reward.alipay', 'ja', 'Alipay', 'reward'),
-('reward.message', 'zh', '留言', 'reward'),
+('reward.message', 'zh', '鐣欒█', 'reward'),
 ('reward.message', 'en', 'Message', 'reward'),
-('reward.message', 'ja', 'メッセー�?, 'reward'),
--- 评论@
-('mention.title', 'zh', '提到�?, 'mention'),
+('reward.message', 'ja', '銉°儍銈汇兗銈?, 'reward'),
+-- 璇勮@
+('mention.title', 'zh', '鎻愬埌鎴?, 'mention'),
 ('mention.title', 'en', 'Mentions', 'mention'),
-('mention.title', 'ja', 'メンショ�?, 'mention'),
-('mention.notify', 'zh', '{user} 在评论中提到了你', 'mention'),
+('mention.title', 'ja', '銉°兂銈枫儳銉?, 'mention'),
+('mention.notify', 'zh', '{user} 鍦ㄨ瘎璁轰腑鎻愬埌浜嗕綘', 'mention'),
 ('mention.notify', 'en', '{user} mentioned you in a comment', 'mention'),
-('mention.notify', 'ja', '{user}がコメントであなたに言及しまし�?, 'mention');
+('mention.notify', 'ja', '{user}銇屻偝銉°兂銉堛仹銇傘仾銇熴伀瑷€鍙娿仐銇俱仐銇?, 'mention');
+
