@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS `article` (
   `content` LONGTEXT NOT NULL COMMENT 'MD/MDX完整内容',
   `summary` VARCHAR(500) DEFAULT NULL COMMENT '人工编写摘要',
   `ai_summary` TEXT DEFAULT NULL COMMENT 'AI生成摘要',
-  `knowledge_points` VARCHAR(512) DEFAULT NULL COMMENT 'AI拆解知识�?,
+  `knowledge_points` VARCHAR(512) DEFAULT NULL COMMENT 'AI拆解知识点,
   `author_id` BIGINT DEFAULT NULL COMMENT '作者ID',
   `category_id` BIGINT DEFAULT NULL COMMENT '分类ID',
   `cover_image_id` BIGINT DEFAULT NULL COMMENT '封面图附件ID',
@@ -381,7 +381,7 @@ CREATE TABLE IF NOT EXISTS `article_suggestions` (
   CONSTRAINT `fk_suggestions_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_suggestions_suggester` FOREIGN KEY (`suggester_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_suggestions_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章编辑建议�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章编辑建议表;
 
 CREATE TABLE IF NOT EXISTS `article_locks` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS `article_locks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章编辑锁表';
 
 -- =============================================
--- 6. AI系统�?
+-- 6. AI系统表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `user_behavior` (
@@ -426,7 +426,7 @@ CREATE TABLE IF NOT EXISTS `user_behavior` (
   KEY `idx_behavior_ai_answer` (`ai_answer_id`),
   KEY `idx_behavior_feedback_type` (`feedback_type`),
   KEY `idx_behavior_created` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户行为�?
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户行为表
 PARTITION BY RANGE (TO_DAYS(created_at)) (
   PARTITION p202603 VALUES LESS THAN (TO_DAYS('2026-04-01')),
   PARTITION p202604 VALUES LESS THAN (TO_DAYS('2026-05-01')),
@@ -442,7 +442,7 @@ CREATE TABLE IF NOT EXISTS `ai_feedback_log` (
   `feedback_type` ENUM('helpful','not_helpful') NOT NULL COMMENT '反馈类型',
   `feedback_tags` JSON DEFAULT NULL COMMENT '反馈标签数组',
   `feedback_content` TEXT DEFAULT NULL COMMENT '反馈内容',
-  `processed` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已处�?,
+  `processed` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已处理,
   `processed_at` DATETIME DEFAULT NULL COMMENT '处理时间',
   `bailian_notified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否通知百炼',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -453,7 +453,7 @@ CREATE TABLE IF NOT EXISTS `ai_feedback_log` (
   KEY `idx_feedback_processed` (`processed`),
   CONSTRAINT `fk_feedback_behavior` FOREIGN KEY (`behavior_id`) REFERENCES `user_behavior` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_feedback_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI反馈日志�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI反馈日志表;
 
 CREATE TABLE IF NOT EXISTS `ai_model_config` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -462,16 +462,16 @@ CREATE TABLE IF NOT EXISTS `ai_model_config` (
   `model_name` VARCHAR(128) NOT NULL COMMENT '模型名称',
   `api_key` VARCHAR(512) NOT NULL COMMENT 'API密钥（加密存储）',
   `api_url` VARCHAR(512) DEFAULT NULL COMMENT 'API地址',
-  `timeout` INT NOT NULL DEFAULT 30 COMMENT '超时时间（秒�?,
-  `max_tokens` INT DEFAULT NULL COMMENT '最大Token�?,
+  `timeout` INT NOT NULL DEFAULT 30 COMMENT '超时时间（秒）,
+  `max_tokens` INT DEFAULT NULL COMMENT '最大Token数,
   `temperature` DECIMAL(3,2) DEFAULT 0.7 COMMENT '温度参数',
   `quota_daily` INT DEFAULT NULL COMMENT '每日配额限制',
-  `quota_used` INT NOT NULL DEFAULT 0 COMMENT '已使用配�?,
+  `quota_used` INT NOT NULL DEFAULT 0 COMMENT '已使用配额,
   `is_default` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否默认配置',
   `status` ENUM('active','inactive','error') NOT NULL DEFAULT 'active' COMMENT '状态,
   `ext_config` JSON DEFAULT NULL COMMENT '扩展配置',
-  `last_error` TEXT DEFAULT NULL COMMENT '最后错误信�?,
-  `last_used_at` DATETIME DEFAULT NULL COMMENT '最后使用时�?,
+  `last_error` TEXT DEFAULT NULL COMMENT '最后错误信息,
+  `last_used_at` DATETIME DEFAULT NULL COMMENT '最后使用时间,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -479,10 +479,10 @@ CREATE TABLE IF NOT EXISTS `ai_model_config` (
   KEY `idx_ai_config_type` (`model_type`),
   KEY `idx_ai_config_status` (`status`),
   KEY `idx_ai_config_default` (`is_default`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI模型配置�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI模型配置表;
 
 -- =============================================
--- 7. 系统配置�?
+-- 7. 系统配置表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `user_notifications` (
@@ -504,7 +504,7 @@ CREATE TABLE IF NOT EXISTS `user_notifications` (
   KEY `idx_notifications_created` (`created_at`),
   CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_notifications_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知表';
 
 CREATE TABLE IF NOT EXISTS `system_config` (
   `id` BIGINT PRIMARY KEY,
@@ -514,14 +514,14 @@ CREATE TABLE IF NOT EXISTS `system_config` (
   `site_favicon` VARCHAR(512) DEFAULT NULL COMMENT '站点Favicon',
   `default_language` ENUM('zh','en','ja') NOT NULL DEFAULT 'zh' COMMENT '默认语言',
   `default_theme` ENUM('light','dark','auto') NOT NULL DEFAULT 'auto' COMMENT '默认主题',
-  `registration_enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否开放注�?,
-  `comment_audit` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '评论是否需要审�?,
+  `registration_enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否开放注册,
+  `comment_audit` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '评论是否需要审核,
   `visitor_comment` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否允许访客评论',
   `ai_moderation_enabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否启用AI审核',
-  `max_upload_size` BIGINT NOT NULL DEFAULT 5242880 COMMENT '最大上传大小（字节�?,
-  `max_image_width` INT DEFAULT 2048 COMMENT '图片最大宽�?,
-  `max_image_height` INT DEFAULT 2048 COMMENT '图片最大高�?,
-  `icp` VARCHAR(100) DEFAULT NULL COMMENT 'ICP备案�?,
+  `max_upload_size` BIGINT NOT NULL DEFAULT 5242880 COMMENT '最大上传大小（字节）,
+  `max_image_width` INT DEFAULT 2048 COMMENT '图片最大宽度,
+  `max_image_height` INT DEFAULT 2048 COMMENT '图片最大高度,
+  `icp` VARCHAR(100) DEFAULT NULL COMMENT 'ICP备案号,
   `analytics_code` TEXT DEFAULT NULL COMMENT '统计代码',
   `custom_css` TEXT DEFAULT NULL COMMENT '自定义CSS',
   `custom_js` TEXT DEFAULT NULL COMMENT '自定义JS',
@@ -531,7 +531,7 @@ CREATE TABLE IF NOT EXISTS `system_config` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `updated_by` BIGINT DEFAULT NULL COMMENT '最后更新者ID'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表;
 
 CREATE TABLE IF NOT EXISTS `share_records` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -550,11 +550,11 @@ CREATE TABLE IF NOT EXISTS `share_records` (
   KEY `idx_share_created` (`created_at`),
   CONSTRAINT `fk_share_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_share_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分享记录�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分享记录表;
 
 CREATE TABLE IF NOT EXISTS `i18n_strings` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `key` VARCHAR(255) NOT NULL COMMENT '字符串键�?,
+  `key` VARCHAR(255) NOT NULL COMMENT '字符串键名,
   `language` ENUM('zh','en','ja') NOT NULL DEFAULT 'zh' COMMENT '语言',
   `value` TEXT NOT NULL COMMENT '翻译内容',
   `context` VARCHAR(100) DEFAULT NULL COMMENT '使用场景',
@@ -563,10 +563,10 @@ CREATE TABLE IF NOT EXISTS `i18n_strings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_i18n_key_language` (`key`, `language`),
   KEY `idx_i18n_language` (`language`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='国际化字符串�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='国际化字符串表;
 
 -- =============================================
--- 8. 统计系统�?
+-- 8. 统计系统表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `access_log` (
@@ -584,7 +584,7 @@ CREATE TABLE IF NOT EXISTS `access_log` (
   `os` VARCHAR(64) DEFAULT NULL COMMENT '操作系统',
   `enter_time` DATETIME NOT NULL COMMENT '页面进入时间',
   `leave_time` DATETIME DEFAULT NULL COMMENT '页面离开时间',
-  `duration` INT UNSIGNED DEFAULT 0 COMMENT '停留时长（秒�?,
+  `duration` INT UNSIGNED DEFAULT 0 COMMENT '停留时长（秒）,
   `is_bounce` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否跳出',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -598,39 +598,39 @@ PARTITION BY RANGE (TO_DAYS(enter_time)) (
   PARTITION p202604 VALUES LESS THAN (TO_DAYS('2026-05-01')),
   PARTITION p202605 VALUES LESS THAN (TO_DAYS('2026-06-01')),
   PARTITION p_future VALUES LESS THAN MAXVALUE
-) COMMENT='访问日志�?;
+) COMMENT='访问日志表;
 
 CREATE TABLE IF NOT EXISTS `daily_stats` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `stat_date` DATE NOT NULL COMMENT '统计日期',
   `pv` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '浏览器,
   `uv` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '独立访客',
-  `session_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '会话�?,
-  `avg_duration` INT UNSIGNED DEFAULT 0 COMMENT '平均停留时长（秒�?,
-  `bounce_rate` DECIMAL(5,2) DEFAULT 0.00 COMMENT '跳出率（%�?,
-  `new_visitor_ratio` DECIMAL(5,2) DEFAULT 0.00 COMMENT '新访客占比（%�?,
+  `session_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '会话数,
+  `avg_duration` INT UNSIGNED DEFAULT 0 COMMENT '平均停留时长（秒）,
+  `bounce_rate` DECIMAL(5,2) DEFAULT 0.00 COMMENT '跳出率（%）,
+  `new_visitor_ratio` DECIMAL(5,2) DEFAULT 0.00 COMMENT '新访客占比（%）',
   `top_pages` JSON DEFAULT NULL COMMENT '热门页面TOP10',
   `sources` JSON DEFAULT NULL COMMENT '来源分布',
   `devices` JSON DEFAULT NULL COMMENT '设备分布',
   `locations` JSON DEFAULT NULL COMMENT '地域分布TOP10',
-  `browsers` JSON DEFAULT NULL COMMENT '浏览器分�?,
+  `browsers` JSON DEFAULT NULL COMMENT '浏览器分布,
   `hourly_distribution` JSON DEFAULT NULL COMMENT '24小时分布',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_stats_date` (`stat_date`),
   KEY `idx_stats_date_range` (`stat_date`, `pv`, `uv`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日统计�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日统计表;
 
 -- =============================================
--- 9. 收藏功能�?
+-- 9. 收藏功能表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `article_favorites` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `article_id` BIGINT NOT NULL COMMENT '文章ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
-  `folder_name` VARCHAR(100) DEFAULT '默认收藏�? COMMENT '收藏夹名�?,
+  `folder_name` VARCHAR(100) DEFAULT '默认收藏夹 COMMENT '收藏夹名称,
   `remark` VARCHAR(255) DEFAULT NULL COMMENT '收藏备注',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -640,7 +640,7 @@ CREATE TABLE IF NOT EXISTS `article_favorites` (
   KEY `idx_favorites_created` (`created_at`),
   CONSTRAINT `fk_favorites_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_favorites_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章收藏�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章收藏夹;
 
 -- =============================================
 -- 10. 芙贝币（签到奖励系统）表
@@ -663,7 +663,7 @@ CREATE TABLE IF NOT EXISTS `user_checkins` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
   `checkin_date` DATE NOT NULL COMMENT '签到日期',
-  `coin_reward` INT UNSIGNED NOT NULL DEFAULT 1 COMMENT '获得芙贝币数�?,
+  `coin_reward` INT UNSIGNED NOT NULL DEFAULT 1 COMMENT '获得芙贝币数量,
   `consecutive_days` INT UNSIGNED NOT NULL DEFAULT 1 COMMENT '连续签到天数',
   `ip_address` VARCHAR(64) DEFAULT NULL COMMENT '签到IP',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -672,16 +672,16 @@ CREATE TABLE IF NOT EXISTS `user_checkins` (
   KEY `idx_checkins_user` (`user_id`),
   KEY `idx_checkins_date` (`checkin_date`),
   CONSTRAINT `fk_checkins_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户签到记录�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户签到记录表;
 
 CREATE TABLE IF NOT EXISTS `coin_transactions` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
   `transaction_type` ENUM('checkin','reward','spend','transfer','system') NOT NULL COMMENT '交易类型',
-  `amount` INT NOT NULL COMMENT '变动金额（正数收入，负数支出�?,
-  `balance_after` INT UNSIGNED NOT NULL COMMENT '变动后余�?,
+  `amount` INT NOT NULL COMMENT '变动金额（正数收入，负数支出）,
+  `balance_after` INT UNSIGNED NOT NULL COMMENT '变动后余额,
   `description` VARCHAR(255) DEFAULT NULL COMMENT '交易描述',
-  `related_id` BIGINT DEFAULT NULL COMMENT '关联ID（如文章ID、评论ID�?,
+  `related_id` BIGINT DEFAULT NULL COMMENT '关联ID（如文章ID、评论ID等）,
   `related_type` VARCHAR(64) DEFAULT NULL COMMENT '关联类型',
   `ip_address` VARCHAR(64) DEFAULT NULL COMMENT '操作IP',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -693,13 +693,13 @@ CREATE TABLE IF NOT EXISTS `coin_transactions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='芙贝币交易记录表';
 
 -- =============================================
--- 11. 用户扩展信息�?
+-- 11. 用户扩展信息表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `user_profiles` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
-  `identity_title` VARCHAR(64) DEFAULT NULL COMMENT '身份头衔（如：资深开发者、全栈工程师�?,
+  `identity_title` VARCHAR(64) DEFAULT NULL COMMENT '身份头衔（如：资深开发者、全栈工程师等）,
   `identity_color` VARCHAR(20) DEFAULT NULL COMMENT '身份标识颜色',
   `company` VARCHAR(120) DEFAULT NULL COMMENT '公司/组织',
   `job_title` VARCHAR(64) DEFAULT NULL COMMENT '职位',
@@ -708,7 +708,7 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
   `weibo_url` VARCHAR(255) DEFAULT NULL COMMENT '微博链接',
   `wechat_id` VARCHAR(64) DEFAULT NULL COMMENT '微信号（仅自己可见）',
   `qq_number` VARCHAR(20) DEFAULT NULL COMMENT 'QQ号（仅自己可见）',
-  `skills` JSON DEFAULT NULL COMMENT '技能标签数�?["Java","Vue","AI"]',
+  `skills` JSON DEFAULT NULL COMMENT '技能标签数量["Java","Vue","AI"]',
   `interests` JSON DEFAULT NULL COMMENT '兴趣标签数组',
   `social_links` JSON DEFAULT NULL COMMENT '其他社交链接',
   `is_profile_public` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '个人资料是否公开',
@@ -719,10 +719,10 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_profile_user` (`user_id`),
   CONSTRAINT `fk_profile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户扩展资料�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户扩展资料表;
 
 -- =============================================
--- 12. 赞赏系统表（Phase 2�?
+-- 12. 赞赏系统表（Phase 2）
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `article_rewards` (
@@ -736,7 +736,7 @@ CREATE TABLE IF NOT EXISTS `article_rewards` (
   PRIMARY KEY (`id`),
   KEY `idx_rewards_article` (`article_id`),
   CONSTRAINT `fk_rewards_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章赞赏设置�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章赞赏设置表;
 
 CREATE TABLE IF NOT EXISTS `reward_records` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -751,10 +751,10 @@ CREATE TABLE IF NOT EXISTS `reward_records` (
   KEY `idx_reward_records_article` (`article_id`),
   KEY `idx_reward_records_created` (`created_at`),
   CONSTRAINT `fk_reward_records_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='赞赏记录�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='赞赏记录表;
 
 -- =============================================
--- 13. 评论@功能相关�?
+-- 13. 评论@功能相关表
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `comment_mentions` (
@@ -770,7 +770,7 @@ CREATE TABLE IF NOT EXISTS `comment_mentions` (
   KEY `idx_mentions_unread` (`mentioned_user_id`, `is_read`),
   CONSTRAINT `fk_mentions_comment` FOREIGN KEY (`comment_id`) REFERENCES `article_comments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_mentions_user` FOREIGN KEY (`mentioned_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评论@用户记录�?;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评论@用户记录表;
 
 -- =============================================
 -- 14. 芙贝币打赏记录表
@@ -781,7 +781,7 @@ CREATE TABLE IF NOT EXISTS `coin_reward_records` (
   `article_id` BIGINT NOT NULL COMMENT '文章ID',
   `user_id` BIGINT NOT NULL COMMENT '打赏用户ID',
   `author_id` BIGINT NOT NULL COMMENT '作者ID',
-  `amount` INT UNSIGNED NOT NULL COMMENT '打赏芙贝币数�?,
+  `amount` INT UNSIGNED NOT NULL COMMENT '打赏芙贝币数量,
   `message` VARCHAR(255) DEFAULT NULL COMMENT '打赏留言',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -793,5 +793,6 @@ CREATE TABLE IF NOT EXISTS `coin_reward_records` (
   CONSTRAINT `fk_coin_rewards_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_coin_rewards_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='芙贝币打赏记录表';
+
 
 
