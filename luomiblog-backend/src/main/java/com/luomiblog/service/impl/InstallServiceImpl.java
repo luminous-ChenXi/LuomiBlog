@@ -712,126 +712,24 @@ public class InstallServiceImpl implements InstallService {
             throw new RuntimeException("SQL 文件不存在: " + resourcePath);
         }
 
-        // 使用 BufferedReader 逐行读取，更好地处理编码
-        List<String> lines = new ArrayList<>();
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
-            }
-        }
+        log.info("开始执行 SQL 文件: {}", resourcePath);
 
-        // 将行合并为完整的 SQL 内容
-        StringBuilder sqlBuilder = new StringBuilder();
-        for (String line : lines) {
-            sqlBuilder.append(line).append("\n");
-        }
-        String sql = sqlBuilder.toString();
-
-        log.info("开始执行 SQL 文件: {}, 文件大小: {} 字符", resourcePath, sql.length());
-        int successCount = 0;
-        int errorCount = 0;
-        int skipCount = 0;
-        String lastError = null;
-
-        // 更智能的 SQL 分割：按分号分割，但要处理多行语句
-        List<String> statements = new ArrayList<>();
-        StringBuilder currentStatement = new StringBuilder();
-        boolean inMultiLineComment = false;
-
-        for (String line : lines) {
-            String trimmedLine = line.trim();
-
-            // 跳过空行
-            if (trimmedLine.isEmpty()) {
-                continue;
-            }
-
-            // 处理多行注释 /* ... */
-            if (trimmedLine.startsWith("/*")) {
-                inMultiLineComment = true;
-            }
-            if (trimmedLine.endsWith("*/")) {
-                inMultiLineComment = false;
-                continue;
-            }
-            if (inMultiLineComment) {
-                continue;
-            }
-
-            // 跳过单行注释
-            if (trimmedLine.startsWith("--") || trimmedLine.startsWith("#")) {
-                continue;
-            }
-
-            // 添加到当前语句
-            currentStatement.append(line).append(" ");
-
-            // 如果行以分号结束，表示语句结束
-            if (trimmedLine.endsWith(";")) {
-                String stmt = currentStatement.toString().trim();
-                if (!stmt.isEmpty()) {
-                    statements.add(stmt);
-                }
-                currentStatement = new StringBuilder();
-            }
-        }
-
-        // 处理最后可能剩余的语句（如果没有以分号结束）
-        String lastStmt = currentStatement.toString().trim();
-        if (!lastStmt.isEmpty()) {
-            statements.add(lastStmt);
-        }
-
-        log.info("SQL 文件共解析出 {} 个语句", statements.size());
-
-        for (int i = 0; i < statements.size(); i++) {
-            String statement = statements.get(i);
-            String trimmed = statement.trim();
-
-            // 跳过空语句
-            if (trimmed.isEmpty()) {
-                skipCount++;
-                continue;
-            }
-
-            // 提取语句类型（CREATE TABLE, INSERT等）用于日志
-            String stmtType = "UNKNOWN";
-            String preview = trimmed;
-            try {
-                stmtType = trimmed.split("\\s+")[0].toUpperCase();
-                preview = trimmed.substring(0, Math.min(50, trimmed.length())).replaceAll("\\s+", " ");
-            } catch (Exception e) {
-                // 忽略提取错误
-            }
-
-            try {
-                template.execute(trimmed);
-                successCount++;
-                log.debug("SQL 执行成功 [{}/{}] [{}]: {}", i + 1, statements.size(), stmtType, preview + "...");
-            } catch (Exception e) {
-                errorCount++;
-                String errorMsg = e.getMessage();
-                if (lastError == null) {
-                    lastError = errorMsg;
-                }
-
-                // 只忽略"表已存在"和"重复条目"的错误
-                if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("Duplicate entry"))) {
-                    log.debug("SQL 执行警告(可忽略) [{}/{}] [{}]: {} - {}", i + 1, statements.size(), stmtType, preview, errorMsg);
-                } else {
-                    log.error("SQL 执行失败 [{}/{}] [{}]: {} - 错误: {}", i + 1, statements.size(), stmtType, preview, errorMsg);
-                }
-            }
-        }
-
-        log.info("SQL 文件执行完成: {}, 总计: {}, 成功: {}, 失败: {}, 跳过: {}",
-            resourcePath, statements.size(), successCount, errorCount, skipCount);
-
-        // 如果所有语句都失败了，抛出异常
-        if (errorCount > 0 && successCount == 0) {
-            throw new RuntimeException("SQL 脚本执行失败，所有语句都失败了" + (lastError != null ? ": " + lastError : ""));
+        // 使用 Spring 的 ScriptUtils 来执行 SQL 脚本，它内置了正确的 SQL 分割逻辑
+        try {
+            org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
+                template.getDataSource().getConnection(),
+                resource,
+                false,  // continueOnError
+                true,   // ignoreFailedDrops
+                org.springframework.jdbc.datasource.init.ScriptUtils.DEFAULT_COMMENT_PREFIX,
+                org.springframework.jdbc.datasource.init.ScriptUtils.DEFAULT_STATEMENT_SEPARATOR,
+                org.springframework.jdbc.datasource.init.ScriptUtils.DEFAULT_BLOCK_COMMENT_START_DELIMITER,
+                org.springframework.jdbc.datasource.init.ScriptUtils.DEFAULT_BLOCK_COMMENT_END_DELIMITER
+            );
+            log.info("SQL 文件执行成功: {}", resourcePath);
+        } catch (Exception e) {
+            log.error("SQL 文件执行失败: {}", resourcePath, e);
+            throw new RuntimeException("SQL 脚本执行失败: " + e.getMessage(), e);
         }
     }
 
