@@ -332,7 +332,7 @@ CREATE TABLE IF NOT EXISTS `article_likes` (
 CREATE TABLE IF NOT EXISTS `article_versions` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `article_id` BIGINT NOT NULL COMMENT '文章ID',
-  `version` VARCHAR(20) NOT NULL COMMENT '版本号（�?"1.0.0",
+  `version` VARCHAR(20) NOT NULL COMMENT '版本号（如"1.0.0"）',
   `title` VARCHAR(255) NOT NULL COMMENT '文章标题',
   `content` LONGTEXT NOT NULL COMMENT 'MD/MDX完整内容',
   `summary` VARCHAR(500) DEFAULT NULL COMMENT '摘要',
@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS `article_suggestions` (
   `status` ENUM('pending','approved','rejected','applied') NOT NULL DEFAULT 'pending' COMMENT '审核状态,
   `reviewer_id` BIGINT DEFAULT NULL COMMENT '审核者ID',
   `review_comment` TEXT DEFAULT NULL COMMENT '审核意见',
-  `applied_version` VARCHAR(20) DEFAULT NULL COMMENT '应用到的版本�?,
+  `applied_version` VARCHAR(20) DEFAULT NULL COMMENT '应用到的版本号',
   `reviewed_at` DATETIME DEFAULT NULL COMMENT '审核时间',
   `ip_address` VARCHAR(64) DEFAULT NULL COMMENT 'IP地址',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
