@@ -716,9 +716,11 @@ public class InstallServiceImpl implements InstallService {
 
         // 使用 Spring 的 ScriptUtils 来执行 SQL 脚本，它内置了正确的 SQL 分割逻辑
         try {
+            org.springframework.core.io.support.EncodedResource encodedResource =
+                new org.springframework.core.io.support.EncodedResource(resource, StandardCharsets.UTF_8);
             org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
                 template.getDataSource().getConnection(),
-                resource,
+                encodedResource,
                 false,  // continueOnError
                 true,   // ignoreFailedDrops
                 org.springframework.jdbc.datasource.init.ScriptUtils.DEFAULT_COMMENT_PREFIX,
