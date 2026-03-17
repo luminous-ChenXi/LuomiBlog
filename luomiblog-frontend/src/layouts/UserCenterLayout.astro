@@ -21,9 +21,8 @@ const userData = {
 
 const menuItems = [
   { icon: 'user', label: '用户中心', href: '/user', id: 'profile' },
-  { icon: 'order', label: '订单管理', href: '/user/orders', id: 'orders' },
+  { icon: 'heart', label: '打赏记录', href: '/user/donations', id: 'donations' },
   { icon: 'vip', label: '会员订阅', href: '/user/subscription', id: 'subscription' },
-  { icon: 'asset', label: '资产管理', href: '/user/assets', id: 'assets' },
   { icon: 'recharge', label: '充值记录', href: '/user/recharge', id: 'recharge' },
   { icon: 'favorite', label: '我的收藏', href: '/user/favorites', id: 'favorites' },
   { icon: 'comment', label: '评论内容', href: '/user/comments', id: 'comments' },
@@ -69,6 +68,9 @@ const menuItems = [
 </Layout>
 
 <script>
+  import { ElMessage, ElMessageBox } from 'element-plus';
+  import { clearAuth } from '../stores/user';
+
   // 检查登录状态
   (function checkAuth() {
     const token = localStorage.getItem('token');
@@ -80,6 +82,37 @@ const menuItems = [
       return;
     }
   })();
+
+  // 退出登录
+  async function handleLogout() {
+    try {
+      await ElMessageBox.confirm(
+        '确定要退出登录吗？',
+        '退出确认',
+        {
+          confirmButtonText: '确定退出',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      );
+      
+      // 清除登录状态
+      clearAuth();
+      
+      ElMessage.success('已安全退出登录');
+      
+      // 跳转到首页
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
+    } catch {
+      // 用户取消，不做处理
+    }
+  }
+
+  // 将退出函数挂载到全局
+  (window as any).handleLogout = handleLogout;
 </script>
 
 <style>

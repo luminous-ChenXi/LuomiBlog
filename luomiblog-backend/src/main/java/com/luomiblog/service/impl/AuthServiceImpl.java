@@ -9,15 +9,22 @@ import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.security.JwtUtil;
 import com.luomiblog.service.AuthService;
+import com.luomiblog.service.LoginSecurityService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")
@@ -28,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final LoginSecurityService loginSecurityService;
 
     @Override
     @Transactional
@@ -61,25 +69,65 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsernameOrEmail(),
-                        request.getPassword()
-                )
-        );
+        String clientIp = getClientIp();
+        String identifier = request.getUsernameOrEmail() + ":" + clientIp;
+        
+        if (!loginSecurityService.tryAcquire(clientIp)) {
+            long availableTokens = loginSecurityService.getAvailableTokens(clientIp);
+            throw new RuntimeException("登录过于频繁，请稍后重试。剩余可用次数：" + availableTokens);
+        }
+        
+        if (loginSecurityService.isLocked(identifier)) {
+            long remainingTime = loginSecurityService.getRemainingLockoutTime(identifier);
+            throw new RuntimeException("账户已锁定，请 " + (remainingTime / 60) + " 分钟后重试");
+        }
+        
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsernameOrEmail(),
+                            request.getPassword()
+                    )
+            );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = userRepository.findActiveByUsername(request.getUsernameOrEmail())
-                .orElseGet(() -> userRepository.findActiveByEmail(request.getUsernameOrEmail())
-                        .orElseThrow(() -> new RuntimeException("用户不存在")));
+            User user = userRepository.findActiveByUsername(request.getUsernameOrEmail())
+                    .orElseGet(() -> userRepository.findActiveByEmail(request.getUsernameOrEmail())
+                            .orElseThrow(() -> new RuntimeException("用户不存在")));
 
-        Role role = roleRepository.findById(user.getRoleId())
-                .orElseThrow(() -> new RuntimeException("角色不存在"));
+            Role role = roleRepository.findById(user.getRoleId())
+                    .orElseThrow(() -> new RuntimeException("角色不存在"));
 
-        String token = jwtUtil.generateToken(authentication);
+            String token = jwtUtil.generateToken(authentication);
+            
+            loginSecurityService.clearFailedAttempts(identifier);
+            log.info("用户登录成功: {} from {}", request.getUsernameOrEmail(), clientIp);
 
-        return buildAuthResponse(token, user, role.getCode());
+            return buildAuthResponse(token, user, role.getCode());
+        } catch (BadCredentialsException e) {
+            loginSecurityService.recordFailedAttempt(identifier);
+            int remainingAttempts = loginSecurityService.getRemainingAttempts(identifier);
+            log.warn("登录失败: {} from {}, 剩余尝试次数: {}", request.getUsernameOrEmail(), clientIp, remainingAttempts);
+            throw new RuntimeException("用户名或密码错误，还剩 " + remainingAttempts + " 次机会");
+        }
+    }
+    
+    private String getClientIp() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                HttpServletRequest request = attributes.getRequest();
+                String xForwardedFor = request.getHeader("X-Forwarded-For");
+                if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                    return xForwardedFor.split(",")[0].trim();
+                }
+                return request.getRemoteAddr();
+            }
+        } catch (Exception e) {
+            log.warn("获取客户端IP失败", e);
+        }
+        return "unknown";
     }
 
     @Override
