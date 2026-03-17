@@ -1,6 +1,6 @@
 package com.luomiblog.controller;
 
-import com.luomiblog.dto.ApiResponse;
+import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleSyncResult;
 import com.luomiblog.service.ArticleSyncService;
 import lombok.RequiredArgsConstructor;

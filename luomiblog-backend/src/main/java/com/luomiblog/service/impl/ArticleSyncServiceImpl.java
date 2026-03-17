@@ -10,6 +10,7 @@ import com.luomiblog.service.ArticleSyncService;
 import com.luomiblog.service.MemoryCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,9 +117,10 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
-    public void resolveConflict(Long articleId, String resolution) {
+    public void resolveConflict(@NonNull Long articleId, String resolution) {
         Article article = articleRepository.findById(articleId)
             .orElseThrow(() -> new RuntimeException("文章不存在"));
+        Objects.requireNonNull(article, "文章不能为null");
 
         switch (resolution) {
             case "USE_FILE" -> {
@@ -288,7 +290,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             return SyncAction.CREATED;
         }
 
-        Article article = existing.get();
+        Article article = Objects.requireNonNull(existing.get(), "文章不能为null");
         String dbHash = article.getContentHash();
         String fileHash = fileInfo.getContentHash();
 
@@ -400,7 +402,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
     }
 
     private boolean acquireSyncLock() {
-        Boolean locked = cacheService.getAsBoolean(SYNC_LOCK_KEY);
+        Boolean locked = cacheService.get(SYNC_LOCK_KEY, Boolean.class);
         if (locked != null && locked) {
             return false;
         }
