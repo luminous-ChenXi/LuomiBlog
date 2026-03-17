@@ -187,6 +187,64 @@ public class ArticleServiceImpl implements ArticleService {
         articleRepository.save(article);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ArticleResponse> getAdminArticles(Pageable pageable, String search, String category, String status) {
+        return articleRepository.findAdminArticles(search, category, status, pageable)
+                .map(this::convertToResponse);
+    }
+
+    @Override
+    @Transactional
+    public ArticleResponse publishArticle(Long id, Long authorId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("文章不存在"));
+
+        if (!article.getAuthorId().equals(authorId)) {
+            throw new RuntimeException("无权发布此文章");
+        }
+
+        article.setStatus("published");
+        if (article.getPublishedAt() == null) {
+            article.setPublishedAt(LocalDateTime.now());
+        }
+        articleRepository.save(article);
+
+        return convertToResponse(article);
+    }
+
+    @Override
+    @Transactional
+    public ArticleResponse archiveArticle(Long id, Long authorId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("文章不存在"));
+
+        if (!article.getAuthorId().equals(authorId)) {
+            throw new RuntimeException("无权归档此文章");
+        }
+
+        article.setStatus("archived");
+        articleRepository.save(article);
+
+        return convertToResponse(article);
+    }
+
+    @Override
+    @Transactional
+    public ArticleResponse toggleTop(Long id, boolean top, Long authorId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("文章不存在"));
+
+        if (!article.getAuthorId().equals(authorId)) {
+            throw new RuntimeException("无权修改此文章");
+        }
+
+        article.setTop(top);
+        articleRepository.save(article);
+
+        return convertToResponse(article);
+    }
+
     private void saveArticleTags(Long articleId, List<Long> tagIds) {
         for (Long tagId : tagIds) {
             ArticleTag articleTag = ArticleTag.builder()

@@ -38,4 +38,14 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     @Query("SELECT COUNT(a) FROM Article a WHERE a.status = 'published' AND a.deletedAt IS NULL")
     Long countPublishedArticles();
+
+    @Query("SELECT a FROM Article a WHERE a.deletedAt IS NULL " +
+           "AND (:search IS NULL OR a.title LIKE %:search% OR a.content LIKE %:search%) " +
+           "AND (:status IS NULL OR a.status = :status) " +
+           "ORDER BY a.createdAt DESC")
+    Page<Article> findAdminArticles(
+            @Param("search") String search,
+            @Param("category") String category,
+            @Param("status") String status,
+            Pageable pageable);
 }
