@@ -59,6 +59,42 @@ const history = [
     <h1 class="page-title">会员订阅</h1>
   </div>
 
+  <!-- 激活码兑换区域 -->
+  <div class="activation-section">
+    <div class="activation-card">
+      <div class="activation-header">
+        <svg class="activation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <div class="activation-info">
+          <h3 class="activation-title">激活码兑换</h3>
+          <p class="activation-desc">通过第三方充值后，使用系统发送的激活码激活会员</p>
+        </div>
+      </div>
+      <div class="activation-form">
+        <input 
+          type="text" 
+          id="activationCode"
+          class="activation-input" 
+          placeholder="请输入激活码（如：VIP-XXXX-XXXX-XXXX）"
+          maxlength="20"
+        />
+        <button class="btn btn-activate" onclick="handleActivate()">
+          立即激活
+        </button>
+      </div>
+      <p class="activation-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" x2="12" y1="16" y2="12"/>
+          <line x1="12" x2="12.01" y1="8" y2="8"/>
+        </svg>
+        激活码将通过邮件发送，请注意查收
+      </p>
+    </div>
+  </div>
+
   <!-- 当前会员状态 -->
   <div class="current-plan-card">
     <div class="plan-header">
@@ -157,6 +193,126 @@ const history = [
     font-weight: 700;
     color: var(--color-text);
     margin: 0;
+  }
+
+  /* 激活码区域 */
+  .activation-section {
+    margin-bottom: 32px;
+  }
+
+  .activation-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .activation-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .activation-icon {
+    width: 48px;
+    height: 48px;
+    padding: 12px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-radius: 12px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .activation-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 4px 0;
+  }
+
+  .activation-desc {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .activation-form {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .activation-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .activation-input:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  }
+
+  .activation-input::placeholder {
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .btn-activate {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-activate:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  }
+
+  .btn-activate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .activation-tip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  .activation-tip svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .activation-form {
+      flex-direction: column;
+    }
+
+    .btn-activate {
+      width: 100%;
+    }
   }
 
   /* 当前套餐卡片 */
@@ -442,3 +598,132 @@ const history = [
     }
   }
 </style>
+
+<script>
+  import { ElMessage } from 'element-plus';
+
+  // API 基础 URL
+  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+
+  // 获取 Token
+  function getToken(): string | null {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  }
+
+  // 发送 POST 请求
+  async function post<T>(path: string, data: any): Promise<T> {
+    const url = new URL(path, API_BASE_URL);
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    const token = getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(result.message);
+    }
+
+    return result.data;
+  }
+
+  // 格式化激活码输入（自动添加横线）
+  function formatActivationCode(input: HTMLInputElement) {
+    let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    // 每4个字符添加一个横线
+    const parts = [];
+    for (let i = 0; i < value.length && i < 12; i += 4) {
+      parts.push(value.substring(i, i + 4));
+    }
+    
+    input.value = parts.join('-');
+  }
+
+  // 处理激活码提交
+  async function handleActivate() {
+    const input = document.getElementById('activationCode') as HTMLInputElement;
+    const code = input.value.trim().toUpperCase();
+    
+    if (!code) {
+      ElMessage.warning('请输入激活码');
+      return;
+    }
+    
+    // 验证格式
+    const codePattern = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+    if (!codePattern.test(code)) {
+      ElMessage.error('激活码格式不正确，应为：XXXX-XXXX-XXXX');
+      return;
+    }
+    
+    const btn = document.querySelector('.btn-activate') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = '激活中...';
+    
+    try {
+      // 调用后端API验证激活码
+      await post('/api/user/activate', { code });
+      
+      ElMessage.success('激活成功！会员权益已生效');
+      input.value = '';
+      
+      // 刷新页面以更新会员状态
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      const errorMsg = error.message || '激活失败';
+      
+      if (errorMsg.includes('无效') || errorMsg.includes('不存在')) {
+        ElMessage.error('激活码无效或不存在，请检查输入');
+      } else if (errorMsg.includes('已使用')) {
+        ElMessage.error('该激活码已被使用');
+      } else if (errorMsg.includes('过期')) {
+        ElMessage.error('激活码已过期');
+      } else {
+        ElMessage.error(errorMsg);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '立即激活';
+    }
+  }
+
+  // 绑定输入事件
+  document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('activationCode') as HTMLInputElement;
+    if (input) {
+      input.addEventListener('input', () => formatActivationCode(input));
+      
+      // 回车提交
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleActivate();
+        }
+      });
+    }
+  });
+
+  // 暴露到全局
+  (window as any).handleActivate = handleActivate;
+</script>
