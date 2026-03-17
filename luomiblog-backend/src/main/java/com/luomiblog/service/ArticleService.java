@@ -30,4 +30,12 @@ public interface ArticleService {
     void incrementViewCount(Long articleId);
 
     void incrementLikeCount(Long articleId);
+
+    Page<ArticleResponse> getAdminArticles(Pageable pageable, String search, String category, String status);
+
+    ArticleResponse publishArticle(Long id, Long authorId);
+
+    ArticleResponse archiveArticle(Long id, Long authorId);
+
+    ArticleResponse toggleTop(Long id, boolean top, Long authorId);
 }
