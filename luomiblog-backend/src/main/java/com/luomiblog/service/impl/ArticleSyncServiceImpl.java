@@ -117,7 +117,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
-    public void resolveConflict(@NonNull Long articleId, String resolution) {
+    public void resolveConflict(Long articleId, String resolution) {
         Article article = articleRepository.findById(articleId)
             .orElseThrow(() -> new RuntimeException("文章不存在"));
         Objects.requireNonNull(article, "文章不能为null");
@@ -290,7 +290,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             return SyncAction.CREATED;
         }
 
-        Article article = Objects.requireNonNull(existing.get(), "文章不能为null");
+        Article article = existing.get();
         String dbHash = article.getContentHash();
         String fileHash = fileInfo.getContentHash();
 
@@ -394,7 +394,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
     }
 
     private User getDefaultAuthor() {
-        List<User> admins = userRepository.findByRole("admin");
+        List<User> admins = userRepository.findByRoleId(1);
         if (!admins.isEmpty()) {
             return admins.get(0);
         }
