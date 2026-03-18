@@ -79,8 +79,8 @@ public class Article {
     @Column(name = "is_top", nullable = false)
     private Boolean top;
 
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder;
+    @Column(name = "sort_order")
+    private Integer sortOrder = 0;
 
     @Column(name = "allow_comments", nullable = false)
     private Boolean allowComments;
