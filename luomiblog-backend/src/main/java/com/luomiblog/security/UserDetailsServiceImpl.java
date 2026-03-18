@@ -1,6 +1,8 @@
 package com.luomiblog.security;
 
+import com.luomiblog.entity.Role;
 import com.luomiblog.entity.User;
+import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,6 +18,7 @@ import java.util.Collections;
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     @Override
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
@@ -23,10 +26,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .orElseGet(() -> userRepository.findActiveByEmail(usernameOrEmail)
                         .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + usernameOrEmail)));
 
+        // 根据 roleId 获取角色
+        String roleName = "USER";
+        if (user.getRoleId() != null) {
+            Role role = roleRepository.findById(user.getRoleId()).orElse(null);
+            if (role != null) {
+                roleName = role.getCode().toUpperCase();
+            }
+        }
+
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName))
         );
     }
 }
