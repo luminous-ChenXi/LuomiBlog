@@ -249,7 +249,7 @@ import { API_BASE_URL } from '../../config/api';
       const token = getToken();
       if (!token) {
         showNotification('请先登录', 'error');
-        window.location.href = '/login';
+        window.location.href = '/?login=1';
         return;
       }
 
@@ -273,7 +273,7 @@ import { API_BASE_URL } from '../../config/api';
         showNotification('登录已过期，请重新登录', 'error');
         localStorage.removeItem('token');
         sessionStorage.removeItem('token');
-        window.location.href = '/login';
+        window.location.href = '/?login=1';
         return;
       }
 
