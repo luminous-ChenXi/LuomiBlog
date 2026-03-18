@@ -1,7 +1,6 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
-import com.luomiblog.dto.ArticleSyncResult;
 import com.luomiblog.service.ArticleSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +18,9 @@ public class ArticleSyncController {
 
     @PostMapping("/trigger")
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
-    public ResponseEntity<ApiResponse<Void>> triggerSync() {
+    public ResponseEntity<ApiResponse<Map<String, String>>> triggerSync() {
         new Thread(() -> articleSyncService.syncArticlesFromFiles()).start();
-        return ResponseEntity.ok(ApiResponse.success(null, "文章同步已启动"));
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "文章同步已启动")));
     }
 
     @GetMapping("/status")
@@ -44,12 +43,12 @@ public class ArticleSyncController {
 
     @PostMapping("/resolve/{articleId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
-    public ResponseEntity<ApiResponse<Void>> resolveConflict(
+    public ResponseEntity<ApiResponse<Map<String, String>>> resolveConflict(
             @PathVariable Long articleId,
             @RequestBody Map<String, String> request) {
         String resolution = request.get("resolution");
         articleSyncService.resolveConflict(articleId, resolution);
-        return ResponseEntity.ok(ApiResponse.success(null, "冲突已解决"));
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "冲突已解决")));
     }
 
     @GetMapping("/check")
