@@ -246,6 +246,13 @@ import { API_BASE_URL } from '../../config/api';
   // 加载文章列表
   async function loadArticles() {
     try {
+      const token = getToken();
+      if (!token) {
+        showNotification('请先登录', 'error');
+        window.location.href = '/login';
+        return;
+      }
+
       const search = document.getElementById('search-input')?.value || '';
       const category = document.getElementById('category-filter')?.value || '';
       const status = document.getElementById('status-filter')?.value || '';
@@ -259,8 +266,16 @@ import { API_BASE_URL } from '../../config/api';
       if (status) params.append('status', status);
 
       const response = await fetch(`${API_BASE_URL}/api/admin/articles?${params}`, {
-        headers: { 'Authorization': `Bearer ${getToken()}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (response.status === 403) {
+        showNotification('登录已过期，请重新登录', 'error');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
 
       if (!response.ok) throw new Error('加载失败');
 
@@ -411,9 +426,17 @@ import { API_BASE_URL } from '../../config/api';
   // 检查同步状态
   async function checkSyncStatus() {
     try {
+      const token = getToken();
+      if (!token) return;
+
       const response = await fetch(`${API_BASE_URL}/api/admin/articles/sync/check`, {
-        headers: { 'Authorization': `Bearer ${getToken()}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (response.status === 403) {
+        console.log('Token expired or invalid');
+        return;
+      }
 
       if (!response.ok) return;
 
