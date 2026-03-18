@@ -685,14 +685,29 @@ const isActive = (href: string) => {
   if (loginBtn) {
     loginBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      // 调用全局函数打开登录弹窗
-      const w = window as any;
-      if (typeof w.openLoginModal === 'function') {
-        w.openLoginModal();
-      } else {
-        // 如果函数还未加载，触发自定义事件
-        window.dispatchEvent(new CustomEvent('open-login-modal'));
-      }
+      openLoginModal();
     });
+  }
+
+  // 打开登录弹窗函数
+  function openLoginModal() {
+    const w = window as any;
+    if (typeof w.openLoginModal === 'function') {
+      w.openLoginModal();
+    } else {
+      // 如果函数还未加载，触发自定义事件
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+    }
+  }
+
+  // 检查 URL 参数，如果需要则自动打开登录弹窗
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('login') === '1') {
+    // 延迟一点等待 LoginModal 组件加载完成
+    setTimeout(() => {
+      openLoginModal();
+      // 清除 URL 参数
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }, 500);
   }
 </script>
