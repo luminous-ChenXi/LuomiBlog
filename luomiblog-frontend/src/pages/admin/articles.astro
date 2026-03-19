@@ -566,6 +566,16 @@ import { API_BASE_URL } from '../../config/api';
       alert(message);
     }
   }
+
+  // 将函数挂载到 window 对象，使 HTML onclick 可以访问
+  window.triggerSync = triggerSync;
+  window.checkSyncStatus = checkSyncStatus;
+  window.dismissSyncAlert = dismissSyncAlert;
+  window.deleteArticle = deleteArticle;
+  window.openConflictModal = openConflictModal;
+  window.closeConflictModal = closeConflictModal;
+  window.resolveConflict = resolveConflict;
+  window.goToPage = goToPage;
 </script>
 
 <style>
