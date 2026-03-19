@@ -161,6 +161,7 @@ CREATE TABLE IF NOT EXISTS `tags` (
   `slug` VARCHAR(180) NOT NULL COMMENT 'URL标识',
   `type` ENUM('user','system','ai') NOT NULL DEFAULT 'user' COMMENT '标签类型',
   `article_count` INT NOT NULL DEFAULT 0 COMMENT '关联文章数',
+  `usage_count` INT NOT NULL DEFAULT 0 COMMENT '使用次数',
   `description` VARCHAR(255) DEFAULT NULL COMMENT '标签描述',
   `deleted_at` DATETIME DEFAULT NULL COMMENT '软删除时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -206,6 +207,7 @@ CREATE TABLE IF NOT EXISTS `article` (
   `seo_description` VARCHAR(1000) DEFAULT NULL COMMENT 'SEO描述',
   `content_hash` VARCHAR(64) DEFAULT NULL COMMENT '内容SHA256哈希（用于双源冲突检测）',
   `file_path` VARCHAR(512) DEFAULT NULL COMMENT 'MD文件路径（双源架构）',
+  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序权重',
   `published_at` DATETIME DEFAULT NULL COMMENT '发布时间',
   `deleted_at` DATETIME DEFAULT NULL COMMENT '软删除时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -224,14 +226,15 @@ CREATE TABLE IF NOT EXISTS `article` (
   CONSTRAINT `fk_article_category` FOREIGN KEY (`category_id`) REFERENCES `article_category` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章主表';
 
-CREATE TABLE IF NOT EXISTS `article_tag` (
+CREATE TABLE IF NOT EXISTS `article_tags` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `article_id` BIGINT NOT NULL COMMENT '文章ID',
   `tag_id` BIGINT NOT NULL COMMENT '标签ID',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`article_id`, `tag_id`),
-  KEY `idx_article_tag_tag` (`tag_id`),
-  CONSTRAINT `fk_article_tag_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_article_tag_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_article_tag` (`article_id`, `tag_id`),
+  KEY `idx_article_tags_tag` (`tag_id`),
+  KEY `idx_article_tags_article` (`article_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章标签关联表';
 
 CREATE TABLE IF NOT EXISTS `attachments` (
