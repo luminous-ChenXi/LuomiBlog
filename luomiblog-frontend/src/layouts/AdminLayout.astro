@@ -93,6 +93,11 @@ const isActive = (href: string) => {
         </nav>
 
         <div class="sidebar-footer">
+          <button class="theme-toggle" id="theme-toggle" aria-label="切换主题">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <span class="theme-text">切换主题</span>
+          </button>
           <a href="/" class="back-link">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
             返回前台
@@ -191,6 +196,34 @@ const isActive = (href: string) => {
 </style>
 
 <script>
+  // 主题切换功能
+  (function initTheme() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    
+    // 从 localStorage 读取主题设置
+    const savedTheme = localStorage.getItem('admin-theme');
+    if (savedTheme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+    } else if (savedTheme === 'light') {
+      html.setAttribute('data-theme', 'light');
+    } else {
+      // 默认使用系统偏好
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    }
+    
+    // 绑定切换事件
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('admin-theme', newTheme);
+      });
+    }
+  })();
+
   // 检查管理员权限
   (function checkAdminAuth() {
     const authLayer = document.getElementById('auth-check-layer') as HTMLElement | null;
@@ -267,13 +300,14 @@ const isActive = (href: string) => {
   }
 
   :root {
-    --admin-bg: #0a0a0f;
-    --admin-sidebar-bg: rgba(15, 15, 25, 0.95);
-    --admin-card-bg: rgba(255, 255, 255, 0.03);
-    --admin-card-border: rgba(255, 255, 255, 0.08);
-    --admin-text: #ffffff;
-    --admin-text-secondary: rgba(255, 255, 255, 0.6);
-    --admin-text-muted: rgba(255, 255, 255, 0.4);
+    /* 明亮主题 - 默认 */
+    --admin-bg: #f8fafc;
+    --admin-sidebar-bg: #ffffff;
+    --admin-card-bg: #ffffff;
+    --admin-card-border: rgba(226, 232, 240, 0.8);
+    --admin-text: #1e293b;
+    --admin-text-secondary: #64748b;
+    --admin-text-muted: #94a3b8;
     --admin-primary: #ff6b9d;
     --admin-primary-hover: #ff5a8a;
     --admin-success: #10b981;
@@ -281,6 +315,27 @@ const isActive = (href: string) => {
     --admin-danger: #ef4444;
     --admin-info: #3b82f6;
     --admin-sidebar-width: 280px;
+    --admin-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --admin-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --admin-input-bg: #f1f5f9;
+    --admin-table-header-bg: #f8fafc;
+    --admin-hover-bg: #f1f5f9;
+  }
+
+  [data-theme="dark"] {
+    /* 深色主题 */
+    --admin-bg: #0a0a0f;
+    --admin-sidebar-bg: rgba(15, 15, 25, 0.95);
+    --admin-card-bg: rgba(255, 255, 255, 0.03);
+    --admin-card-border: rgba(255, 255, 255, 0.08);
+    --admin-text: #ffffff;
+    --admin-text-secondary: rgba(255, 255, 255, 0.6);
+    --admin-text-muted: rgba(255, 255, 255, 0.4);
+    --admin-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --admin-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --admin-input-bg: rgba(0, 0, 0, 0.3);
+    --admin-table-header-bg: rgba(0, 0, 0, 0.2);
+    --admin-hover-bg: rgba(255, 255, 255, 0.02);
   }
 
   .admin-body {
@@ -419,6 +474,46 @@ const isActive = (href: string) => {
   .sidebar-footer {
     padding: 16px;
     border-top: 1px solid var(--admin-card-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--admin-card-border);
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+
+  .theme-toggle:hover {
+    background: var(--admin-hover-bg);
+    color: var(--admin-text);
+    border-color: var(--admin-primary);
+  }
+
+  .theme-toggle .sun-icon {
+    display: none;
+  }
+
+  .theme-toggle .moon-icon {
+    display: block;
+  }
+
+  [data-theme="dark"] .theme-toggle .sun-icon {
+    display: block;
+  }
+
+  [data-theme="dark"] .theme-toggle .moon-icon {
+    display: none;
   }
 
   .back-link {
@@ -435,7 +530,7 @@ const isActive = (href: string) => {
   }
 
   .back-link:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--admin-hover-bg);
     color: var(--admin-text);
     border-color: rgba(255, 255, 255, 0.15);
   }
@@ -444,8 +539,15 @@ const isActive = (href: string) => {
   .admin-main {
     flex: 1;
     margin-left: var(--admin-sidebar-width);
-    padding: 32px 40px;
+    padding: 28px 32px;
     min-height: 100vh;
+    max-width: calc(100vw - var(--admin-sidebar-width));
+  }
+
+  @media (max-width: 1400px) {
+    .admin-main {
+      padding: 24px;
+    }
   }
 
   /* 通用页面样式 */
@@ -479,8 +581,14 @@ const isActive = (href: string) => {
   .glass-panel {
     background: var(--admin-card-bg);
     border: 1px solid var(--admin-card-border);
-    border-radius: 20px;
-    padding: 24px;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: var(--admin-shadow);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .glass-panel:hover {
+    box-shadow: var(--admin-shadow-lg);
   }
 
   /* 按钮样式 */
@@ -535,7 +643,7 @@ const isActive = (href: string) => {
   .admin-input {
     width: 100%;
     padding: 12px 16px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--admin-input-bg);
     border: 1px solid var(--admin-card-border);
     border-radius: 10px;
     color: var(--admin-text);
@@ -546,7 +654,8 @@ const isActive = (href: string) => {
   .admin-input:focus {
     outline: none;
     border-color: var(--admin-primary);
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--admin-input-bg);
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.15);
   }
 
   .admin-input::placeholder {
@@ -556,12 +665,13 @@ const isActive = (href: string) => {
   /* 表格样式 */
   .admin-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
   }
 
   .admin-table th,
   .admin-table td {
-    padding: 16px;
+    padding: 18px 20px;
     text-align: left;
     border-bottom: 1px solid var(--admin-card-border);
   }
@@ -572,11 +682,31 @@ const isActive = (href: string) => {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--admin-text-muted);
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--admin-table-header-bg);
+  }
+
+  .admin-table th:first-child {
+    border-top-left-radius: 12px;
+  }
+
+  .admin-table th:last-child {
+    border-top-right-radius: 12px;
+  }
+
+  .admin-table tbody tr {
+    transition: background-color 0.2s ease;
   }
 
   .admin-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--admin-hover-bg);
+  }
+
+  .admin-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+  }
+
+  .admin-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
   }
 
   /* 徽章样式 */
