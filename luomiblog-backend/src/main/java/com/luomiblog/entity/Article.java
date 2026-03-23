@@ -79,6 +79,7 @@ public class Article {
     @Column(name = "is_top", nullable = false)
     private Boolean top;
 
+    @Builder.Default
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
 

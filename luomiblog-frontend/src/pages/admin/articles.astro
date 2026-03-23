@@ -386,9 +386,9 @@ import { API_BASE_URL } from '../../config/api';
             ${article.category ? `<span class="category-badge">${article.category.name}</span>` : '<span class="cell-text">未分类</span>'}
           </td>
           <td class="col-more">
-            <button class="more-btn" onclick="toggleMoreMenu(${article.id}, event)">
+            <div class="more-btn" role="button" tabindex="0" onclick="toggleMoreMenu(${article.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' ')toggleMoreMenu(${article.id}, event)">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-            </button>
+            </div>
           </td>
         </tr>
       `;
@@ -572,13 +572,73 @@ import { API_BASE_URL } from '../../config/api';
     return date.toLocaleDateString('zh-CN');
   }
 
+  // Lucide 图标 SVG
+  const lucideIcons = {
+    success: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    rocket: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+    trash: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+    file: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>'
+  };
+
   // 显示通知
   function showNotification(message, type = 'info') {
+    // 人性化提示消息映射
+    const humanizedMessages = {
+      'success': {
+        '同步已启动': { text: '同步已启动，正在扫描文件系统...', icon: 'rocket' },
+        '同步成功': { text: '同步完成！文章已更新', icon: 'success' },
+        '删除成功': { text: '文章已删除', icon: 'trash' },
+        '冲突已解决': { text: '冲突已解决', icon: 'success' },
+        '副本创建成功': { text: '副本创建成功', icon: 'file' },
+        'success': { text: '操作成功完成', icon: 'success' }
+      },
+      'error': {
+        '同步失败': { text: '同步失败，请检查网络连接或稍后重试', icon: 'error' },
+        '删除失败': { text: '删除失败，请稍后重试', icon: 'error' },
+        'error': { text: '操作失败，请稍后重试', icon: 'error' }
+      },
+      'info': {
+        'info': { text: message, icon: 'info' }
+      },
+      'warning': {
+        'warning': { text: message, icon: 'warning' }
+      }
+    };
+
+    // 获取人性化消息
+    let displayMessage = message;
+    let iconKey = type;
+    if (humanizedMessages[type] && humanizedMessages[type][message]) {
+      displayMessage = humanizedMessages[type][message].text;
+      iconKey = humanizedMessages[type][message].icon;
+    }
+
     // 使用Element Plus或其他通知组件
     if (window.ElMessage) {
-      window.ElMessage[type](message);
+      window.ElMessage[type](displayMessage);
     } else {
-      alert(message);
+      // 创建自定义通知元素
+      const notification = document.createElement('div');
+      notification.className = `custom-notification custom-notification-${type}`;
+      notification.innerHTML = `
+        <div class="notification-content">
+          <span class="notification-icon">${lucideIcons[iconKey] || lucideIcons[type]}</span>
+          <span class="notification-message">${displayMessage}</span>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      // 动画显示
+      setTimeout(() => notification.classList.add('show'), 10);
+      
+      // 3秒后自动移除
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
     }
   }
 
@@ -629,7 +689,14 @@ import { API_BASE_URL } from '../../config/api';
   // 编辑文章
   function editArticle(id) {
     closeAllMenus();
-    window.location.href = `/admin/articles/edit/${id}`;
+    // 从文章数据中获取 slug（使用 == 进行类型转换比较）
+    const article = articles.find(a => a.id == id);
+    if (article && article.slug) {
+      window.location.href = `/admin/articles/${encodeURIComponent(article.slug)}`;
+    } else {
+      // 如果没有 slug，使用 id 作为备选
+      window.location.href = `/admin/articles/${encodeURIComponent(id)}`;
+    }
   }
 
   // 查看文章
@@ -1198,7 +1265,6 @@ import { API_BASE_URL } from '../../config/api';
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    border: none;
     background: transparent;
     color: var(--admin-text-muted);
     cursor: pointer;
@@ -1206,6 +1272,7 @@ import { API_BASE_URL } from '../../config/api';
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    user-select: none;
   }
 
   .more-btn:hover {
@@ -1516,6 +1583,59 @@ import { API_BASE_URL } from '../../config/api';
     display: none !important;
   }
 
+  /* 自定义通知样式 */
+  .custom-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: var(--admin-bg-card);
+    border: 1px solid var(--admin-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    max-width: 400px;
+  }
+
+  .custom-notification.show {
+    transform: translateX(0);
+  }
+
+  .custom-notification-success {
+    border-left: 4px solid #10b981;
+  }
+
+  .custom-notification-error {
+    border-left: 4px solid #ef4444;
+  }
+
+  .custom-notification-warning {
+    border-left: 4px solid #f59e0b;
+  }
+
+  .custom-notification-info {
+    border-left: 4px solid #3b82f6;
+  }
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .notification-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .notification-message {
+    font-size: 14px;
+    color: var(--admin-text);
+    line-height: 1.5;
+  }
+
   /* 响应式 */
   @media (max-width: 1200px) {
     .stats-grid {
@@ -1545,5 +1665,10 @@ import { API_BASE_URL } from '../../config/api';
       flex-direction: column;
       align-items: center;
     }
-  }
+
+    .custom-notification {
+      left: 16px;
+      right: 16px;
+      max-width: none;
+    }
 </style>

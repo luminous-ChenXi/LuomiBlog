@@ -241,6 +241,35 @@ body {
 }
 
 /* ============================================
+   后端状态横幅相关样式
+   ============================================ */
+
+/* 当横幅显示时，为页面内容添加顶部偏移 */
+body:has(.backend-status-banner) {
+  padding-top: 48px;
+}
+
+/* 横幅显示时的导航栏偏移 */
+body:has(.backend-status-banner) .navbar,
+body:has(.backend-status-banner) .admin-sidebar,
+body:has(.backend-status-banner) .main-nav {
+  top: 48px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  body:has(.backend-status-banner) {
+    padding-top: 64px;
+  }
+  
+  body:has(.backend-status-banner) .navbar,
+  body:has(.backend-status-banner) .admin-sidebar,
+  body:has(.backend-status-banner) .main-nav {
+    top: 64px;
+  }
+}
+
+/* ============================================
    页面通用样式补充
    ============================================ */
 

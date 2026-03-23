@@ -152,46 +152,176 @@ const saveFaviconConfig = async () => {
   }
 };
 
-// 检查安装状态
+// 检查安装状态 - 使用健康检查API
 const checkInstallStatus = async () => {
   try {
-    const response = await api.install.getStatus();
-    installStatus.value = response;
+    // 首先检查后端健康状态
+    const healthResponse = await api.health.check();
     
-    // 如果已安装且已锁定，直接跳转到首页
-    if (response.locked) {
-      ElMessageBox.alert(
-        '<div style="text-align: left;">' +
-        '<p style="margin-bottom: 12px; font-weight: 500;">系统已安装完成</p>' +
-        '<p style="margin-bottom: 8px; color: #666; font-size: 13px;">如需重新安装，请按以下步骤操作：</p>' +
-        '<ol style="margin: 0; padding-left: 16px; color: #666; font-size: 13px; line-height: 1.8;">' +
-        '<li>删除后端目录下的 <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">install.lock</code> 文件</li>' +
-        '<li>重新访问安装页面</li>' +
-        '<li>输入管理员/博主密码进行验证</li>' +
-        '</ol>' +
-        '</div>',
-        '提示',
-        {
-          confirmButtonText: '前往首页',
-          showClose: false,
-          closeOnClickModal: false,
-          closeOnPressEscape: false,
-          dangerouslyUseHTMLString: true,
-          callback: () => {
-            window.location.href = '/';
+    // 根据健康状态处理不同情况
+    switch (healthResponse.status) {
+      case 'healthy':
+        // 系统已完全安装且运行正常
+        installStatus.value = {
+          installed: true,
+          locked: true,
+          hasData: true,
+          message: '系统已安装完成'
+        };
+        showAlreadyInstalledDialog();
+        return;
+        
+      case 'degraded':
+        // 系统已安装但数据库有问题
+        installStatus.value = {
+          installed: true,
+          locked: healthResponse.installLock,
+          hasData: healthResponse.hasData,
+          message: healthResponse.message
+        };
+        
+        // 显示数据库连接问题提示
+        ElMessageBox.alert(
+          `<div style="text-align: left;">
+            <p style="margin-bottom: 12px; font-weight: 500; color: #e6a23c;">
+              <el-icon><Warning /></el-icon> 系统状态异常
+            </p>
+            <p style="margin-bottom: 8px; color: #666; font-size: 13px;">${healthResponse.message}</p>
+            <div style="margin-top: 12px; padding: 12px; background: #fdf6ec; border-radius: 4px;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #999;">建议操作：</p>
+              <ul style="margin: 0; padding-left: 16px; font-size: 12px; color: #666; line-height: 1.8;">
+                ${healthResponse.suggestions.map(s => `<li>${s}</li>`).join('')}
+              </ul>
+            </div>
+            <p style="margin-top: 12px; font-size: 12px; color: #999;">
+              您可以尝试修复数据库连接，或选择重新安装。
+            </p>
+          </div>`,
+          '系统状态异常',
+          {
+            confirmButtonText: '前往首页',
+            cancelButtonText: '继续安装',
+            showCancelButton: true,
+            dangerouslyUseHTMLString: true,
+            callback: (action: string) => {
+              if (action === 'confirm') {
+                window.location.href = '/';
+              }
+              // 如果选择继续安装，停留在当前页面
+            }
+          }
+        );
+        return;
+        
+      case 'needs_reinstall':
+        // 需要重新安装验证
+        installStatus.value = {
+          installed: false,
+          locked: false,
+          hasData: true,
+          message: healthResponse.message
+        };
+        showReinstallVerify.value = true;
+        ElMessage.info('检测到已有数据，需要验证才能重新安装');
+        return;
+        
+      case 'not_installed':
+        // 未安装，正常显示安装向导
+        installStatus.value = {
+          installed: false,
+          locked: false,
+          hasData: false,
+          message: '系统未安装'
+        };
+        return;
+        
+      case 'unhealthy':
+      default:
+        // 系统异常
+        installStatus.value = {
+          installed: false,
+          locked: false,
+          hasData: false,
+          message: healthResponse.message
+        };
+        
+        ElMessageBox.alert(
+          `<div style="text-align: left;">
+            <p style="margin-bottom: 12px; font-weight: 500; color: #f56c6c;">无法检查系统状态</p>
+            <p style="margin-bottom: 8px; color: #666; font-size: 13px;">${healthResponse.message}</p>
+            <div style="margin-top: 12px; padding: 12px; background: #fef0f0; border-radius: 4px;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #999;">建议操作：</p>
+              <ul style="margin: 0; padding-left: 16px; font-size: 12px; color: #666; line-height: 1.8;">
+                ${healthResponse.suggestions.map(s => `<li>${s}</li>`).join('')}
+              </ul>
+            </div>
+          </div>`,
+          '系统检查失败',
+          {
+            confirmButtonText: '重试',
+            cancelButtonText: '继续安装',
+            showCancelButton: true,
+            dangerouslyUseHTMLString: true,
+            callback: (action: string) => {
+              if (action === 'confirm') {
+                checkInstallStatus(); // 重试
+              }
+            }
+          }
+        );
+    }
+  } catch (error: any) {
+    console.error('检查安装状态失败', error);
+    
+    // 无法连接到后端
+    ElMessageBox.alert(
+      `<div style="text-align: left;">
+        <p style="margin-bottom: 12px; font-weight: 500; color: #f56c6c;">无法连接到后端服务</p>
+        <p style="margin-bottom: 8px; color: #666; font-size: 13px;">请确保后端服务已启动，然后重试。</p>
+        <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
+          <p style="margin: 0; font-size: 12px; color: #999;">错误信息：${error.message || '未知错误'}</p>
+        </div>
+      </div>`,
+      '连接失败',
+      {
+        confirmButtonText: '重试',
+        cancelButtonText: '继续',
+        showCancelButton: true,
+        dangerouslyUseHTMLString: true,
+        callback: (action: string) => {
+          if (action === 'confirm') {
+            checkInstallStatus();
           }
         }
-      );
-      return;
-    }
-    
-    // 如果有数据但未锁定，需要二次验证
-    if (response.hasData) {
-      showReinstallVerify.value = true;
-    }
-  } catch (error) {
-    console.error('检查安装状态失败', error);
+      }
+    );
   }
+};
+
+// 显示已安装完成对话框
+const showAlreadyInstalledDialog = () => {
+  ElMessageBox.alert(
+    `<div style="text-align: left;">
+      <p style="margin-bottom: 12px; font-weight: 500;">系统已安装完成</p>
+      <p style="margin-bottom: 8px; color: #666; font-size: 13px;">如需重新安装，请按以下步骤操作：</p>
+      <ol style="margin: 0; padding-left: 16px; color: #666; font-size: 13px; line-height: 1.8;">
+        <li>删除后端目录下的 <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">install.lock</code> 文件</li>
+        <li>重新访问安装页面</li>
+        <li>输入管理员/博主密码进行验证</li>
+      </ol>
+    </div>`,
+    '提示',
+    {
+      confirmButtonText: '前往首页',
+      showClose: false,
+      closeOnClickModal: false,
+      closeOnPressEscape: false,
+      dangerouslyUseHTMLString: true,
+      callback: () => {
+        window.location.href = '/';
+      }
+    }
+  );
 };
 
 // 重新安装验证
@@ -1970,8 +2100,8 @@ onMounted(() => {
 }
 
 .favicon-preview-box {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-md);
   display: flex;
@@ -1979,16 +2109,22 @@ onMounted(() => {
   justify-content: center;
   background: var(--color-bg-secondary);
   overflow: hidden;
+  padding: 8px;
 }
 
 .favicon-preview-svg {
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .favicon-preview-svg svg {
   width: 100%;
   height: 100%;
+  max-width: 100px;
+  max-height: 100px;
 }
 
 .favicon-preview-img {

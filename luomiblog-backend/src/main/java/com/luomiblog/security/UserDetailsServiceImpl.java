@@ -28,8 +28,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         // 根据 roleId 获取角色
         String roleName = "USER";
-        if (user.getRoleId() != null) {
-            Role role = roleRepository.findById(user.getRoleId()).orElse(null);
+        Integer roleId = user.getRoleId();
+        if (roleId != null) {
+            Role role = roleRepository.findById(roleId).orElse(null);
             if (role != null) {
                 roleName = role.getCode().toUpperCase();
             }

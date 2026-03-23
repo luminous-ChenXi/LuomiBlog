@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS `visitors` (
 -- 3. 内容管理表
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS `article_category` (
+CREATE TABLE IF NOT EXISTS `categories` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `name` VARCHAR(100) NOT NULL COMMENT '分类名称',
   `slug` VARCHAR(150) NOT NULL COMMENT 'URL标识',
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS `article` (
   FULLTEXT KEY `ft_article_title` (`title`),
   FULLTEXT KEY `ft_article_content` (`content`, `ai_summary`),
   CONSTRAINT `fk_article_users` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_article_category` FOREIGN KEY (`category_id`) REFERENCES `article_category` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_article_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章主表';
 
 CREATE TABLE IF NOT EXISTS `article_tags` (

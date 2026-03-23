@@ -233,17 +233,75 @@ import { API_BASE_URL } from '../../../config/api';
     await submitArticle('published', true);
   }
 
+  // Lucide 图标 SVG
+  const lucideIcons = {
+    success: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    party: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 1-1.76 0L14 2l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 2l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 2"/><path d="M22 8l-2.24.75a2.9 2.9 0 0 1-1.76 0L14 8l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 8l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 8"/><path d="M22 14l-2.24.75a2.9 2.9 0 0 1-1.76 0L14 14l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 14l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 14"/></svg>',
+    file: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>'
+  };
+
+  // 显示通知
+  function showNotification(message, type = 'info') {
+    const humanizedMessages = {
+      'success': {
+        '文章发布成功': { text: '文章发布成功！', icon: 'party' },
+        '草稿保存成功': { text: '草稿保存成功！', icon: 'success' },
+        'success': { text: message, icon: 'success' }
+      },
+      'error': {
+        '请输入文章标题': { text: '请输入文章标题', icon: 'warning' },
+        '请输入文章内容': { text: '请输入文章内容', icon: 'warning' },
+        'error': { text: message, icon: 'error' }
+      },
+      'warning': {
+        'warning': { text: message, icon: 'warning' }
+      },
+      'info': {
+        'info': { text: message, icon: 'info' }
+      }
+    };
+
+    let displayMessage = message;
+    let iconKey = type;
+    if (humanizedMessages[type] && humanizedMessages[type][message]) {
+      displayMessage = humanizedMessages[type][message].text;
+      iconKey = humanizedMessages[type][message].icon;
+    }
+
+    if (window.ElMessage) {
+      window.ElMessage[type](displayMessage);
+    } else {
+      const notification = document.createElement('div');
+      notification.className = `custom-notification custom-notification-${type}`;
+      notification.innerHTML = `
+        <div class="notification-content">
+          <span class="notification-icon">${lucideIcons[iconKey] || lucideIcons[type]}</span>
+          <span class="notification-message">${displayMessage}</span>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.classList.add('show'), 10);
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+  }
+
   // 提交文章
   async function submitArticle(status, clearDraft) {
     const title = document.getElementById('title').value.trim();
     if (!title) {
-      alert('请输入文章标题');
+      showNotification('请输入文章标题', 'warning');
       return;
     }
 
     const content = document.getElementById('content').value.trim();
     if (!content) {
-      alert('请输入文章内容');
+      showNotification('请输入文章内容', 'warning');
       return;
     }
 
@@ -282,11 +340,11 @@ import { API_BASE_URL } from '../../../config/api';
         localStorage.removeItem('article_draft');
       }
 
-      alert(status === 'published' ? '文章发布成功！' : '草稿保存成功！');
+      showNotification(status === 'published' ? '文章发布成功' : '草稿保存成功', 'success');
       window.location.href = '/admin/articles';
     } catch (error) {
       console.error('提交文章失败:', error);
-      alert('提交失败: ' + error.message);
+      showNotification('提交失败: ' + error.message, 'error');
     }
   }
 
@@ -480,6 +538,67 @@ import { API_BASE_URL } from '../../../config/api';
     .settings-panel,
     .tips-panel {
       min-width: auto;
+    }
+  }
+
+  /* 自定义通知样式 */
+  .custom-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: var(--admin-bg-card);
+    border: 1px solid var(--admin-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    max-width: 400px;
+  }
+
+  .custom-notification.show {
+    transform: translateX(0);
+  }
+
+  .custom-notification-success {
+    border-left: 4px solid #10b981;
+  }
+
+  .custom-notification-error {
+    border-left: 4px solid #ef4444;
+  }
+
+  .custom-notification-warning {
+    border-left: 4px solid #f59e0b;
+  }
+
+  .custom-notification-info {
+    border-left: 4px solid #3b82f6;
+  }
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .notification-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .notification-message {
+    font-size: 14px;
+    color: var(--admin-text);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .custom-notification {
+      left: 16px;
+      right: 16px;
+      max-width: none;
     }
   }
 </style>
