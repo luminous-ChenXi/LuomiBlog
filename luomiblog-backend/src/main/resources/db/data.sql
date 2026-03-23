@@ -7,7 +7,7 @@
 -- 1. 初始化角色数据
 -- =============================================
 
-INSERT INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`) VALUES
+INSERT IGNORE INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`) VALUES
 (1, 'visitor', '访客', '未登录的匿名用户', 0, 1),
 (2, 'member', '会员', '注册登录的用户', 1, 1),
 (3, 'blogger', '博主', '可以写文章的用户', 10, 1),
@@ -17,7 +17,7 @@ INSERT INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`) 
 -- 2. 初始化权限数据
 -- =============================================
 
-INSERT INTO `permissions` (`code`, `name`, `type`, `description`, `sort_order`) VALUES
+INSERT IGNORE INTO `permissions` (`code`, `name`, `type`, `description`, `sort_order`) VALUES
 -- 文章权限
 ('article:view', '查看文章', 'api', '查看文章列表和详情', 1),
 ('article:create', '创建文章', 'api', '创建新文章', 2),
@@ -104,7 +104,7 @@ SELECT 4, id FROM `permissions`;
 -- 4. 初始化管理面板菜单
 -- =============================================
 
-INSERT INTO `admin_menu` (`name`, `code`, `path`, `icon`, `permission_code`, `visible_roles`, `sort_order`) VALUES
+INSERT IGNORE INTO `admin_menu` (`name`, `code`, `path`, `icon`, `permission_code`, `visible_roles`, `sort_order`) VALUES
 ('数据概览', 'dashboard', '/admin', 'LayoutDashboard', 'system:view', '["admin","blogger"]', 1),
 ('文章管理', 'article_manage', '/admin/articles', 'FileText', 'article:manage', '["admin","blogger"]', 2),
 ('评论管理', 'comment_manage', '/admin/comments', 'MessageSquare', 'comment:manage', '["admin","blogger"]', 3),
@@ -120,7 +120,7 @@ INSERT INTO `admin_menu` (`name`, `code`, `path`, `icon`, `permission_code`, `vi
 -- 5. 初始化系统配置
 -- =============================================
 
-INSERT INTO `system_config` (
+INSERT IGNORE INTO `system_config` (
   `id`, `site_name`, `site_description`, `default_language`, `default_theme`,
   `registration_enabled`, `comment_audit`, `visitor_comment`,
   `max_upload_size`, `max_image_width`, `max_image_height`
@@ -142,7 +142,7 @@ INSERT INTO `system_config` (
 -- 6. 初始化默认分类
 -- =============================================
 
-INSERT INTO `article_category` (`name`, `slug`, `description`, `sort_order`) VALUES
+INSERT IGNORE INTO `categories` (`name`, `slug`, `description`, `sort_order`) VALUES
 ('技术分享', 'tech', '技术文章、开发经验分享', 1),
 ('生活随笔', 'life', '日常生活、个人感悟', 2),
 ('学习笔记', 'notes', '学习过程中的笔记整理', 3),
@@ -152,7 +152,7 @@ INSERT INTO `article_category` (`name`, `slug`, `description`, `sort_order`) VAL
 -- 7. 初始化默认标签
 -- =============================================
 
-INSERT INTO `tags` (`name`, `slug`, `type`, `description`) VALUES
+INSERT IGNORE INTO `tags` (`name`, `slug`, `type`, `description`) VALUES
 ('Astro', 'astro', 'system', 'Astro 静态站点生成器'),
 ('Vue', 'vue', 'system', 'Vue.js 前端框架'),
 ('SpringBoot', 'springboot', 'system', 'Spring Boot 后端框架'),
@@ -167,7 +167,7 @@ INSERT INTO `tags` (`name`, `slug`, `type`, `description`) VALUES
 -- 8. 初始化国际化字符串
 -- =============================================
 
-INSERT INTO `i18n_strings` (`key`, `language`, `value`, `context`) VALUES
+INSERT IGNORE INTO `i18n_strings` (`key`, `language`, `value`, `context`) VALUES
 -- 通用
 ('site.name', 'zh', 'LuomiBlog', 'site'),
 ('site.name', 'en', 'LuomiBlog', 'site'),

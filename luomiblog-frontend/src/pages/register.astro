@@ -718,6 +718,65 @@ import Layout from '../layouts/Layout.astro';
     .bg-circle {
       display: none;
     }
+
+    .custom-notification {
+      left: 16px;
+      right: 16px;
+      max-width: none;
+    }
+  }
+
+  /* 自定义通知样式 */
+  .custom-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    max-width: 400px;
+  }
+
+  .custom-notification.show {
+    transform: translateX(0);
+  }
+
+  .custom-notification-success {
+    border-left: 4px solid #10b981;
+  }
+
+  .custom-notification-error {
+    border-left: 4px solid #ef4444;
+  }
+
+  .custom-notification-warning {
+    border-left: 4px solid #f59e0b;
+  }
+
+  .custom-notification-info {
+    border-left: 4px solid #3b82f6;
+  }
+
+  .notification-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .notification-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .notification-message {
+    font-size: 14px;
+    color: #fff;
+    line-height: 1.5;
   }
 </style>
 
@@ -861,6 +920,34 @@ import Layout from '../layouts/Layout.astro';
     updateStep(1);
   });
 
+  // Lucide 图标 SVG
+  const lucideIcons = {
+    success: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    party: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 1-1.76 0L14 2l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 2l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 2"/><path d="M22 8l-2.24.75a2.9 2.9 0 0 1-1.76 0L14 8l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 8l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 8"/><path d="M22 14l-2.24.75a2.9 2.9 0 0 1-1.76 0L14 14l-4.24.75a2.9 2.9 0 0 1-1.76 0L6 14l-2.24.75a2.9 2.9 0 0 1-1.76 0L0 14"/></svg>'
+  };
+
+  // 显示通知
+  function showNotification(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `custom-notification custom-notification-${type}`;
+    const iconSvg = lucideIcons[type] || lucideIcons.info;
+    notification.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-icon">${iconSvg}</span>
+        <span class="notification-message">${message}</span>
+      </div>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.classList.add('show'), 10);
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
   // 表单提交
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -876,12 +963,29 @@ import Layout from '../layouts/Layout.astro';
     if (btnText) (btnText as HTMLElement).style.display = 'none';
     if (btnLoading) (btnLoading as HTMLElement).style.display = 'inline-flex';
 
-    // 模拟注册请求
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // TODO: 替换为实际的注册 API 调用
+      // const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ username, email, password })
+      // });
+      
+      // 模拟注册请求
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // 注册成功，跳转到登录页
-    alert('注册成功！请登录');
-    window.location.href = '/';
+      // 注册成功，跳转到登录页
+      showNotification('注册成功！请登录', 'success');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+    } catch (error) {
+      showNotification('注册失败，请稍后重试', 'error');
+      // 恢复按钮状态
+      if (btnSubmit) (btnSubmit as HTMLButtonElement).disabled = false;
+      if (btnText) (btnText as HTMLElement).style.display = 'inline-flex';
+      if (btnLoading) (btnLoading as HTMLElement).style.display = 'none';
+    }
   });
 
   // 密码强度检测

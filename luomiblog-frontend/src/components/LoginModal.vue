@@ -3,9 +3,13 @@ import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { api } from '../utils/api';
 import { setAuth } from '../stores/user';
+import { useBackendStatus } from '../composables/useBackendStatus';
 
 const isVisible = ref(false);
 const loginError = ref('');
+const backendError = ref('');
+
+const { isUnavailable, backendStatus, checkBackendStatus } = useBackendStatus();
 
 const form = ref({
   username: '',
@@ -24,9 +28,18 @@ const handleClose = () => {
   form.value = { username: '', password: '' };
   errors.value = { username: '', password: '' };
   loginError.value = '';
+  backendError.value = '';
 };
 
-const handleOpen = () => {
+const handleOpen = async () => {
+  // 打开前检查后端状态
+  backendError.value = '';
+  await checkBackendStatus(true);
+  
+  if (isUnavailable.value) {
+    backendError.value = backendStatus.value?.message || '后端服务暂时不可用，无法登录';
+  }
+  
   isVisible.value = true;
 };
 
@@ -53,6 +66,13 @@ const validateForm = () => {
 
 const handleSubmit = async () => {
   if (!validateForm()) return;
+
+  // 再次检查后端状态
+  await checkBackendStatus(true);
+  if (isUnavailable.value) {
+    loginError.value = '后端服务暂时不可用，请稍后再试';
+    return;
+  }
 
   submitting.value = true;
   loginError.value = '';
@@ -86,6 +106,8 @@ const handleSubmit = async () => {
       loginError.value = '账号已被锁定，请联系管理员解锁。';
     } else if (errorMessage.includes('禁用') || errorMessage.includes('disabled')) {
       loginError.value = '账号已被禁用，如有疑问请联系管理员。';
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Failed to fetch')) {
+      loginError.value = '无法连接到服务器，请检查网络连接或稍后再试。';
     } else {
       loginError.value = '登录失败，请检查用户名和密码是否正确。';
     }
@@ -174,8 +196,18 @@ onUnmounted(() => {
               </header>
 
               <form class="login-form" @submit.prevent="handleSubmit">
+                <!-- 后端服务错误提示 -->
+                <div v-if="backendError" class="backend-error">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" x2="12" y1="8" y2="12"/>
+                    <line x1="12" x2="12.01" y1="16" y2="16"/>
+                  </svg>
+                  <span>{{ backendError }}</span>
+                </div>
+                
                 <!-- 登录错误提示 -->
-                <div v-if="loginError" class="login-error">
+                <div v-else-if="loginError" class="login-error">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <line x1="12" x2="12" y1="8" y2="12"/>
@@ -227,9 +259,11 @@ onUnmounted(() => {
                 <button
                   type="submit"
                   class="btn-login"
-                  :disabled="submitting"
+                  :disabled="submitting || isUnavailable"
+                  :class="{ disabled: isUnavailable }"
                 >
-                  <span v-if="!submitting">登录</span>
+                  <span v-if="isUnavailable">服务不可用</span>
+                  <span v-else-if="!submitting">登录</span>
                   <span v-else class="loading-spinner"></span>
                 </button>
 
@@ -422,6 +456,30 @@ onUnmounted(() => {
   gap: 1.25rem;
 }
 
+/* 后端错误提示 */
+.backend-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 1rem 1rem;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffaf5 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
+}
+
+.backend-error svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #ea580c;
+}
+
 /* 登录错误提示 */
 .login-error {
   display: flex;
@@ -559,6 +617,10 @@ onUnmounted(() => {
 .btn-login:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.btn-login.disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
 }
 
 .loading-spinner {

@@ -42,7 +42,7 @@ export default defineConfig({
   // 站点配置（部署时修改）
   site: 'http://localhost:4321',
 
-  // 输出模式：静态生成
+  // 输出模式：静态生成（支持 prerender = false 的页面使用 SSR）
   output: 'static',
 
   // 国际化配置

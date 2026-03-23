@@ -12,7 +12,26 @@ const {
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import LoginModal from '../components/LoginModal.vue';
 import RegisterModal from '../components/RegisterModal.vue';
+import BackendStatusBanner from '../components/BackendStatusBanner.vue';
 import '../styles/global.css';
+
+// 获取站点配置
+let siteFavicon = '/favicon.svg';
+try {
+  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+  const response = await fetch(`${API_BASE_URL}/api/site/config`);
+  if (response.ok) {
+    const result = await response.json();
+    if (result.code === 200 && result.data?.siteFavicon) {
+      siteFavicon = result.data.siteFavicon;
+    }
+  }
+} catch (e) {
+  // 使用默认 favicon
+}
+
+// 判断 favicon 类型
+const isSvgFavicon = siteFavicon?.trim().startsWith('<svg');
 ---
 
 <!DOCTYPE html>
@@ -21,7 +40,11 @@ import '../styles/global.css';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {isSvgFavicon ? (
+      <link rel="icon" type="image/svg+xml" href={`data:image/svg+xml;utf8,${encodeURIComponent(siteFavicon)}`} />
+    ) : (
+      <link rel="icon" type={siteFavicon?.endsWith('.png') ? 'image/png' : 'image/x-icon'} href={siteFavicon || '/favicon.svg'} />
+    )}
     <title>{title}</title>
     <script is:inline>
       // 主题初始化脚本 - 在页面渲染前执行，避免闪烁
@@ -30,6 +53,8 @@ import '../styles/global.css';
     </script>
   </head>
   <body>
+    <!-- 后端状态横幅 - 全局显示 -->
+    <BackendStatusBanner client:load />
     <!-- 加载动画 -->
     <LoadingSpinner client:load />
     <!-- 登录弹窗 - 全局可用 -->

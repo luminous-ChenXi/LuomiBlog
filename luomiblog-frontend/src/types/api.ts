@@ -207,3 +207,30 @@ export interface FaviconConfigRequest {
   type: 'svg' | 'url';
   content: string;
 }
+
+// 健康检查响应
+export interface HealthCheckResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'needs_reinstall' | 'not_installed';
+  database: 'connected' | 'disconnected' | 'not_configured' | 'connected_no_tables';
+  installLock: boolean;
+  hasData: boolean;
+  version: string;
+  timestamp: string;
+  message: string;
+  suggestions: string[];
+  components: {
+    database: {
+      status: string;
+      message: string;
+      error?: string;
+    };
+    cache: {
+      status: string;
+      message: string;
+    };
+    fileSystem: {
+      status: string;
+      message: string;
+    };
+  };
+}

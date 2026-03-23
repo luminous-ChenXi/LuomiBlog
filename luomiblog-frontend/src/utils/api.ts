@@ -19,7 +19,8 @@ import type {
   AdminAccountRequest,
   SiteConfigRequest,
   SmtpConfigRequest,
-  FaviconConfigRequest
+  FaviconConfigRequest,
+  HealthCheckResponse
 } from '../types/api';
 
 // API 基础 URL
@@ -276,6 +277,35 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ option, database })
       })
+  },
+
+  // 健康检查
+  health: {
+    check: () =>
+      request<HealthCheckResponse>('/api/health'),
+
+    ping: () =>
+      request<string>('/api/health/ping')
+  },
+
+  // 站点配置
+  site: {
+    getConfig: () =>
+      request<{
+        siteName: string;
+        siteDescription: string;
+        siteLogo: string;
+        siteFavicon: string;
+        defaultLanguage: string;
+        defaultTheme: string;
+        icp: string;
+        seoTitle: string;
+        seoKeywords: string;
+        seoDescription: string;
+      }>('/api/site/config'),
+
+    getFavicon: () =>
+      request<string>('/api/site/favicon')
   }
 };
 
