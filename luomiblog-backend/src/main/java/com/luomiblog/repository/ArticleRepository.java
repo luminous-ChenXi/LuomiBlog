@@ -57,4 +57,9 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     @Query("SELECT COUNT(a) FROM Article a WHERE a.status = 'archived' AND a.deletedAt IS NULL")
     Long countArchivedArticles();
+
+    /**
+     * 统计创建时间在某时间点之前的文章数
+     */
+    long countByCreatedAtBefore(java.time.LocalDateTime dateTime);
 }

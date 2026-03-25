@@ -153,7 +153,7 @@ const articleData = {
       <footer class="article-footer">
         <!-- 点赞分享收藏 -->
         <div class="article-actions">
-          <button class="action-btn like-btn" onclick="handleLike()" data-article-id={articleData.articleId} data-synced={articleData.isSynced}>
+          <button class="action-btn like-btn" id="like-btn" onclick="handleLike()" data-article-id={articleData.articleId} data-synced={articleData.isSynced} data-has-liked="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
             <span class="like-count">{articleData.likes}</span>
           </button>
@@ -161,9 +161,9 @@ const articleData = {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>{articleData.comments}</span>
           </button>
-          <button class="action-btn favorite-btn" onclick="handleFavorite()">
+          <button class="action-btn favorite-btn" id="favorite-btn" onclick="handleFavorite()" data-article-id={articleData.articleId} data-synced={articleData.isSynced} data-has-favorited="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-            收藏
+            <span class="favorite-text">收藏</span>
           </button>
           <button class="action-btn share-btn" onclick="handleShare()">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
@@ -607,6 +607,28 @@ const articleData = {
     color: var(--color-brand-primary);
   }
 
+  /* 点赞按钮激活状态 */
+  .action-btn.liked {
+    color: var(--color-danger, #ff4d4f);
+    background: var(--color-danger-bg, #fff2f0);
+    border-color: var(--color-danger, #ff4d4f);
+  }
+
+  .action-btn.liked svg {
+    fill: var(--color-danger, #ff4d4f);
+  }
+
+  /* 收藏按钮激活状态 */
+  .action-btn.favorited {
+    color: var(--color-warning, #faad14);
+    background: var(--color-warning-bg, #fffbe6);
+    border-color: var(--color-warning, #faad14);
+  }
+
+  .action-btn.favorited svg {
+    fill: var(--color-warning, #faad14);
+  }
+
   /* 响应式 */
   @media (max-width: 768px) {
     .article-container {
@@ -635,7 +657,7 @@ const articleData = {
 <script>
   // 处理点赞
   async function handleLike() {
-    const likeBtn = document.querySelector('.like-btn');
+    const likeBtn = document.getElementById('like-btn');
     const isSynced = likeBtn?.getAttribute('data-synced') === 'true';
     const articleId = likeBtn?.getAttribute('data-article-id');
 
@@ -649,20 +671,35 @@ const articleData = {
       return;
     }
 
+    const visitorId = getVisitorId();
+    const userId = getUserId();
+
     try {
       const response = await fetch(`/api/articles/${articleId}/like`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          visitorId: visitorId
+        })
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.code === 200) {
+          const data = result.data;
           const countEl = likeBtn?.querySelector('.like-count');
           if (countEl) {
-            countEl.textContent = result.data.likeCount;
+            countEl.textContent = data.likeCount;
           }
-          likeBtn?.classList.add('liked');
+
+          if (data.action === 'like') {
+            likeBtn?.setAttribute('data-has-liked', 'true');
+            likeBtn?.classList.add('liked');
+          } else {
+            likeBtn?.setAttribute('data-has-liked', 'false');
+            likeBtn?.classList.remove('liked');
+          }
         }
       }
     } catch (error) {
@@ -670,10 +707,7 @@ const articleData = {
     }
   }
 
-  // 处理收藏
-  function handleFavorite() {
-    alert('收藏功能开发中...');
-  }
+  // 处理收藏（已移到下方）
 
   // 处理分享
   function handleShare() {
@@ -705,6 +739,168 @@ const articleData = {
       commentsSection.scrollIntoView({ behavior: 'smooth' });
     } else {
       alert('评论区功能开发中...');
+    }
+  }
+
+  // 获取或生成访客ID
+  function getVisitorId() {
+    let visitorId = localStorage.getItem('lm_visitor_id');
+    if (!visitorId) {
+      visitorId = 'v_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      localStorage.setItem('lm_visitor_id', visitorId);
+    }
+    return visitorId;
+  }
+
+  // 获取用户Token
+  function getUserToken() {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+  }
+
+  // 获取当前用户ID（从token解析，简化处理）
+  function getUserId() {
+    const token = getUserToken();
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.userId || payload.sub || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 页面加载完成后初始化
+  document.addEventListener('DOMContentLoaded', async () => {
+    const articleId = document.querySelector('.article-container')?.getAttribute('data-article-id');
+    if (!articleId) return;
+
+    // 1. 检查点赞/收藏状态
+    await checkUserStatus(articleId);
+
+    // 2. 延迟3秒后记录浏览（有效浏览）
+    setTimeout(() => {
+      recordView(articleId);
+    }, 3000);
+  });
+
+  // 检查用户状态（是否已点赞/收藏）
+  async function checkUserStatus(articleId: string) {
+    try {
+      const visitorId = getVisitorId();
+      const token = getUserToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`/api/articles/${articleId}/check?visitorId=${visitorId}`, { headers });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          updateUIState(result.data);
+        }
+      }
+    } catch (error) {
+      console.error('检查用户状态失败:', error);
+    }
+  }
+
+  // 更新UI状态
+  function updateUIState(data: { hasLiked?: boolean; hasFavorited?: boolean }) {
+    const likeBtn = document.getElementById('like-btn');
+    const favoriteBtn = document.getElementById('favorite-btn');
+
+    if (likeBtn && data.hasLiked) {
+      likeBtn.setAttribute('data-has-liked', 'true');
+      likeBtn.classList.add('liked');
+    }
+
+    if (favoriteBtn && data.hasFavorited) {
+      favoriteBtn.setAttribute('data-has-favorited', 'true');
+      favoriteBtn.classList.add('favorited');
+      const textEl = favoriteBtn.querySelector('.favorite-text');
+      if (textEl) textEl.textContent = '已收藏';
+    }
+  }
+
+  // 记录浏览
+  async function recordView(articleId: string) {
+    try {
+      const visitorId = getVisitorId();
+      const userId = getUserId();
+
+      const response = await fetch(`/api/articles/${articleId}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          visitorId: visitorId,
+          userAgent: navigator.userAgent
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200 && result.data.success) {
+          console.log('浏览记录成功');
+        }
+      }
+    } catch (error) {
+      console.error('记录浏览失败:', error);
+    }
+  }
+
+  // 处理收藏
+  async function handleFavorite() {
+    const favoriteBtn = document.getElementById('favorite-btn');
+    const articleId = favoriteBtn?.getAttribute('data-article-id');
+    const isSynced = favoriteBtn?.getAttribute('data-synced') === 'true';
+
+    if (!isSynced) {
+      alert('此文章尚未同步到数据库，无法收藏');
+      return;
+    }
+
+    if (!articleId) {
+      alert('文章ID不存在');
+      return;
+    }
+
+    const token = getUserToken();
+    if (!token) {
+      alert('请先登录后再收藏');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/articles/${articleId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          const data = result.data;
+          const textEl = favoriteBtn?.querySelector('.favorite-text');
+
+          if (data.action === 'favorite') {
+            favoriteBtn?.setAttribute('data-has-favorited', 'true');
+            favoriteBtn?.classList.add('favorited');
+            if (textEl) textEl.textContent = '已收藏';
+          } else {
+            favoriteBtn?.setAttribute('data-has-favorited', 'false');
+            favoriteBtn?.classList.remove('favorited');
+            if (textEl) textEl.textContent = '收藏';
+          }
+        }
+      } else if (response.status === 401) {
+        alert('请先登录后再收藏');
+      }
+    } catch (error) {
+      console.error('收藏失败:', error);
+      alert('操作失败，请稍后重试');
     }
   }
 </script>

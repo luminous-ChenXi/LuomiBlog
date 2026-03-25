@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -27,4 +28,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.roleId = :roleId AND u.deletedAt IS NULL")
     java.util.List<User> findByRoleId(@Param("roleId") Integer roleId);
+
+    /**
+     * 统计创建时间在某时间点之前的用户数
+     */
+    long countByCreatedAtBefore(LocalDateTime dateTime);
 }

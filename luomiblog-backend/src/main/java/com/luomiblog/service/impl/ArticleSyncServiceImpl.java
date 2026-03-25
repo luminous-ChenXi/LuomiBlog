@@ -119,7 +119,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
     public void resolveConflict(Long articleId, String resolution) {
         Article article = articleRepository.findById(articleId)
             .orElseThrow(() -> new RuntimeException("文章不存在"));
-        Objects.requireNonNull(article, "文章不能为null");
+        // article 已由 orElseThrow 保证非空，无需额外检查
 
         switch (resolution) {
             case "USE_FILE" -> {
@@ -289,7 +289,9 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             return SyncAction.CREATED;
         }
 
-        Article article = existing.get();
+        // 使用 orElseThrow 避免 null 安全警告
+        Article article = existing.orElseThrow(() -> 
+            new IllegalStateException("文章应该存在但获取失败"));
         String dbHash = article.getContentHash();
         String fileHash = fileInfo.getContentHash();
 

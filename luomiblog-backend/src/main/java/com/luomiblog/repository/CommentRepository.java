@@ -36,4 +36,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByArticleIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(Long articleId, String status);
 
     Page<Comment> findByUserIdAndDeletedAtIsNull(Long userId, Pageable pageable);
+
+    /**
+     * 统计创建时间在某时间点之前的评论数
+     */
+    long countByCreatedAtBefore(java.time.LocalDateTime dateTime);
 }
