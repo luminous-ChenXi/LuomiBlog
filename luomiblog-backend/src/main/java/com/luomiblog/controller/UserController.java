@@ -4,7 +4,7 @@ import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.PasswordChangeRequest;
 import com.luomiblog.dto.UserProfileRequest;
 import com.luomiblog.dto.UserProfileResponse;
-import com.luomiblog.entity.User;
+import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,36 +20,36 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    public ApiResponse<UserProfileResponse> getUserProfile(@AuthenticationPrincipal User user) {
-        return ApiResponse.success(userService.getUserProfile(user.getId()));
+    public ApiResponse<UserProfileResponse> getUserProfile(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(userService.getUserProfile(userPrincipal.getId()));
     }
 
     @PutMapping("/profile")
     public ApiResponse<UserProfileResponse> updateUserProfile(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody UserProfileRequest request) {
-        return ApiResponse.success(userService.updateUserProfile(user.getId(), request));
+        return ApiResponse.success(userService.updateUserProfile(userPrincipal.getId(), request));
     }
 
     @PostMapping("/password")
     public ApiResponse<Void> changePassword(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody PasswordChangeRequest request) {
-        userService.changePassword(user.getId(), request);
+        userService.changePassword(userPrincipal.getId(), request);
         return ApiResponse.success();
     }
 
     @PostMapping("/verify-code")
-    public ApiResponse<Void> sendVerifyCode(@AuthenticationPrincipal User user) {
-        userService.sendVerifyCode(user.getId());
+    public ApiResponse<Void> sendVerifyCode(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        userService.sendVerifyCode(userPrincipal.getId());
         return ApiResponse.success();
     }
 
     @PostMapping("/avatar")
     public ApiResponse<Void> uploadAvatar(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam String avatarUrl) {
-        userService.uploadAvatar(user.getId(), avatarUrl);
+        userService.uploadAvatar(userPrincipal.getId(), avatarUrl);
         return ApiResponse.success();
     }
 }

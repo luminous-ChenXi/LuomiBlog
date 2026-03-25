@@ -22,13 +22,19 @@
           </svg>
           预览
         </button>
-        <button class="admin-btn admin-btn-primary" @click="saveArticle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button 
+          class="admin-btn admin-btn-primary" 
+          :class="{ 'is-loading': isSubmitting }"
+          :disabled="isSubmitting"
+          @click="saveArticle"
+        >
+          <svg v-if="!isSubmitting" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
             <polyline points="17 21 17 13 7 13 7 21"/>
             <polyline points="7 3 7 8 15 8"/>
           </svg>
-          保存修改
+          <span v-if="isSubmitting" class="btn-spinner"></span>
+          {{ isSubmitting ? '保存中...' : (isNew ? '发布文章' : '保存修改') }}
         </button>
       </div>
     </header>
@@ -71,15 +77,40 @@
       <!-- 左侧编辑区 -->
       <div class="editor-main">
         <div class="glass-panel editor-panel">
-          <div class="form-group">
-            <label class="form-label">文章标题</label>
-            <input type="text" class="admin-input title-input" v-model="article.title" />
+          <div class="form-group" :class="{ 'has-error': validationErrors.title }">
+            <label class="form-label">
+              文章标题
+              <span class="required-mark">*</span>
+            </label>
+            <input 
+              type="text" 
+              class="admin-input title-input" 
+              :class="{ 'input-error': validationErrors.title }"
+              v-model="article.title" 
+              @input="clearFieldError('title')"
+              placeholder="请输入文章标题"
+              maxlength="200"
+            />
+            <span v-if="validationErrors.title" class="field-error">{{ validationErrors.title }}</span>
+            <span v-else class="form-hint">文章标题是必填项，建议控制在 200 字符以内</span>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Slug (URL标识)</label>
-            <input type="text" class="admin-input" v-model="article.slug" :readonly="!isNew" />
-            <span class="form-hint">Slug 确定后尽量不要修改，会影响 SEO</span>
+          <div class="form-group" :class="{ 'has-error': validationErrors.slug }" v-if="isNew">
+            <label class="form-label">
+              Slug (URL标识)
+              <span class="required-mark">*</span>
+            </label>
+            <input 
+              type="text" 
+              class="admin-input" 
+              :class="{ 'input-error': validationErrors.slug }"
+              v-model="article.slug" 
+              @input="clearFieldError('slug')"
+              placeholder="请输入URL标识，如：my-first-article"
+              maxlength="100"
+            />
+            <span v-if="validationErrors.slug" class="field-error">{{ validationErrors.slug }}</span>
+            <span v-else class="form-hint">只能包含小写字母、数字和连字符，确定后尽量不要修改</span>
           </div>
 
           <div class="form-group">
@@ -87,8 +118,11 @@
             <textarea class="admin-input summary-input" v-model="article.summary" rows="3"></textarea>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">文章内容 (Markdown)</label>
+          <div class="form-group" :class="{ 'has-error': validationErrors.content }">
+            <label class="form-label">
+              文章内容 (Markdown)
+              <span class="required-mark">*</span>
+            </label>
             <div class="editor-toolbar">
               <button type="button" class="toolbar-btn" @click="insertMarkdown('**', '**')" title="加粗">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
@@ -115,7 +149,17 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
               </button>
             </div>
-            <textarea ref="contentRef" class="admin-input content-input" v-model="article.content" rows="25"></textarea>
+            <textarea 
+              ref="contentRef" 
+              class="admin-input content-input" 
+              :class="{ 'input-error': validationErrors.content }"
+              v-model="article.content" 
+              @input="clearFieldError('content')"
+              rows="25"
+              placeholder="请输入文章内容，支持 Markdown 格式..."
+            ></textarea>
+            <span v-if="validationErrors.content" class="field-error">{{ validationErrors.content }}</span>
+            <span v-else class="form-hint">文章内容是必填项，建议至少 10 个字符</span>
           </div>
         </div>
       </div>
@@ -134,12 +178,22 @@
             </select>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">分类</label>
-            <select class="admin-input" v-model="article.categoryId">
+          <div class="form-group" :class="{ 'has-error': validationErrors.categoryId }">
+            <label class="form-label">
+              分类
+              <span v-if="article.status === 'published'" class="required-mark">*</span>
+            </label>
+            <select 
+              class="admin-input" 
+              :class="{ 'input-error': validationErrors.categoryId }"
+              v-model="article.categoryId"
+              @change="clearFieldError('categoryId')"
+            >
               <option value="">选择分类</option>
               <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
             </select>
+            <span v-if="validationErrors.categoryId" class="field-error">{{ validationErrors.categoryId }}</span>
+            <span v-else-if="article.status === 'published'" class="form-hint">发布文章必须选择分类</span>
           </div>
 
           <div class="form-group">
@@ -248,6 +302,22 @@ const loadError = ref<string | null>(null);
 const categories = ref<Category[]>([]);
 const contentRef = ref<HTMLTextAreaElement>();
 
+// 表单验证状态
+const validationErrors = ref<{
+  title: string;
+  content: string;
+  slug: string;
+  categoryId: string;
+}>({
+  title: '',
+  content: '',
+  slug: '',
+  categoryId: ''
+});
+
+const isSubmitting = ref(false);
+const hasAttemptedSubmit = ref(false);
+
 const article = ref<Article>({
   title: '',
   slug: props.slug || '',
@@ -283,6 +353,145 @@ const tagsInput = computed({
 
 function getToken() {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
+}
+
+// 清除指定字段的错误
+function clearFieldError(field: keyof typeof validationErrors.value) {
+  validationErrors.value[field] = '';
+}
+
+// 验证文章表单
+function validateArticle(): boolean {
+  hasAttemptedSubmit.value = true;
+  let isValid = true;
+  const errors: string[] = [];
+
+  // 重置错误状态
+  validationErrors.value = {
+    title: '',
+    content: '',
+    slug: '',
+    categoryId: ''
+  };
+
+  // 验证标题
+  const title = article.value.title?.trim() || '';
+  if (!title) {
+    validationErrors.value.title = '请输入文章标题';
+    errors.push('文章标题不能为空');
+    isValid = false;
+  } else if (title.length < 2) {
+    validationErrors.value.title = '文章标题至少需要2个字符';
+    errors.push('文章标题过短');
+    isValid = false;
+  } else if (title.length > 200) {
+    validationErrors.value.title = '文章标题不能超过200个字符';
+    errors.push('文章标题过长');
+    isValid = false;
+  }
+
+  // 验证内容
+  const content = article.value.content?.trim() || '';
+  if (!content) {
+    validationErrors.value.content = '请输入文章内容';
+    errors.push('文章内容不能为空');
+    isValid = false;
+  } else if (content.length < 10) {
+    validationErrors.value.content = '文章内容至少需要10个字符';
+    errors.push('文章内容过短');
+    isValid = false;
+  }
+
+  // 验证 Slug（新建时必填）
+  if (isNew.value) {
+    const slug = article.value.slug?.trim() || '';
+    if (!slug) {
+      validationErrors.value.slug = '请输入URL标识';
+      errors.push('URL标识不能为空');
+      isValid = false;
+    } else if (!/^[a-z0-9-]+$/.test(slug)) {
+      validationErrors.value.slug = 'URL标识只能包含小写字母、数字和连字符';
+      errors.push('URL标识格式不正确');
+      isValid = false;
+    } else if (slug.length > 100) {
+      validationErrors.value.slug = 'URL标识不能超过100个字符';
+      errors.push('URL标识过长');
+      isValid = false;
+    }
+  }
+
+  // 验证分类（发布时必填）
+  if (article.value.status === 'published' && !article.value.categoryId) {
+    validationErrors.value.categoryId = '发布文章需要选择分类';
+    errors.push('请选择文章分类');
+    isValid = false;
+  }
+
+  // 显示错误提示
+  if (!isValid && errors.length > 0) {
+    const errorMessage = errors.length === 1 
+      ? errors[0] 
+      : `表单填写有误，共有 ${errors.length} 处错误需要修正`;
+    
+    ElMessage({
+      message: errorMessage,
+      type: 'warning',
+      duration: 4000,
+      showClose: true
+    });
+
+    // 滚动到第一个错误字段
+    setTimeout(() => {
+      const firstErrorField = document.querySelector('.field-error');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }
+
+  return isValid;
+}
+
+// 显示保存确认对话框
+async function showSaveConfirm(): Promise<boolean> {
+  const isDraft = article.value.status === 'draft';
+  const missingFields: string[] = [];
+  
+  if (!article.value.summary?.trim()) {
+    missingFields.push('文章摘要');
+  }
+  if (!article.value.categoryId) {
+    missingFields.push('文章分类');
+  }
+  if (!article.value.coverImage?.trim()) {
+    missingFields.push('封面图片');
+  }
+  if (article.value.tags.length === 0) {
+    missingFields.push('文章标签');
+  }
+
+  // 如果有缺失的推荐字段，显示友好提示
+  if (missingFields.length > 0 && !isDraft) {
+    try {
+      await ElMessageBox.confirm(
+        `文章还可以进一步完善：\n\n• ${missingFields.join('\n• ')}\n\n建议补充以上信息以提升文章质量和SEO效果。是否继续保存？`,
+        '完善文章信息',
+        {
+          confirmButtonText: '继续保存',
+          cancelButtonText: '去完善',
+          type: 'info',
+          dangerouslyUseHTMLString: true,
+          customClass: 'article-save-confirm'
+        }
+      );
+      return true;
+    } catch {
+      // 用户选择去完善
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function formatDate(dateStr: string) {
@@ -391,6 +600,19 @@ function previewArticle() {
 }
 
 async function saveArticle() {
+  // 表单验证
+  if (!validateArticle()) {
+    return;
+  }
+
+  // 显示保存确认（检查可选字段）
+  const shouldContinue = await showSaveConfirm();
+  if (!shouldContinue) {
+    return;
+  }
+
+  isSubmitting.value = true;
+
   try {
     const payload = { ...article.value };
     
@@ -427,7 +649,18 @@ async function saveArticle() {
       throw new Error(result.message || '保存失败');
     }
 
-    ElMessage.success('文章保存成功');
+    // 个性化成功提示
+    const successMessages: Record<string, string> = {
+      'draft': '草稿保存成功',
+      'published': '文章发布成功',
+      'archived': '文章已归档'
+    };
+    
+    ElMessage({
+      message: successMessages[article.value.status] || '文章保存成功',
+      type: 'success',
+      duration: 3000
+    });
     
     if (isNew.value) {
       // 新建文章后跳转到编辑页面
@@ -438,7 +671,30 @@ async function saveArticle() {
     }
   } catch (error) {
     console.error('保存文章失败:', error);
-    ElMessage.error('保存失败: ' + (error as Error).message);
+    
+    // 个性化错误提示
+    const errorMsg = (error as Error).message;
+    let displayMsg = '保存失败';
+    
+    if (errorMsg.includes('Duplicate entry') || errorMsg.includes('唯一约束')) {
+      displayMsg = '文章URL标识已存在，请更换一个';
+      validationErrors.value.slug = '该URL标识已被使用';
+    } else if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
+      displayMsg = '保存超时，请检查网络连接后重试';
+    } else if (errorMsg.includes('Unauthorized') || errorMsg.includes('401')) {
+      displayMsg = '登录已过期，请重新登录';
+    } else if (errorMsg) {
+      displayMsg = errorMsg;
+    }
+    
+    ElMessage({
+      message: displayMsg,
+      type: 'error',
+      duration: 5000,
+      showClose: true
+    });
+  } finally {
+    isSubmitting.value = false;
   }
 }
 
@@ -814,6 +1070,88 @@ onMounted(async () => {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+/* 表单验证样式 */
+.required-mark {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+.form-group.has-error .form-label {
+  color: #ef4444;
+}
+
+.admin-input.input-error {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.admin-input.input-error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 6px;
+  border-left: 3px solid #ef4444;
+}
+
+.field-error::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+/* 按钮加载状态 */
+.admin-btn.is-loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 保存确认对话框样式 */
+:global(.article-save-confirm) {
+  max-width: 420px;
+}
+
+:global(.article-save-confirm .el-message-box__content) {
+  padding: 20px;
+}
+
+:global(.article-save-confirm .el-message-box__message) {
+  line-height: 1.8;
+  color: var(--admin-text);
 }
 
 @media (max-width: 1024px) {

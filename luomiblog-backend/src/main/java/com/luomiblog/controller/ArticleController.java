@@ -3,7 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
-import com.luomiblog.entity.User;
+import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,23 +59,23 @@ public class ArticleController {
     @PostMapping
     public ApiResponse<ArticleResponse> createArticle(
             @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.createArticle(request, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.createArticle(request, userPrincipal.getId()));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<ArticleResponse> updateArticle(
             @PathVariable Long id,
             @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.updateArticle(id, request, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.updateArticle(id, request, userPrincipal.getId()));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteArticle(
             @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        articleService.deleteArticle(id, user.getId());
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        articleService.deleteArticle(id, userPrincipal.getId());
         return ApiResponse.success();
     }
 

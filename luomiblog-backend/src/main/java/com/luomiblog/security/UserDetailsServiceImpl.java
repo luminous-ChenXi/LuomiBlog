@@ -36,10 +36,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             }
         }
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName))
-        );
+        // 使用自定义的 UserPrincipal 包装 User 实体
+        return new UserPrincipal(user, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName)));
     }
 }

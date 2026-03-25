@@ -3,7 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
-import com.luomiblog.entity.User;
+import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +39,8 @@ public class AdminArticleController {
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
     public ApiResponse<ArticleResponse> createArticle(
             @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.createArticle(request, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.createArticle(request, userPrincipal.getId()));
     }
 
     @PutMapping("/{id}")
@@ -48,16 +48,16 @@ public class AdminArticleController {
     public ApiResponse<ArticleResponse> updateArticle(
             @PathVariable Long id,
             @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.updateArticle(id, request, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.updateArticle(id, request, userPrincipal.getId()));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
     public ApiResponse<Void> deleteArticle(
             @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        articleService.deleteArticle(id, user.getId());
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        articleService.deleteArticle(id, userPrincipal.getId());
         return ApiResponse.success();
     }
 
@@ -65,16 +65,16 @@ public class AdminArticleController {
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
     public ApiResponse<ArticleResponse> publishArticle(
             @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.publishArticle(id, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.publishArticle(id, userPrincipal.getId()));
     }
 
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
     public ApiResponse<ArticleResponse> archiveArticle(
             @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.archiveArticle(id, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.archiveArticle(id, userPrincipal.getId()));
     }
 
     @PostMapping("/{id}/top")
@@ -82,7 +82,7 @@ public class AdminArticleController {
     public ApiResponse<ArticleResponse> toggleTop(
             @PathVariable Long id,
             @RequestParam boolean top,
-            @AuthenticationPrincipal User user) {
-        return ApiResponse.success(articleService.toggleTop(id, top, user.getId()));
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ApiResponse.success(articleService.toggleTop(id, top, userPrincipal.getId()));
     }
 }
