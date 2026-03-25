@@ -207,9 +207,19 @@
             <input type="text" class="admin-input" v-model="article.coverImage" />
           </div>
 
-          <div class="form-group">
-            <label class="form-label">作者</label>
-            <input type="text" class="admin-input" v-model="article.author" />
+          <div class="form-group author-field">
+            <label class="form-label">
+              作者
+              <span class="field-hint" v-if="isNew">(默认为当前登录用户)</span>
+            </label>
+            <input 
+              type="text" 
+              class="admin-input" 
+              v-model="article.author" 
+              :placeholder="getCurrentUserDisplayName()"
+              :disabled="!canEditAuthor()"
+            />
+            <span v-if="!canEditAuthor()" class="field-hint">仅博主和管理员可修改作者</span>
           </div>
 
           <div class="form-group">
@@ -270,6 +280,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { API_BASE_URL } from '../config/api';
+import { getUser } from '../stores/user';
 
 interface Article {
   id?: number;
@@ -731,9 +742,41 @@ async function deleteArticle() {
   }
 }
 
+// 获取当前用户的显示名称
+function getCurrentUserDisplayName(): string {
+  const user = getUser();
+  if (!user) return '管理员';
+  return user.nickname || user.username || '管理员';
+}
+
+// 检查当前用户是否可以编辑作者
+function canEditAuthor(): boolean {
+  const user = getUser();
+  if (!user) return false;
+  // 仅博主(blogger)和管理员(admin)可以修改作者
+  return user.role === 'blogger' || user.role === 'admin';
+}
+
+// 获取当前用户的角色
+function getCurrentUserRole(): string {
+  const user = getUser();
+  return user?.role || 'visitor';
+}
+
 onMounted(async () => {
   await loadCategories();
   await loadArticle();
+  
+  // 如果是新建文章，设置默认作者为当前用户
+  if (isNew.value) {
+    const user = getUser();
+    if (user) {
+      // 仅博主和管理员可以设置作者，其他角色不设置
+      if (user.role === 'blogger' || user.role === 'admin') {
+        article.value.author = user.nickname || user.username || '';
+      }
+    }
+  }
 });
 </script>
 
@@ -1152,6 +1195,19 @@ onMounted(async () => {
 :global(.article-save-confirm .el-message-box__message) {
   line-height: 1.8;
   color: var(--admin-text);
+}
+
+/* 作者字段样式 */
+.author-field .field-hint {
+  font-size: 12px;
+  color: var(--admin-text-secondary);
+  margin-left: 8px;
+}
+
+.author-field .admin-input:disabled {
+  background: var(--admin-bg-secondary);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 @media (max-width: 1024px) {

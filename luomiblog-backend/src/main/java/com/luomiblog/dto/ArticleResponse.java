@@ -23,6 +23,9 @@ public class ArticleResponse {
     private CategoryInfo category;
     private List<TagInfo> tags;
     private AuthorInfo author;
+    // 便捷字段，用于前端直接显示
+    private String authorName;
+    private String categoryName;
     private String language;
     private String status;
     private String version;

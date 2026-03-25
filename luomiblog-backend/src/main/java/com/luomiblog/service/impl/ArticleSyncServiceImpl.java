@@ -392,11 +392,24 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
         return Math.max(1, wordCount / 300);
     }
 
+    /**
+     * 获取默认作者
+     * 优先级：1.博主(BLOGGER) 2.管理员(ADMIN) 3.第一个用户
+     */
     private User getDefaultAuthor() {
+        // 1. 优先查找博主角色(roleId=2)
+        List<User> bloggers = userRepository.findByRoleId(2);
+        if (!bloggers.isEmpty()) {
+            return bloggers.get(0);
+        }
+
+        // 2. 查找管理员角色(roleId=1)
         List<User> admins = userRepository.findByRoleId(1);
         if (!admins.isEmpty()) {
             return admins.get(0);
         }
+
+        // 3. 返回第一个用户
         return userRepository.findAll().stream().findFirst().orElse(null);
     }
 
