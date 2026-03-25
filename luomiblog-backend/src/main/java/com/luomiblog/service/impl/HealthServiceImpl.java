@@ -236,6 +236,7 @@ public class HealthServiceImpl implements HealthService {
     /**
      * 数据库检查结果内部类
      */
+    @SuppressWarnings("unused")
     private static class DatabaseCheckResult {
         private final boolean connected;
         private final boolean tablesExist;
