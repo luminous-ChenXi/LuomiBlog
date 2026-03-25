@@ -104,7 +104,7 @@ const quickActions = [
   }
 
   // 格式化数字
-  function formatNumber(num) {
+  function formatNumber(num: number): string {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {
@@ -114,7 +114,7 @@ const quickActions = [
   }
 
   // 格式化增长率
-  function formatGrowth(growth) {
+  function formatGrowth(growth: number): string {
     const sign = growth >= 0 ? '+' : '';
     return sign + growth + '%';
   }
@@ -147,10 +147,30 @@ const quickActions = [
     }
   }
 
+  // 定义统计数据类型
+  interface DashboardData {
+    totalUsers: number;
+    userGrowth: number;
+    totalArticles: number;
+    articleGrowth: number;
+    totalComments: number;
+    commentGrowth: number;
+    todayViews: number;
+    viewGrowth: number;
+    recentActivities: Activity[];
+  }
+
+  interface Activity {
+    type: 'user' | 'article' | 'comment' | 'system';
+    action: string;
+    time: string;
+    detail: string;
+  }
+
   // 更新仪表盘显示
-  function updateDashboard(data) {
+  function updateDashboard(data: DashboardData): void {
     // 更新统计卡片
-    const statsMap = {
+    const statsMap: Record<string, { value: number; change: number }> = {
       'users': { value: data.totalUsers, change: data.userGrowth },
       'articles': { value: data.totalArticles, change: data.articleGrowth },
       'comments': { value: data.totalComments, change: data.commentGrowth },
@@ -159,6 +179,7 @@ const quickActions = [
 
     document.querySelectorAll('.stat-card').forEach(card => {
       const type = card.getAttribute('data-stat-type');
+      if (!type) return;
       const statData = statsMap[type];
       if (statData) {
         const valueEl = card.querySelector('.stat-value');
@@ -166,13 +187,13 @@ const quickActions = [
 
         if (valueEl) {
           valueEl.textContent = formatNumber(statData.value);
-          valueEl.setAttribute('data-value', statData.value);
+          valueEl.setAttribute('data-value', String(statData.value));
         }
 
         if (changeEl) {
           const growth = formatGrowth(statData.change);
           changeEl.textContent = growth;
-          changeEl.setAttribute('data-change', statData.change);
+          changeEl.setAttribute('data-change', String(statData.change));
           changeEl.className = `stat-change ${statData.change >= 0 ? 'up' : 'down'}`;
         }
       }
@@ -181,7 +202,7 @@ const quickActions = [
     // 更新最近动态
     const activitiesList = document.getElementById('activities-list');
     if (activitiesList && data.recentActivities && data.recentActivities.length > 0) {
-      activitiesList.innerHTML = data.recentActivities.map(activity => `
+      activitiesList.innerHTML = data.recentActivities.map((activity: Activity) => `
         <div class="activity-item">
           <div class="activity-icon ${activity.type}">
             ${getActivityIcon(activity.type)}
@@ -201,8 +222,8 @@ const quickActions = [
   }
 
   // 获取活动图标
-  function getActivityIcon(type) {
-    const icons = {
+  function getActivityIcon(type: Activity['type']): string {
+    const icons: Record<Activity['type'], string> = {
       'user': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       'article': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
       'comment': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
