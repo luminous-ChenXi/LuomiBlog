@@ -48,4 +48,16 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
             @Param("category") String category,
             @Param("status") String status,
             Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM Article a WHERE a.deletedAt IS NULL")
+    Long countTotalArticles();
+
+    @Query("SELECT COUNT(a) FROM Article a WHERE a.status = 'published' AND a.deletedAt IS NULL")
+    Long countPublishedArticles();
+
+    @Query("SELECT COUNT(a) FROM Article a WHERE a.status = 'draft' AND a.deletedAt IS NULL")
+    Long countDraftArticles();
+
+    @Query("SELECT COUNT(a) FROM Article a WHERE a.status = 'archived' AND a.deletedAt IS NULL")
+    Long countArchivedArticles();
 }

@@ -3,6 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
+import com.luomiblog.dto.ArticleStatsResponse;
 import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleService;
 import jakarta.validation.Valid;
@@ -84,5 +85,14 @@ public class AdminArticleController {
             @RequestParam boolean top,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ApiResponse.success(articleService.toggleTop(id, top, userPrincipal.getId()));
+    }
+
+    /**
+     * 获取文章统计信息
+     */
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    public ApiResponse<ArticleStatsResponse> getArticleStats() {
+        return ApiResponse.success(articleService.getArticleStats());
     }
 }
