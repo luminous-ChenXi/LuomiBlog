@@ -1,18 +1,12 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 
-const stats = [
-  { label: '总用户数', value: '1,234', change: '+12%', icon: 'users', trend: 'up' },
-  { label: '文章数量', value: '56', change: '+5%', icon: 'articles', trend: 'up' },
-  { label: '评论数量', value: '328', change: '+23%', icon: 'comments', trend: 'up' },
-  { label: '今日访问', value: '2.1K', change: '+8%', icon: 'views', trend: 'up' },
-];
-
-const recentActivities = [
-  { type: 'user', action: '新用户注册', detail: '用户 "张三" 注册了账号', time: '2分钟前' },
-  { type: 'article', action: '文章发布', detail: '"Vue3 最佳实践指南" 已发布', time: '15分钟前' },
-  { type: 'comment', action: '新评论', detail: '李四评论了 "React Hooks 详解"', time: '1小时前' },
-  { type: 'system', action: '系统通知', detail: '服务器备份完成', time: '3小时前' },
+// 初始数据为空，将在客户端获取
+const initialStats = [
+  { label: '总用户数', value: '-', change: '-', icon: 'users', trend: 'up' },
+  { label: '文章数量', value: '-', change: '-', icon: 'articles', trend: 'up' },
+  { label: '评论数量', value: '-', change: '-', icon: 'comments', trend: 'up' },
+  { label: '今日访问', value: '-', change: '-', icon: 'views', trend: 'up' },
 ];
 
 const quickActions = [
@@ -35,9 +29,9 @@ const quickActions = [
     </header>
 
     <!-- 统计卡片 -->
-    <div class="stats-grid">
-      {stats.map((stat) => (
-        <div class="stat-card">
+    <div class="stats-grid" id="stats-grid">
+      {initialStats.map((stat) => (
+        <div class="stat-card" data-stat-type={stat.icon}>
           <div class="stat-icon">
             {stat.icon === 'users' && (
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -53,10 +47,10 @@ const quickActions = [
             )}
           </div>
           <div class="stat-content">
-            <span class="stat-value">{stat.value}</span>
+            <span class="stat-value" data-value="0">{stat.value}</span>
             <span class="stat-label">{stat.label}</span>
           </div>
-          <div class={`stat-change ${stat.trend}`}>
+          <div class={`stat-change ${stat.trend}`} data-change="0">
             {stat.change}
           </div>
         </div>
@@ -92,36 +86,134 @@ const quickActions = [
     <!-- 最近动态 -->
     <div class="glass-panel recent-activities">
       <h3 class="panel-title">最近动态</h3>
-      <div class="activities-list">
-        {recentActivities.map((activity) => (
-          <div class="activity-item">
-            <div class={`activity-icon ${activity.type}`}>
-              {activity.type === 'user' && (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              )}
-              {activity.type === 'article' && (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-              )}
-              {activity.type === 'comment' && (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              )}
-              {activity.type === 'system' && (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m4.22-10.22 4.24-4.24M6.34 6.34 2.1 2.1m17.8 17.8-4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24-4.24-4.24 4.24M6.34 6.34l-4.24-4.24"/></svg>
-              )}
-            </div>
-            <div class="activity-content">
-              <div class="activity-header">
-                <span class="activity-action">{activity.action}</span>
-                <span class="activity-time">{activity.time}</span>
-              </div>
-              <p class="activity-detail">{activity.detail}</p>
-            </div>
+      <div class="activities-list" id="activities-list">
+        <div class="activity-item loading">
+          <div class="activity-content">
+            <p class="activity-detail">加载中...</p>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  // 获取 Token
+  function getToken() {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
+  }
+
+  // 格式化数字
+  function formatNumber(num) {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  }
+
+  // 格式化增长率
+  function formatGrowth(growth) {
+    const sign = growth >= 0 ? '+' : '';
+    return sign + growth + '%';
+  }
+
+  // 加载仪表盘数据
+  async function loadDashboardStats() {
+    const token = getToken();
+    if (!token) {
+      console.error('未登录');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/dashboard/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          updateDashboard(result.data);
+        }
+      } else {
+        console.error('获取仪表盘数据失败:', response.status);
+      }
+    } catch (error) {
+      console.error('获取仪表盘数据出错:', error);
+    }
+  }
+
+  // 更新仪表盘显示
+  function updateDashboard(data) {
+    // 更新统计卡片
+    const statsMap = {
+      'users': { value: data.totalUsers, change: data.userGrowth },
+      'articles': { value: data.totalArticles, change: data.articleGrowth },
+      'comments': { value: data.totalComments, change: data.commentGrowth },
+      'views': { value: data.todayViews, change: data.viewGrowth }
+    };
+
+    document.querySelectorAll('.stat-card').forEach(card => {
+      const type = card.getAttribute('data-stat-type');
+      const statData = statsMap[type];
+      if (statData) {
+        const valueEl = card.querySelector('.stat-value');
+        const changeEl = card.querySelector('.stat-change');
+
+        if (valueEl) {
+          valueEl.textContent = formatNumber(statData.value);
+          valueEl.setAttribute('data-value', statData.value);
+        }
+
+        if (changeEl) {
+          const growth = formatGrowth(statData.change);
+          changeEl.textContent = growth;
+          changeEl.setAttribute('data-change', statData.change);
+          changeEl.className = `stat-change ${statData.change >= 0 ? 'up' : 'down'}`;
+        }
+      }
+    });
+
+    // 更新最近动态
+    const activitiesList = document.getElementById('activities-list');
+    if (activitiesList && data.recentActivities && data.recentActivities.length > 0) {
+      activitiesList.innerHTML = data.recentActivities.map(activity => `
+        <div class="activity-item">
+          <div class="activity-icon ${activity.type}">
+            ${getActivityIcon(activity.type)}
+          </div>
+          <div class="activity-content">
+            <div class="activity-header">
+              <span class="activity-action">${activity.action}</span>
+              <span class="activity-time">${activity.time}</span>
+            </div>
+            <p class="activity-detail">${activity.detail}</p>
+          </div>
+        </div>
+      `).join('');
+    } else if (activitiesList) {
+      activitiesList.innerHTML = '<div class="activity-item"><div class="activity-content"><p class="activity-detail">暂无动态</p></div></div>';
+    }
+  }
+
+  // 获取活动图标
+  function getActivityIcon(type) {
+    const icons = {
+      'user': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      'article': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+      'comment': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      'system': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m4.22-10.22 4.24-4.24M6.34 6.34 2.1 2.1m17.8 17.8-4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24-4.24-4.24 4.24M6.34 6.34l-4.24-4.24"/></svg>'
+    };
+    return icons[type] || icons['system'];
+  }
+
+  // 页面加载完成后获取数据
+  document.addEventListener('DOMContentLoaded', loadDashboardStats);
+</script>
 
 <style>
   .dashboard-page {
@@ -283,6 +375,10 @@ const quickActions = [
 
   .activity-item:hover {
     border-color: var(--admin-card-border);
+  }
+
+  .activity-item.loading {
+    opacity: 0.6;
   }
 
   .activity-icon {
