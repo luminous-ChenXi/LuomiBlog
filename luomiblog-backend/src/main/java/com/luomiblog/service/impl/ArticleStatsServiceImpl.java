@@ -30,6 +30,7 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public boolean recordView(Long articleId, Long userId, String visitorId, String ipAddress, String userAgent) {
         // 1. 检查文章是否存在
         Optional<Article> articleOpt = articleRepository.findById(articleId);
@@ -69,6 +70,7 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public ArticleStatsResult toggleLike(Long articleId, Long userId, String visitorId, String ipAddress) {
         // 1. 检查文章是否存在
         Optional<Article> articleOpt = articleRepository.findById(articleId);
@@ -138,6 +140,7 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public ArticleStatsResult toggleFavorite(Long articleId, Long userId) {
         // 1. 检查用户是否登录
         if (userId == null) {
@@ -213,6 +216,7 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
     }
 
     @Override
+    @SuppressWarnings("null")
     public ArticleStatsResult getArticleStats(Long articleId, Long userId, String visitorId) {
         Optional<Article> articleOpt = articleRepository.findById(articleId);
         if (articleOpt.isEmpty()) {
