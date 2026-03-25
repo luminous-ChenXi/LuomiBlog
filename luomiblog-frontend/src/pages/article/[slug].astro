@@ -4,6 +4,7 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import AIAssistant from '../../components/AIAssistant.vue';
 import { getCollection, getEntry } from 'astro:content';
+import { API_BASE_URL } from '../../config/api';
 
 // 获取所有文章用于生成静态路径
 export async function getStaticPaths() {
@@ -40,34 +41,80 @@ const relatedArticles = allPosts
 // 计算阅读时间（按每分钟 300 字计算）
 const wordCount = post.body?.split(/\s+/).length || 0;
 const readTime = Math.ceil(wordCount / 300);
+
+// 尝试从后端获取文章数据（如果已同步到数据库）
+let dbArticle = null;
+try {
+  const response = await fetch(`${API_BASE_URL}/api/articles/slug/${slug}`);
+  if (response.ok) {
+    const result = await response.json();
+    if (result.code === 200 && result.data) {
+      dbArticle = result.data;
+    }
+  }
+} catch (e) {
+  // 后端不可用或文章未同步，使用文件系统数据
+  console.log('使用文件系统数据，后端数据不可用');
+}
+
+// 合并数据：文件系统数据优先，后端数据补充
+const articleData = {
+  // 基础数据来自文件系统
+  title: post.data.title,
+  description: post.data.description,
+  content: post.body,
+  pubDate: post.data.pubDate,
+  tags: post.data.tags || [],
+  cover: post.data.cover,
+  // 作者：优先使用文件中的作者，否则使用后端作者，最后默认
+  author: post.data.author || dbArticle?.authorName || '管理员',
+  // 统计数据：优先使用后端数据
+  views: dbArticle?.viewCount || post.data.views || 0,
+  likes: dbArticle?.likeCount || post.data.likes || 0,
+  comments: dbArticle?.commentCount || post.data.comments || 0,
+  // 分类：优先使用后端数据
+  category: dbArticle?.categoryName || post.data.category || '未分类',
+  // 是否已同步到数据库
+  isSynced: !!dbArticle,
+  // 数据库文章ID（用于评论等功能）
+  articleId: dbArticle?.id,
+};
 ---
 
-<Layout title={`${post.data.title} - LuomiBlog`} description={post.data.description}>
+<Layout title={`${articleData.title} - LuomiBlog`} description={articleData.description}>
   <Header />
   <main class="article-page">
-    <article class="article-container">
+    <article class="article-container" data-article-id={articleData.articleId} data-is-synced={articleData.isSynced}>
       <!-- 面包屑 -->
       <nav class="breadcrumb">
         <a href="/">首页</a>
         <span class="breadcrumb-separator">/</span>
         <a href="/articles">文章</a>
         <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">{post.data.title}</span>
+        <span class="breadcrumb-current">{articleData.title}</span>
       </nav>
+
+      <!-- 同步状态提示 -->
+      {!articleData.isSynced && (
+        <div class="sync-notice">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          <span>此文章尚未同步到数据库，部分功能（如评论、点赞统计）可能不可用</span>
+        </div>
+      )}
 
       <!-- 文章头部 -->
       <header class="article-header">
-        <h1 class="article-title">{post.data.title}</h1>
-        <p class="article-excerpt">{post.data.description}</p>
+        <h1 class="article-title">{articleData.title}</h1>
+        <p class="article-excerpt">{articleData.description}</p>
         
         <div class="article-meta">
           <div class="article-meta-item">
-            <img src="/default-avatar.svg" alt={post.data.author} class="author-avatar-small" />
-            <span>{post.data.author}</span>
+            <img src="/default-avatar.svg" alt={articleData.author} class="author-avatar-small" />
+            <span>{articleData.author}</span>
           </div>
           <div class="article-meta-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-            <span>{new Date(post.data.pubDate).toISOString().split('T')[0]}</span>
+            <span>{new Date(articleData.pubDate).toISOString().split('T')[0]}</span>
           </div>
           <div class="article-meta-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -75,21 +122,25 @@ const readTime = Math.ceil(wordCount / 300);
           </div>
           <div class="article-meta-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>{post.data.views || 0} 阅读</span>
+            <span>{articleData.views} 阅读</span>
+          </div>
+          <div class="article-meta-item category-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+            <span>{articleData.category}</span>
           </div>
         </div>
 
         <div class="article-tags">
-          {post.data.tags.map((tag: string) => (
+          {articleData.tags.map((tag: string) => (
             <span class="tag">{tag}</span>
           ))}
         </div>
       </header>
 
       <!-- 文章封面 -->
-      {post.data.cover && (
+      {articleData.cover && (
         <div class="article-cover">
-          <img src={post.data.cover} alt={post.data.title} />
+          <img src={articleData.cover} alt={articleData.title} />
         </div>
       )}
 
@@ -102,9 +153,13 @@ const readTime = Math.ceil(wordCount / 300);
       <footer class="article-footer">
         <!-- 点赞分享收藏 -->
         <div class="article-actions">
-          <button class="action-btn like-btn" onclick="handleLike()">
+          <button class="action-btn like-btn" onclick="handleLike()" data-article-id={articleData.articleId} data-synced={articleData.isSynced}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-            <span>{post.data.likes || 0}</span>
+            <span class="like-count">{articleData.likes}</span>
+          </button>
+          <button class="action-btn comment-btn" onclick="scrollToComments()" data-synced={articleData.isSynced}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>{articleData.comments}</span>
           </button>
           <button class="action-btn favorite-btn" onclick="handleFavorite()">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
@@ -131,7 +186,7 @@ const readTime = Math.ceil(wordCount / 300);
             <h3>AI 助手</h3>
           </div>
           <p class="ai-section-desc">对这篇文章有疑问？让 AI 助手为您解答</p>
-          <AIAssistant client:visible articleTitle={post.data.title} />
+          <AIAssistant client:visible articleTitle={articleData.title} />
         </div>
 
         <!-- 相关文章 -->
@@ -529,6 +584,29 @@ const readTime = Math.ceil(wordCount / 300);
     color: var(--color-text-muted);
   }
 
+  /* 同步状态提示 */
+  .sync-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    background: var(--color-warning-bg, #fff8e6);
+    border: 1px solid var(--color-warning-border, #ffd666);
+    border-radius: var(--radius-md);
+    color: var(--color-warning-text, #d48806);
+    font-size: 14px;
+  }
+
+  .sync-notice svg {
+    flex-shrink: 0;
+  }
+
+  /* 分类标签 */
+  .category-item {
+    color: var(--color-brand-primary);
+  }
+
   /* 响应式 */
   @media (max-width: 768px) {
     .article-container {
@@ -553,3 +631,80 @@ const readTime = Math.ceil(wordCount / 300);
     }
   }
 </style>
+
+<script>
+  // 处理点赞
+  async function handleLike() {
+    const likeBtn = document.querySelector('.like-btn');
+    const isSynced = likeBtn?.getAttribute('data-synced') === 'true';
+    const articleId = likeBtn?.getAttribute('data-article-id');
+
+    if (!isSynced) {
+      alert('此文章尚未同步到数据库，无法点赞');
+      return;
+    }
+
+    if (!articleId) {
+      alert('文章ID不存在');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/articles/${articleId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          const countEl = likeBtn?.querySelector('.like-count');
+          if (countEl) {
+            countEl.textContent = result.data.likeCount;
+          }
+          likeBtn?.classList.add('liked');
+        }
+      }
+    } catch (error) {
+      console.error('点赞失败:', error);
+    }
+  }
+
+  // 处理收藏
+  function handleFavorite() {
+    alert('收藏功能开发中...');
+  }
+
+  // 处理分享
+  function handleShare() {
+    if (navigator.share) {
+      navigator.share({
+        title: document.title,
+        url: window.location.href
+      });
+    } else {
+      // 复制链接到剪贴板
+      navigator.clipboard.writeText(window.location.href);
+      alert('链接已复制到剪贴板');
+    }
+  }
+
+  // 滚动到评论区
+  function scrollToComments() {
+    const commentBtn = document.querySelector('.comment-btn');
+    const isSynced = commentBtn?.getAttribute('data-synced') === 'true';
+
+    if (!isSynced) {
+      alert('此文章尚未同步到数据库，评论功能不可用');
+      return;
+    }
+
+    // 如果有评论区，滚动到那里
+    const commentsSection = document.getElementById('comments');
+    if (commentsSection) {
+      commentsSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      alert('评论区功能开发中...');
+    }
+  }
+</script>

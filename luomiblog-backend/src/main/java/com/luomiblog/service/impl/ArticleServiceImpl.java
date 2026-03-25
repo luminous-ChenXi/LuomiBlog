@@ -287,17 +287,22 @@ public class ArticleServiceImpl implements ArticleService {
                 .createdAt(article.getCreatedAt())
                 .updatedAt(article.getUpdatedAt());
 
+        // 设置分类信息和分类名称
         if (article.getCategoryId() != null) {
             categoryRepository.findById(article.getCategoryId())
-                    .ifPresent(category -> builder.category(
-                            ArticleResponse.CategoryInfo.builder()
-                                    .id(category.getId())
-                                    .name(category.getName())
-                                    .slug(category.getSlug())
-                                    .build()
-                    ));
+                    .ifPresent(category -> {
+                        builder.category(
+                                ArticleResponse.CategoryInfo.builder()
+                                        .id(category.getId())
+                                        .name(category.getName())
+                                        .slug(category.getSlug())
+                                        .build()
+                        );
+                        builder.categoryName(category.getName());
+                    });
         }
 
+        // 设置标签信息
         List<Tag> tags = tagRepository.findByArticleId(article.getId());
         builder.tags(tags.stream()
                 .map(tag -> ArticleResponse.TagInfo.builder()
@@ -307,15 +312,20 @@ public class ArticleServiceImpl implements ArticleService {
                         .build())
                 .collect(Collectors.toList()));
 
+        // 设置作者信息和作者名称
         userRepository.findById(article.getAuthorId())
-                .ifPresent(author -> builder.author(
-                        ArticleResponse.AuthorInfo.builder()
-                                .id(author.getId())
-                                .username(author.getUsername())
-                                .nickname(author.getNickname())
-                                .avatarUrl(author.getAvatarUrl())
-                                .build()
-                ));
+                .ifPresent(author -> {
+                    builder.author(
+                            ArticleResponse.AuthorInfo.builder()
+                                    .id(author.getId())
+                                    .username(author.getUsername())
+                                    .nickname(author.getNickname())
+                                    .avatarUrl(author.getAvatarUrl())
+                                    .build()
+                    );
+                    // 使用昵称或用户名作为作者名称
+                    builder.authorName(author.getNickname() != null ? author.getNickname() : author.getUsername());
+                });
 
         return builder.build();
     }
