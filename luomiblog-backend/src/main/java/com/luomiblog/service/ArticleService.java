@@ -2,6 +2,7 @@ package com.luomiblog.service;
 
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
+import com.luomiblog.dto.ArticleStatsResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -38,4 +39,9 @@ public interface ArticleService {
     ArticleResponse archiveArticle(Long id, Long authorId);
 
     ArticleResponse toggleTop(Long id, boolean top, Long authorId);
+
+    /**
+     * 获取文章统计信息
+     */
+    ArticleStatsResponse getArticleStats();
 }

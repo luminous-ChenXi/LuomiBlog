@@ -2,6 +2,7 @@ package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
+import com.luomiblog.dto.ArticleStatsResponse;
 import com.luomiblog.entity.*;
 import com.luomiblog.repository.*;
 import com.luomiblog.service.ArticleService;
@@ -317,5 +318,16 @@ public class ArticleServiceImpl implements ArticleService {
                 ));
 
         return builder.build();
+    }
+
+    @Override
+    public ArticleStatsResponse getArticleStats() {
+        return ArticleStatsResponse.builder()
+                .total(articleRepository.countTotalArticles())
+                .published(articleRepository.countPublishedArticles())
+                .draft(articleRepository.countDraftArticles())
+                .archived(articleRepository.countArchivedArticles())
+                .conflicts(0L) // 冲突数由同步服务单独统计
+                .build();
     }
 }
