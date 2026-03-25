@@ -3,7 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.LikeRequest;
 import com.luomiblog.dto.LikeResponse;
-import com.luomiblog.entity.User;
+import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.LikeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -22,11 +22,11 @@ public class LikeController {
     @PostMapping("/article")
     public ApiResponse<LikeResponse> toggleArticleLike(
             @Valid @RequestBody LikeRequest request,
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
         String ipAddress = getClientIpAddress(httpRequest);
-        Long userId = user != null ? user.getId() : null;
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         return ApiResponse.success(likeService.toggleArticleLike(request, userId, visitorId, ipAddress));
     }
@@ -34,11 +34,11 @@ public class LikeController {
     @PostMapping("/comment")
     public ApiResponse<LikeResponse> toggleCommentLike(
             @Valid @RequestBody LikeRequest request,
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
         String ipAddress = getClientIpAddress(httpRequest);
-        Long userId = user != null ? user.getId() : null;
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         return ApiResponse.success(likeService.toggleCommentLike(request, userId, visitorId, ipAddress));
     }
@@ -46,18 +46,18 @@ public class LikeController {
     @GetMapping("/article/{articleId}")
     public ApiResponse<LikeResponse> getArticleLikeStatus(
             @PathVariable Long articleId,
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId) {
-        Long userId = user != null ? user.getId() : null;
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
         return ApiResponse.success(likeService.getArticleLikeStatus(articleId, userId, visitorId));
     }
 
     @GetMapping("/comment/{commentId}")
     public ApiResponse<LikeResponse> getCommentLikeStatus(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId) {
-        Long userId = user != null ? user.getId() : null;
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
         return ApiResponse.success(likeService.getCommentLikeStatus(commentId, userId, visitorId));
     }
 

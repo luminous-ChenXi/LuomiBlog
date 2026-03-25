@@ -3,7 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
-import com.luomiblog.entity.User;
+import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.CommentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -41,22 +41,22 @@ public class CommentController {
 
     @GetMapping("/user")
     public ApiResponse<Page<CommentResponse>> getCommentsByUser(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ApiResponse.success(commentService.getCommentsByUser(user.getId(), pageable));
+        return ApiResponse.success(commentService.getCommentsByUser(userPrincipal.getId(), pageable));
     }
 
     @PostMapping
     public ApiResponse<CommentResponse> createComment(
             @Valid @RequestBody CommentRequest request,
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
         String ipAddress = getClientIpAddress(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
-        Long userId = user != null ? user.getId() : null;
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         return ApiResponse.success(commentService.createComment(request, userId, visitorId, ipAddress, userAgent));
     }
@@ -64,8 +64,8 @@ public class CommentController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteComment(
             @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        commentService.deleteComment(id, user != null ? user.getId() : null);
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        commentService.deleteComment(id, userPrincipal != null ? userPrincipal.getId() : null);
         return ApiResponse.success();
     }
 
