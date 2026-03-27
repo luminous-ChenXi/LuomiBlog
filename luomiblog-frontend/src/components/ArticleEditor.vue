@@ -289,7 +289,7 @@ interface Article {
   summary: string;
   content: string;
   status: 'draft' | 'published' | 'archived';
-  categoryId: string | number;
+  categoryId: number | null;
   tags: string[];
   coverImage: string;
   author: string;
@@ -335,7 +335,7 @@ const article = ref<Article>({
   summary: '',
   content: '',
   status: 'draft',
-  categoryId: '',
+  categoryId: null,
   tags: [],
   coverImage: '',
   author: '',
@@ -540,7 +540,8 @@ async function loadArticle() {
 
     if (!response.ok) {
       if (response.status === 404) {
-        loadError.value = '文章不存在，可能已被删除或移动';
+        // 文章在数据库中不存在，检查是否在文件系统中存在
+        await checkFileSystemArticle();
         return;
       }
       throw new Error('加载文章失败');
@@ -559,10 +560,10 @@ async function loadArticle() {
       summary: data.summary || '',
       content: data.content || '',
       status: data.status || 'draft',
-      categoryId: data.categoryId || '',
+      categoryId: data.category?.id || null,
       tags: data.tags || [],
       coverImage: data.coverImage || '',
-      author: data.author || '',
+      author: data.authorName || (data.author?.nickname || data.author?.username) || '',
       allowComments: data.allowComments !== false,
       allowSuggestions: data.allowSuggestions === true,
       top: data.top === true,
@@ -579,6 +580,33 @@ async function loadArticle() {
   } catch (error) {
     console.error('加载文章失败:', error);
     loadError.value = '无法连接到服务器，请检查网络连接或稍后重试';
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 检查文章是否在文件系统中存在
+async function checkFileSystemArticle() {
+  try {
+    // 调用同步检查API，查看文件系统中是否有这篇文章
+    const checkResponse = await fetch(`${API_BASE_URL}/api/admin/articles/sync/check`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` }
+    });
+
+    if (checkResponse.ok) {
+      const checkResult = await checkResponse.json();
+      if (checkResult.code === 200 && checkResult.data?.isSyncNeeded) {
+        // 文件系统中有新文章，提示用户同步
+        loadError.value = '此文章尚未同步到数据库。请在文章管理页面点击"同步文件"按钮将文章导入数据库后再编辑。';
+        return;
+      }
+    }
+
+    // 文件系统中也没有，或者无法确定
+    loadError.value = '文章不存在，可能已被删除或移动';
+  } catch (error) {
+    console.error('检查文件系统文章失败:', error);
+    loadError.value = '文章不存在，可能已被删除或移动';
   } finally {
     loading.value = false;
   }

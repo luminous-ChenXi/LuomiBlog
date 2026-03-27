@@ -82,13 +82,13 @@ import { API_BASE_URL } from '../../config/api';
         </select>
       </div>
       <div class="toolbar-right">
-        <button class="admin-btn admin-btn-secondary" onclick="checkSyncStatus()">
+        <button class="admin-btn admin-btn-secondary" onclick="showSyncCheckModal()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
           检查同步
         </button>
-        <button class="admin-btn admin-btn-primary" onclick="triggerSync()">
+        <button class="admin-btn admin-btn-primary" onclick="showUploadModal()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-          同步文件
+          上传文件
         </button>
         <a href="/admin/articles/new" class="admin-btn admin-btn-primary">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
@@ -123,6 +123,9 @@ import { API_BASE_URL } from '../../config/api';
             </th>
             <th class="col-category">
               <span class="th-content">分类</span>
+            </th>
+            <th class="col-status">
+              <span class="th-content">状态</span>
             </th>
             <th class="col-more"></th>
           </tr>
@@ -159,39 +162,216 @@ import { API_BASE_URL } from '../../config/api';
     </div>
   </div>
 
-  <!-- 冲突解决弹窗 -->
-  <div id="conflict-modal" class="modal hidden">
-    <div class="modal-overlay" onclick="closeConflictModal()"></div>
+  <!-- 文件上传弹窗 -->
+  <div id="upload-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeUploadModal()"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3>解决冲突</h3>
-        <button class="btn-close" onclick="closeConflictModal()">×</button>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          上传 Markdown 文件
+        </h3>
+        <button class="btn-close" onclick="closeUploadModal()">×</button>
       </div>
       <div class="modal-body">
-        <div class="conflict-info">
-          <p class="conflict-title" id="conflict-article-title"></p>
-          <p class="conflict-desc">文件和数据库版本都被修改，请选择保留哪个版本：</p>
+        <div class="upload-area" id="upload-drop-zone">
+          <input type="file" id="file-input" accept=".md" multiple class="file-input" />
+          <div class="upload-placeholder" id="upload-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+            <p class="upload-title">点击或拖拽文件到此处上传</p>
+            <p class="upload-desc">支持 .md 格式文件，可一次上传多个</p>
+          </div>
+          <div class="file-list hidden" id="file-list"></div>
+        </div>
+        <div class="upload-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-publish" checked />
+            <span>上传后自动发布</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="skip-existing" />
+            <span>跳过已存在的文章</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="admin-btn admin-btn-secondary" onclick="closeUploadModal()">取消</button>
+        <button class="admin-btn admin-btn-primary" id="btn-upload-confirm" onclick="uploadFiles()" disabled>
+          <span id="upload-btn-text">开始上传</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 同步检查弹窗 - Element UI 风格 -->
+  <div id="sync-check-modal" class="el-dialog__wrapper hidden">
+    <div class="el-dialog el-dialog--center" style="width: 600px; margin-top: 15vh;">
+      <div class="el-dialog__header">
+        <span class="el-dialog__title">
+          <i class="el-icon el-icon-refresh"></i>
+          同步状态检查
+        </span>
+        <button class="el-dialog__headerbtn" onclick="closeSyncCheckModal()">
+          <i class="el-icon el-icon-close">×</i>
+        </button>
+      </div>
+      <div class="el-dialog__body">
+        <div class="sync-summary" id="sync-summary">
+          <div class="el-loading-mask" style="position: relative; padding: 40px;">
+            <div class="el-loading-spinner">
+              <svg class="circular" viewBox="25 25 50 50">
+                <circle class="path" cx="50" cy="50" r="20" fill="none"></circle>
+              </svg>
+              <p class="el-loading-text">正在检查同步状态...</p>
+            </div>
+          </div>
+        </div>
+        <div class="sync-details hidden" id="sync-details">
+          <!-- 统计卡片 -->
+          <div class="el-row sync-stats-row" style="margin-bottom: 20px;">
+            <div class="el-col el-col-8">
+              <div class="sync-stat-card success">
+                <div class="sync-stat-icon">
+                  <i class="el-icon el-icon-document-add"></i>
+                </div>
+                <div class="sync-stat-info">
+                  <div class="sync-stat-value" id="stat-new-count">0</div>
+                  <div class="sync-stat-label">新增文件</div>
+                </div>
+              </div>
+            </div>
+            <div class="el-col el-col-8">
+              <div class="sync-stat-card warning">
+                <div class="sync-stat-icon">
+                  <i class="el-icon el-icon-edit"></i>
+                </div>
+                <div class="sync-stat-info">
+                  <div class="sync-stat-value" id="stat-modified-count">0</div>
+                  <div class="sync-stat-label">已修改</div>
+                </div>
+              </div>
+            </div>
+            <div class="el-col el-col-8">
+              <div class="sync-stat-card danger">
+                <div class="sync-stat-icon">
+                  <i class="el-icon el-icon-warning"></i>
+                </div>
+                <div class="sync-stat-info">
+                  <div class="sync-stat-value" id="stat-conflict-count">0</div>
+                  <div class="sync-stat-label">冲突</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 折叠面板 -->
+          <div class="el-collapse" id="sync-collapse">
+            <div class="el-collapse-item" id="new-files-section">
+              <div class="el-collapse-item__header" onclick="toggleCollapse('new-files-content')">
+                <i class="el-icon el-icon-document"></i>
+                <span>新增文件（仅存在于文件系统）</span>
+                <span class="el-badge el-badge--info">
+                  <span class="el-badge__content" id="new-files-count">0</span>
+                </span>
+                <i class="el-icon el-icon-arrow-right el-collapse-item__arrow"></i>
+              </div>
+              <div class="el-collapse-item__wrap hidden" id="new-files-content">
+                <div class="el-collapse-item__content">
+                  <ul class="sync-file-list" id="new-files-list"></ul>
+                </div>
+              </div>
+            </div>
+            <div class="el-collapse-item" id="modified-files-section">
+              <div class="el-collapse-item__header" onclick="toggleCollapse('modified-files-content')">
+                <i class="el-icon el-icon-edit-outline"></i>
+                <span>已修改文件</span>
+                <span class="el-badge el-badge--warning">
+                  <span class="el-badge__content" id="modified-files-count">0</span>
+                </span>
+                <i class="el-icon el-icon-arrow-right el-collapse-item__arrow"></i>
+              </div>
+              <div class="el-collapse-item__wrap hidden" id="modified-files-content">
+                <div class="el-collapse-item__content">
+                  <ul class="sync-file-list" id="modified-files-list"></ul>
+                </div>
+              </div>
+            </div>
+            <div class="el-collapse-item" id="conflicts-section">
+              <div class="el-collapse-item__header" onclick="toggleCollapse('conflicts-content')">
+                <i class="el-icon el-icon-warning-outline"></i>
+                <span>冲突文件（文件和数据库都已修改）</span>
+                <span class="el-badge el-badge--danger">
+                  <span class="el-badge__content" id="conflicts-count">0</span>
+                </span>
+                <i class="el-icon el-icon-arrow-right el-collapse-item__arrow"></i>
+              </div>
+              <div class="el-collapse-item__wrap hidden" id="conflicts-content">
+                <div class="el-collapse-item__content">
+                  <ul class="sync-file-list" id="conflicts-list"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="el-dialog__footer">
+        <button class="el-button el-button--default" onclick="closeSyncCheckModal()">
+          <span>关闭</span>
+        </button>
+        <button class="el-button el-button--primary" id="btn-sync-all" onclick="syncAllFiles()" disabled>
+          <i class="el-icon el-icon-refresh"></i>
+          <span>一键同步</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 冲突解决弹窗 - Element UI 风格 -->
+  <div id="conflict-modal" class="el-dialog__wrapper hidden">
+    <div class="el-dialog" style="width: 500px;">
+      <div class="el-dialog__header">
+        <span class="el-dialog__title">
+          <i class="el-icon el-icon-warning" style="color: #e6a23c;"></i>
+          解决冲突
+        </span>
+        <button class="el-dialog__headerbtn" onclick="closeConflictModal()">
+          <i class="el-icon el-icon-close">×</i>
+        </button>
+      </div>
+      <div class="el-dialog__body">
+        <div class="el-alert el-alert--warning is-light" style="margin-bottom: 20px;">
+          <div class="el-alert__content">
+            <div class="conflict-article-title" id="conflict-article-title"></div>
+            <p class="conflict-desc" style="margin-top: 8px; font-size: 13px;">文件和数据库版本都被修改，请选择保留哪个版本</p>
+          </div>
         </div>
         <div class="conflict-options">
-          <div class="conflict-option" onclick="resolveConflict('USE_FILE')">
-            <div class="option-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="conflict-option-card" onclick="resolveConflict('USE_FILE')">
+            <div class="conflict-option-icon file">
+              <i class="el-icon el-icon-document" style="font-size: 24px;"></i>
             </div>
-            <div class="option-content">
+            <div class="conflict-option-content">
               <h4>使用文件版本</h4>
               <p>保留文件系统中的最新内容，覆盖数据库</p>
             </div>
+            <i class="el-icon el-icon-arrow-right" style="color: #c0c4cc;"></i>
           </div>
-          <div class="conflict-option" onclick="resolveConflict('USE_DB')">
-            <div class="option-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+          <div class="conflict-option-card" onclick="resolveConflict('USE_DB')">
+            <div class="conflict-option-icon db">
+              <i class="el-icon el-icon-coin" style="font-size: 24px;"></i>
             </div>
-            <div class="option-content">
+            <div class="conflict-option-content">
               <h4>使用数据库版本</h4>
               <p>保留数据库中的内容，忽略文件修改</p>
             </div>
+            <i class="el-icon el-icon-arrow-right" style="color: #c0c4cc;"></i>
           </div>
         </div>
+      </div>
+      <div class="el-dialog__footer">
+        <button class="el-button el-button--default" onclick="closeConflictModal()">
+          <span>取消</span>
+        </button>
       </div>
     </div>
   </div>
@@ -386,6 +566,9 @@ import { API_BASE_URL } from '../../config/api';
           <td class="col-category">
             ${article.category ? `<span class="category-badge">${article.category.name}</span>` : '<span class="cell-text">未分类</span>'}
           </td>
+          <td class="col-status">
+            <span class="status-badge ${status.class}">${status.label}</span>
+          </td>
           <td class="col-more">
             <div class="more-btn" role="button" tabindex="0" onclick="toggleMoreMenu(${article.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' ')toggleMoreMenu(${article.id}, event)">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
@@ -506,7 +689,426 @@ import { API_BASE_URL } from '../../config/api';
     }
   }
 
-  // 触发同步
+  // ========== 文件上传功能 ==========
+  let selectedFiles = [];
+
+  // 显示上传弹窗
+  function showUploadModal() {
+    document.getElementById('upload-modal')?.classList.remove('hidden');
+    selectedFiles = [];
+    updateFileList();
+    setupUploadEvents();
+  }
+
+  // 关闭上传弹窗
+  function closeUploadModal() {
+    document.getElementById('upload-modal')?.classList.add('hidden');
+    selectedFiles = [];
+    document.getElementById('file-input').value = '';
+  }
+
+  // 设置上传事件监听
+  function setupUploadEvents() {
+    const dropZone = document.getElementById('upload-drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    // 点击上传区域触发文件选择
+    dropZone?.addEventListener('click', (e) => {
+      if (e.target !== fileInput) {
+        fileInput?.click();
+      }
+    });
+
+    // 文件选择变化
+    fileInput?.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    // 拖拽事件
+    dropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone?.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+
+    dropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  // 处理文件
+  function handleFiles(files) {
+    const mdFiles = Array.from(files).filter(file => file.name.endsWith('.md'));
+    if (mdFiles.length === 0) {
+      showNotification('请选择 .md 格式的文件', 'warning');
+      return;
+    }
+
+    selectedFiles = [...selectedFiles, ...mdFiles];
+    updateFileList();
+  }
+
+  // 更新文件列表显示
+  function updateFileList() {
+    const fileList = document.getElementById('file-list');
+    const placeholder = document.getElementById('upload-placeholder');
+    const confirmBtn = document.getElementById('btn-upload-confirm');
+    const btnText = document.getElementById('upload-btn-text');
+
+    if (selectedFiles.length === 0) {
+      fileList?.classList.add('hidden');
+      placeholder?.classList.remove('hidden');
+      confirmBtn?.setAttribute('disabled', 'true');
+      return;
+    }
+
+    placeholder?.classList.add('hidden');
+    fileList?.classList.remove('hidden');
+    confirmBtn?.removeAttribute('disabled');
+    btnText.textContent = `开始上传 (${selectedFiles.length})`;
+
+    fileList.innerHTML = selectedFiles.map((file, index) => `
+      <div class="file-item">
+        <div class="file-info">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="file-name">${file.name}</span>
+          <span class="file-size">${formatFileSize(file.size)}</span>
+        </div>
+        <button class="file-remove" onclick="removeFile(${index})" title="移除">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  // 格式化文件大小
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // 移除文件
+  function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    updateFileList();
+  }
+
+  // 上传文件
+  async function uploadFiles() {
+    if (selectedFiles.length === 0) return;
+
+    const autoPublish = document.getElementById('auto-publish')?.checked ?? true;
+    const skipExisting = document.getElementById('skip-existing')?.checked ?? false;
+    const confirmBtn = document.getElementById('btn-upload-confirm');
+    const btnText = document.getElementById('upload-btn-text');
+
+    confirmBtn?.setAttribute('disabled', 'true');
+    btnText.textContent = '上传中...';
+
+    let successCount = 0;
+    let failCount = 0;
+    let skipCount = 0;
+
+    for (const file of selectedFiles) {
+      try {
+        const content = await readFileContent(file);
+        const result = await uploadSingleFile(file.name, content, autoPublish, skipExisting);
+
+        if (result.success) {
+          successCount++;
+        } else if (result.skipped) {
+          skipCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        console.error(`上传文件 ${file.name} 失败:`, error);
+        failCount++;
+      }
+    }
+
+    // 显示结果通知
+    if (successCount > 0) {
+      showNotification(`成功上传 ${successCount} 个文件`, 'success');
+    }
+    if (skipCount > 0) {
+      showNotification(`跳过 ${skipCount} 个已存在的文件`, 'info');
+    }
+    if (failCount > 0) {
+      showNotification(`${failCount} 个文件上传失败`, 'error');
+    }
+
+    closeUploadModal();
+    loadArticles();
+    loadArticleStats();
+  }
+
+  // 读取文件内容
+  function readFileContent(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  }
+
+  // 上传单个文件
+  async function uploadSingleFile(filename, content, autoPublish, skipExisting) {
+    const token = getToken();
+    if (!token) throw new Error('未登录');
+
+    const response = await fetch(`${API_BASE_URL}/api/admin/articles/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        filename,
+        content,
+        autoPublish,
+        skipExisting
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      if (response.status === 409) {
+        return { success: false, skipped: true, message: error.message };
+      }
+      throw new Error(error.message || '上传失败');
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  }
+
+  // ========== 同步检查功能 ==========
+
+  // 显示同步检查弹窗
+  async function showSyncCheckModal() {
+    document.getElementById('sync-check-modal')?.classList.remove('hidden');
+    document.getElementById('sync-summary').innerHTML = `
+      <div class="sync-loading">
+        <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <p>正在检查同步状态...</p>
+      </div>
+    `;
+    document.getElementById('sync-details')?.classList.add('hidden');
+    document.getElementById('btn-sync-all')?.setAttribute('disabled', 'true');
+
+    await performSyncCheck();
+  }
+
+  // 关闭同步检查弹窗
+  function closeSyncCheckModal() {
+    document.getElementById('sync-check-modal')?.classList.add('hidden');
+  }
+
+  // 执行同步检查
+  async function performSyncCheck() {
+    try {
+      const token = getToken();
+      if (!token) {
+        showNotification('请先登录', 'warning');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/admin/articles/sync/check-details`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('检查失败');
+
+      const result = await response.json();
+      if (result.code === 200) {
+        displaySyncResults(result.data);
+      }
+    } catch (error) {
+      console.error('同步检查失败:', error);
+      document.getElementById('sync-summary').innerHTML = `
+        <div class="el-result el-result--error">
+          <div class="el-result__icon">
+            <svg class="el-icon" style="width: 64px; height: 64px; color: #f56c6c;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" x2="12" y1="8" y2="12"/>
+              <line x1="12" x2="12.01" y1="16" y2="16"/>
+            </svg>
+          </div>
+          <div class="el-result__title">
+            <p>检查失败</p>
+          </div>
+          <div class="el-result__subtitle">
+            <p>请稍后重试</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // 折叠面板切换
+  function toggleCollapse(contentId) {
+    const content = document.getElementById(contentId);
+    const header = content?.previousElementSibling;
+    const arrow = header?.querySelector('.el-collapse-item__arrow');
+
+    if (content?.classList.contains('hidden')) {
+      content.classList.remove('hidden');
+      arrow?.classList.add('is-active');
+    } else {
+      content?.classList.add('hidden');
+      arrow?.classList.remove('is-active');
+    }
+  }
+
+  // 显示同步结果
+  function displaySyncResults(data) {
+    const { newFiles = [], modifiedFiles = [], conflicts = [] } = data;
+    const totalChanges = newFiles.length + modifiedFiles.length + conflicts.length;
+
+    // 更新统计卡片
+    document.getElementById('stat-new-count').textContent = newFiles.length;
+    document.getElementById('stat-modified-count').textContent = modifiedFiles.length;
+    document.getElementById('stat-conflict-count').textContent = conflicts.length;
+
+    // 更新摘要
+    if (totalChanges === 0) {
+      document.getElementById('sync-summary').innerHTML = `
+        <div class="el-result el-result--success">
+          <div class="el-result__icon">
+            <svg class="el-icon" style="width: 64px; height: 64px; color: #67c23a;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="el-result__title">
+            <p>文章已是最新状态</p>
+          </div>
+          <div class="el-result__subtitle">
+            <p>文件系统和数据库保持同步</p>
+          </div>
+        </div>
+      `;
+    } else {
+      document.getElementById('sync-summary').innerHTML = `
+        <div class="el-alert el-alert--warning is-light" style="margin-bottom: 20px;">
+          <div class="el-alert__content">
+            <span class="el-alert__title">检测到 ${totalChanges} 处变更需要同步</span>
+          </div>
+        </div>
+      `;
+      document.getElementById('btn-sync-all')?.removeAttribute('disabled');
+    }
+
+    // 显示详细信息
+    document.getElementById('sync-details')?.classList.remove('hidden');
+
+    // 新增文件
+    document.getElementById('new-files-count').textContent = newFiles.length;
+    const newFilesList = document.getElementById('new-files-list');
+    if (newFiles.length === 0) {
+      document.getElementById('new-files-section')?.classList.add('hidden');
+    } else {
+      document.getElementById('new-files-section')?.classList.remove('hidden');
+      newFilesList.innerHTML = newFiles.map(file => `
+        <li class="sync-file-item">
+          <i class="el-icon el-icon-document"></i>
+          <span class="sync-file-name">${file.title || file.filename}</span>
+          <span class="el-tag el-tag--info el-tag--mini">将导入</span>
+        </li>
+      `).join('');
+    }
+
+    // 修改文件
+    document.getElementById('modified-files-count').textContent = modifiedFiles.length;
+    const modifiedFilesList = document.getElementById('modified-files-list');
+    if (modifiedFiles.length === 0) {
+      document.getElementById('modified-files-section')?.classList.add('hidden');
+    } else {
+      document.getElementById('modified-files-section')?.classList.remove('hidden');
+      modifiedFilesList.innerHTML = modifiedFiles.map(file => `
+        <li class="sync-file-item">
+          <i class="el-icon el-icon-edit-outline"></i>
+          <span class="sync-file-name">${file.title || file.filename}</span>
+          <span class="el-tag el-tag--warning el-tag--mini">将更新</span>
+        </li>
+      `).join('');
+    }
+
+    // 冲突文件
+    document.getElementById('conflicts-count').textContent = conflicts.length;
+    const conflictsList = document.getElementById('conflicts-list');
+    if (conflicts.length === 0) {
+      document.getElementById('conflicts-section')?.classList.add('hidden');
+    } else {
+      document.getElementById('conflicts-section')?.classList.remove('hidden');
+      conflictsList.innerHTML = conflicts.map(file => `
+        <li class="sync-file-item conflict">
+          <i class="el-icon el-icon-warning-outline" style="color: #f56c6c;"></i>
+          <span class="sync-file-name">${file.title || file.filename}</span>
+          <button class="el-button el-button--danger el-button--mini is-plain" onclick="resolveSingleConflict('${file.slug}')">
+            <i class="el-icon el-icon-magic-stick"></i>
+            解决
+          </button>
+        </li>
+      `).join('');
+    }
+  }
+
+  // 一键同步
+  async function syncAllFiles() {
+    const btn = document.getElementById('btn-sync-all');
+    btn?.setAttribute('disabled', 'true');
+    btn.innerHTML = `
+      <i class="el-icon el-icon-loading"></i>
+      <span>同步中...</span>
+    `;
+
+    try {
+      const token = getToken();
+      const response = await fetch(`${API_BASE_URL}/api/admin/articles/sync/all`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('同步失败');
+
+      const result = await response.json();
+      showNotification(result.message || '同步完成', 'success');
+      closeSyncCheckModal();
+      loadArticles();
+      loadArticleStats();
+    } catch (error) {
+      console.error('同步失败:', error);
+      showNotification('同步失败: ' + error.message, 'error');
+      btn?.removeAttribute('disabled');
+      btn.innerHTML = `
+        <i class="el-icon el-icon-refresh"></i>
+        <span>一键同步</span>
+      `;
+    }
+  }
+
+  // 解决单个冲突
+  function resolveSingleConflict(slug) {
+    // 找到对应的文章并打开冲突解决弹窗
+    const article = articles.find(a => a.slug === slug);
+    if (article) {
+      closeSyncCheckModal();
+      openConflictModal(article.id, article.title);
+    }
+  }
+
+  // 触发同步（保留旧功能）
   async function triggerSync() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/articles/sync/trigger`, {
@@ -780,6 +1382,16 @@ import { API_BASE_URL } from '../../config/api';
   window.editArticle = editArticle;
   window.viewArticle = viewArticle;
   window.duplicateArticle = duplicateArticle;
+  // 文件上传相关
+  window.showUploadModal = showUploadModal;
+  window.closeUploadModal = closeUploadModal;
+  window.uploadFiles = uploadFiles;
+  window.removeFile = removeFile;
+  // 同步检查相关
+  window.showSyncCheckModal = showSyncCheckModal;
+  window.closeSyncCheckModal = closeSyncCheckModal;
+  window.syncAllFiles = syncAllFiles;
+  window.resolveSingleConflict = resolveSingleConflict;
 </script>
 
 <style>
@@ -1253,6 +1865,45 @@ import { API_BASE_URL } from '../../config/api';
     color: #60a5fa;
   }
 
+  /* 状态徽章 */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .status-badge.admin-badge-success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  .status-badge.admin-badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+  }
+
+  .status-badge.admin-badge-info {
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366f1;
+  }
+
+  [data-theme="dark"] .status-badge.admin-badge-success {
+    color: #4ade80;
+  }
+
+  [data-theme="dark"] .status-badge.admin-badge-warning {
+    color: #fbbf24;
+  }
+
+  [data-theme="dark"] .status-badge.admin-badge-info {
+    color: #818cf8;
+  }
+
   /* 操作按钮 */
   .action-buttons {
     display: flex;
@@ -1646,6 +2297,839 @@ import { API_BASE_URL } from '../../config/api';
 
   .custom-notification-info {
     border-left: 4px solid #3b82f6;
+  }
+
+  /* ========== 文件上传弹窗样式 ========== */
+  .upload-area {
+    border: 2px dashed var(--admin-card-border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .upload-area:hover,
+  .upload-area.drag-over {
+    border-color: var(--admin-primary);
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--admin-text-muted);
+  }
+
+  .upload-placeholder svg {
+    color: var(--admin-primary);
+    opacity: 0.8;
+  }
+
+  .upload-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--admin-text);
+    margin: 0;
+  }
+
+  .upload-desc {
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--admin-input-bg);
+    border-radius: 8px;
+    border: 1px solid var(--admin-card-border);
+  }
+
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-info svg {
+    color: var(--admin-primary);
+    flex-shrink: 0;
+  }
+
+  .file-name {
+    font-size: 14px;
+    color: var(--admin-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-size {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+    flex-shrink: 0;
+  }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--admin-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .file-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
+  .upload-options {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--admin-card-border);
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--admin-text);
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--admin-primary);
+    cursor: pointer;
+  }
+
+  /* ========== 同步检查弹窗样式 ========== */
+  .sync-check-content {
+    max-width: 600px;
+  }
+
+  .sync-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    color: var(--admin-text-muted);
+  }
+
+  .sync-loading .spinner {
+    animation: spin 1s linear infinite;
+    color: var(--admin-primary);
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .sync-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  /* ========== Element UI 弹窗样式 ========== */
+  .el-dialog__wrapper {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2000;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .el-dialog {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    width: 600px;
+    max-width: 90vw;
+  }
+
+  [data-theme="dark"] .el-dialog {
+    background: #1e1e2e;
+  }
+
+  .el-dialog__header {
+    padding: 20px 20px 10px;
+    border-bottom: 1px solid #e4e7ed;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  [data-theme="dark"] .el-dialog__header {
+    border-bottom-color: #2d2d3a;
+  }
+
+  .el-dialog__title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  [data-theme="dark"] .el-dialog__title {
+    color: #e4e7ed;
+  }
+
+  .el-dialog__headerbtn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #909399;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .el-dialog__headerbtn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #409eff;
+  }
+
+  [data-theme="dark"] .el-dialog__headerbtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .el-dialog__body {
+    padding: 20px;
+    color: #606266;
+  }
+
+  [data-theme="dark"] .el-dialog__body {
+    color: #a6a6a6;
+  }
+
+  .el-dialog__footer {
+    padding: 10px 20px 20px;
+    border-top: 1px solid #e4e7ed;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  [data-theme="dark"] .el-dialog__footer {
+    border-top-color: #2d2d3a;
+  }
+
+  /* Element UI 按钮 */
+  .el-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+    background: #fff;
+    color: #606266;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+
+  .el-button:hover {
+    border-color: #c6e2ff;
+    color: #409eff;
+    background: #ecf5ff;
+  }
+
+  .el-button--primary {
+    background: #409eff;
+    border-color: #409eff;
+    color: #fff;
+  }
+
+  .el-button--primary:hover {
+    background: #66b1ff;
+    border-color: #66b1ff;
+    color: #fff;
+  }
+
+  .el-button--primary:disabled {
+    background: #a0cfff;
+    border-color: #a0cfff;
+    cursor: not-allowed;
+  }
+
+  .el-button--danger {
+    background: #f56c6c;
+    border-color: #f56c6c;
+    color: #fff;
+  }
+
+  .el-button--danger:hover {
+    background: #f78989;
+    border-color: #f78989;
+    color: #fff;
+  }
+
+  .el-button--danger.is-plain {
+    background: #fef0f0;
+    border-color: #fbc4c4;
+    color: #f56c6c;
+  }
+
+  .el-button--danger.is-plain:hover {
+    background: #f56c6c;
+    border-color: #f56c6c;
+    color: #fff;
+  }
+
+  .el-button--mini {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* Element UI 图标 */
+  .el-icon {
+    font-style: normal;
+    font-weight: 400;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    vertical-align: baseline;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .el-icon-loading {
+    animation: el-icon-loading 1s linear infinite;
+  }
+
+  @keyframes el-icon-loading {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Element UI 加载 */
+  .el-loading-mask {
+    position: absolute;
+    z-index: 2000;
+    background: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .el-loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .el-loading-spinner .circular {
+    width: 42px;
+    height: 42px;
+    animation: el-loading-spinner 2s linear infinite;
+  }
+
+  .el-loading-spinner .path {
+    stroke: #409eff;
+    stroke-width: 3;
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: 0;
+    stroke-linecap: round;
+  }
+
+  @keyframes el-loading-spinner {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .el-loading-text {
+    color: #409eff;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  /* Element UI 结果 */
+  .el-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .el-result__icon {
+    margin-bottom: 16px;
+  }
+
+  .el-result__title {
+    font-size: 20px;
+    font-weight: 500;
+    color: #303133;
+    margin-bottom: 8px;
+  }
+
+  [data-theme="dark"] .el-result__title {
+    color: #e4e7ed;
+  }
+
+  .el-result__subtitle {
+    font-size: 14px;
+    color: #909399;
+  }
+
+  [data-theme="dark"] .el-result__subtitle {
+    color: #a6a6a6;
+  }
+
+  /* Element UI Alert */
+  .el-alert {
+    padding: 8px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+  }
+
+  .el-alert--warning {
+    background: #fdf6ec;
+    border: 1px solid #faecd8;
+    color: #e6a23c;
+  }
+
+  [data-theme="dark"] .el-alert--warning {
+    background: rgba(230, 162, 60, 0.1);
+    border-color: rgba(230, 162, 60, 0.3);
+  }
+
+  .el-alert__title {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* Element UI 折叠面板 */
+  .el-collapse {
+    border-top: 1px solid #ebeef5;
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  [data-theme="dark"] .el-collapse {
+    border-color: #2d2d3a;
+  }
+
+  .el-collapse-item__header {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #303133;
+    border-bottom: 1px solid #ebeef5;
+    gap: 8px;
+  }
+
+  [data-theme="dark"] .el-collapse-item__header {
+    color: #e4e7ed;
+    border-color: #2d2d3a;
+  }
+
+  .el-collapse-item__arrow {
+    margin-left: auto;
+    transition: transform 0.3s;
+  }
+
+  .el-collapse-item__arrow.is-active {
+    transform: rotate(90deg);
+  }
+
+  .el-collapse-item__wrap {
+    overflow: hidden;
+    transition: height 0.3s;
+  }
+
+  .el-collapse-item__content {
+    padding: 12px 0;
+  }
+
+  /* Element UI Badge */
+  .el-badge {
+    position: relative;
+    display: inline-block;
+  }
+
+  .el-badge__content {
+    background: #409eff;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .el-badge--info .el-badge__content {
+    background: #909399;
+  }
+
+  .el-badge--warning .el-badge__content {
+    background: #e6a23c;
+  }
+
+  .el-badge--danger .el-badge__content {
+    background: #f56c6c;
+  }
+
+  /* Element UI Tag */
+  .el-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid #e4e7ed;
+    background: #f4f4f5;
+    color: #909399;
+  }
+
+  .el-tag--info {
+    background: #f4f4f5;
+    border-color: #e9e9eb;
+    color: #909399;
+  }
+
+  .el-tag--warning {
+    background: #fdf6ec;
+    border-color: #faecd8;
+    color: #e6a23c;
+  }
+
+  .el-tag--mini {
+    padding: 0 4px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  /* 统计卡片 */
+  .sync-stats-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .el-col {
+    flex: 1;
+  }
+
+  .sync-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 8px;
+    background: #f5f7fa;
+    border: 1px solid #e4e7ed;
+  }
+
+  [data-theme="dark"] .sync-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #2d2d3a;
+  }
+
+  .sync-stat-card.success {
+    background: #f0f9ff;
+    border-color: #bae0ff;
+  }
+
+  [data-theme="dark"] .sync-stat-card.success {
+    background: rgba(103, 194, 58, 0.1);
+    border-color: rgba(103, 194, 58, 0.3);
+  }
+
+  .sync-stat-card.warning {
+    background: #fffbf0;
+    border-color: #ffe4b8;
+  }
+
+  [data-theme="dark"] .sync-stat-card.warning {
+    background: rgba(230, 162, 60, 0.1);
+    border-color: rgba(230, 162, 60, 0.3);
+  }
+
+  .sync-stat-card.danger {
+    background: #fff5f5;
+    border-color: #ffd8d8;
+  }
+
+  [data-theme="dark"] .sync-stat-card.danger {
+    background: rgba(245, 108, 108, 0.1);
+    border-color: rgba(245, 108, 108, 0.3);
+  }
+
+  .sync-stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .sync-stat-card.success .sync-stat-icon {
+    background: #67c23a;
+    color: #fff;
+  }
+
+  .sync-stat-card.warning .sync-stat-icon {
+    background: #e6a23c;
+    color: #fff;
+  }
+
+  .sync-stat-card.danger .sync-stat-icon {
+    background: #f56c6c;
+    color: #fff;
+  }
+
+  .sync-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #303133;
+    line-height: 1;
+  }
+
+  [data-theme="dark"] .sync-stat-value {
+    color: #e4e7ed;
+  }
+
+  .sync-stat-label {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
+  }
+
+  /* 文件列表 */
+  .sync-file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sync-file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 14px;
+  }
+
+  [data-theme="dark"] .sync-file-item {
+    border-color: #2d2d3a;
+  }
+
+  .sync-file-item:last-child {
+    border-bottom: none;
+  }
+
+  .sync-file-name {
+    flex: 1;
+    color: #303133;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  [data-theme="dark"] .sync-file-name {
+    color: #e4e7ed;
+  }
+
+  .sync-file-item.conflict .sync-file-name {
+    color: #f56c6c;
+  }
+
+  .sync-item-action {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+    flex-shrink: 0;
+  }
+
+  .sync-item.conflict .sync-item-name {
+    color: #ef4444;
+  }
+
+  .sync-resolve-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .sync-resolve-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+  }
+
+  /* 冲突弹窗样式 */
+  .conflict-article-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e6a23c;
+  }
+
+  [data-theme="dark"] .conflict-article-title {
+    color: #ebb563;
+  }
+
+  .conflict-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .conflict-option-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fff;
+  }
+
+  [data-theme="dark"] .conflict-option-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #2d2d3a;
+  }
+
+  .conflict-option-card:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.2);
+  }
+
+  [data-theme="dark"] .conflict-option-card:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.3);
+  }
+
+  .conflict-option-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .conflict-option-icon.file {
+    background: #ecf5ff;
+    color: #409eff;
+  }
+
+  [data-theme="dark"] .conflict-option-icon.file {
+    background: rgba(64, 158, 255, 0.2);
+  }
+
+  .conflict-option-icon.db {
+    background: #f0f9eb;
+    color: #67c23a;
+  }
+
+  [data-theme="dark"] .conflict-option-icon.db {
+    background: rgba(103, 194, 58, 0.2);
+  }
+
+  .conflict-option-content {
+    flex: 1;
+  }
+
+  .conflict-option-content h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    margin: 0 0 6px 0;
+  }
+
+  [data-theme="dark"] .conflict-option-content h4 {
+    color: #e4e7ed;
+  }
+
+  .conflict-option-content p {
+    font-size: 13px;
+    color: #909399;
+    margin: 0;
+  }
+
+  [data-theme="dark"] .conflict-option-content p {
+    color: #a6a6a6;
   }
 
   .notification-content {

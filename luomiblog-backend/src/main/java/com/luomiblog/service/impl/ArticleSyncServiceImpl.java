@@ -2,6 +2,7 @@ package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.ArticleFileInfo;
 import com.luomiblog.dto.ArticleSyncResult;
+import com.luomiblog.dto.UploadArticleRequest;
 import com.luomiblog.entity.Article;
 import com.luomiblog.entity.User;
 import com.luomiblog.repository.ArticleRepository;
@@ -11,8 +12,10 @@ import com.luomiblog.service.MemoryCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -437,5 +440,179 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     private enum SyncAction {
         CREATED, UPDATED, UNCHANGED, CONFLICT
+    }
+
+    @Override
+    public Map<String, Object> getSyncDetails() {
+        Map<String, Object> details = new HashMap<>();
+        List<Map<String, Object>> newFiles = new ArrayList<>();
+        List<Map<String, Object>> modifiedFiles = new ArrayList<>();
+        List<Map<String, Object>> conflicts = new ArrayList<>();
+
+        try {
+            Path blogDir = Paths.get(contentPath);
+            if (!Files.exists(blogDir)) {
+                details.put("newFiles", newFiles);
+                details.put("modifiedFiles", modifiedFiles);
+                details.put("conflicts", conflicts);
+                return details;
+            }
+
+            List<ArticleFileInfo> fileInfos = scanArticleFiles(blogDir);
+
+            for (ArticleFileInfo fileInfo : fileInfos) {
+                Optional<Article> existing = articleRepository.findBySlug(fileInfo.getSlug());
+
+                if (existing.isEmpty()) {
+                    // 新增文件
+                    Map<String, Object> file = new HashMap<>();
+                    file.put("filename", fileInfo.getFileName());
+                    file.put("slug", fileInfo.getSlug());
+                    file.put("title", fileInfo.getTitle());
+                    newFiles.add(file);
+                } else {
+                    Article article = existing.get();
+                    String dbHash = article.getContentHash();
+                    String fileHash = fileInfo.getContentHash();
+
+                    if (dbHash == null || !dbHash.equals(fileHash)) {
+                        if (isConflict(article, fileInfo)) {
+                            // 冲突文件
+                            Map<String, Object> file = new HashMap<>();
+                            file.put("filename", fileInfo.getFileName());
+                            file.put("slug", fileInfo.getSlug());
+                            file.put("title", fileInfo.getTitle());
+                            conflicts.add(file);
+                        } else {
+                            // 已修改文件
+                            Map<String, Object> file = new HashMap<>();
+                            file.put("filename", fileInfo.getFileName());
+                            file.put("slug", fileInfo.getSlug());
+                            file.put("title", fileInfo.getTitle());
+                            modifiedFiles.add(file);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("获取同步详情失败", e);
+        }
+
+        details.put("newFiles", newFiles);
+        details.put("modifiedFiles", modifiedFiles);
+        details.put("conflicts", conflicts);
+        return details;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> uploadArticle(UploadArticleRequest request) {
+        String filename = request.getFilename();
+        String content = request.getContent();
+        boolean autoPublish = request.getAutoPublish() != null ? request.getAutoPublish() : true;
+        boolean skipExisting = request.getSkipExisting() != null ? request.getSkipExisting() : false;
+
+        // 提取 slug
+        String slug = filename.replace(".md", "");
+
+        // 检查是否已存在
+        Optional<Article> existing = articleRepository.findBySlug(slug);
+        if (existing.isPresent() && skipExisting) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "文章已存在: " + slug);
+        }
+
+        // 解析文章内容
+        ArticleFileInfo fileInfo = parseArticleContent(content, slug + ".md");
+        if (fileInfo == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无法解析文章内容");
+        }
+
+        // 保存文件到文件系统
+        try {
+            Path blogDir = Paths.get(contentPath);
+            if (!Files.exists(blogDir)) {
+                Files.createDirectories(blogDir);
+            }
+            Path filePath = blogDir.resolve(filename);
+            Files.writeString(filePath, content, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("保存文件失败: {}", filename, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "保存文件失败");
+        }
+
+        User author = getDefaultAuthor();
+
+        if (existing.isPresent()) {
+            // 更新现有文章
+            @SuppressWarnings("null")
+            Article article = existing.get();
+            updateArticleFromFile(article, fileInfo, author);
+            articleRepository.save(article);
+            log.info("更新文章: {}", fileInfo.getTitle());
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "文章已更新");
+            result.put("id", article.getId());
+            result.put("slug", article.getSlug());
+            return result;
+        } else {
+            // 创建新文章
+            @SuppressWarnings("null")
+            Article article = createArticleFromFile(fileInfo, author);
+            if (!autoPublish) {
+                article.setStatus("draft");
+            }
+            articleRepository.save(article);
+            log.info("创建新文章: {}", fileInfo.getTitle());
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "文章已创建");
+            result.put("id", article.getId());
+            result.put("slug", article.getSlug());
+            return result;
+        }
+    }
+
+    private ArticleFileInfo parseArticleContent(String content, String fileName) {
+        try {
+            Matcher matcher = FRONTMATTER_PATTERN.matcher(content);
+            if (!matcher.find()) {
+                // 没有 frontmatter，使用默认标题
+                String slug = fileName.replace(".md", "");
+                return ArticleFileInfo.builder()
+                    .fileName(fileName)
+                    .slug(slug)
+                    .title(slug)
+                    .content(content)
+                    .contentHash(calculateHash(content))
+                    .build();
+            }
+
+            String frontmatter = matcher.group(1).trim();
+            String body = matcher.group(2).trim();
+
+            Map<String, String> yamlData = parseYaml(frontmatter);
+            String slug = fileName.replace(".md", "");
+
+            return ArticleFileInfo.builder()
+                .fileName(fileName)
+                .slug(slug)
+                .title(yamlData.getOrDefault("title", slug))
+                .description(yamlData.get("description"))
+                .content(body)
+                .author(yamlData.get("author"))
+                .pubDate(parseDate(yamlData.get("pubDate")))
+                .tags(parseTags(yamlData.get("tags")))
+                .category(yamlData.get("category"))
+                .cover(yamlData.get("cover"))
+                .contentHash(calculateHash(content))
+                .build();
+
+        } catch (Exception e) {
+            log.error("解析文章内容失败", e);
+            return null;
+        }
     }
 }
