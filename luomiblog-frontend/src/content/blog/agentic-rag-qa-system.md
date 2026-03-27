@@ -1,16 +1,12 @@
 ---
-title: '基于 Agentic RAG 的智能问答系统'
-description: 'RAG（检索增强生成）技术结合 Agent 智能体，能够基于博主原创内容提供精准的问答服务，打造专属的知识库助手。'
-pubDate: 2026-02-25
-author: '辰汐'
-tags: ['RAG', 'AI', '阿里云百炼', '智能问答', '知识库']
-category: 'AI 技术'
-cover: 'https://picsum.photos/seed/ai/800/500'
-views: 256
-comments: 23
-likes: 89
-slug: 'agentic-rag-qa-system'
-pinned: true
+title: "基于 Agentic RAG 的智能问答系统"
+description: "RAG（检索增强生成）技术结合 Agent 智能体，能够基于博主原创内容提供精准的问答服务，打造专属的知识库助手。"
+pubDate: 2026-02-25T00:00:00
+author: "luminouschenxi"
+category: "技术分享"
+views: 0
+likes: 0
+comments: 0
 ---
 
 # 基于 Agentic RAG 的智能问答系统

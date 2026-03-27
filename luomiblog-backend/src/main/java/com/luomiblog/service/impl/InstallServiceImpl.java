@@ -441,16 +441,75 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public void completeInstallation() {
         try {
-            // 创建安装锁文件
+            // 创建安装锁文件并写入提示信息
             File lockFile = new File(INSTALL_LOCK_FILE);
             if (!lockFile.exists()) {
                 lockFile.createNewFile();
+
+                // 写入提示性文字（英文+中文）
+                String lockContent = generateInstallLockContent();
+                try (FileWriter writer = new FileWriter(lockFile, StandardCharsets.UTF_8)) {
+                    writer.write(lockContent);
+                }
             }
-            log.info("安装完成，已创建安装锁");
+            log.info("安装完成，已创建安装锁文件: {}", lockFile.getAbsolutePath());
         } catch (IOException e) {
             log.error("创建安装锁失败", e);
             throw new RuntimeException("安装完成操作失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 生成安装锁文件内容
+     * 参考 WordPress 的 .maintenance 文件设计思想
+     */
+    private String generateInstallLockContent() {
+        StringBuilder sb = new StringBuilder();
+        String separator = "=".repeat(70);
+
+        sb.append(separator).append("\n");
+        sb.append("  LUOMIBLOG INSTALLATION LOCK FILE").append("\n");
+        sb.append("  洛米博客安装锁定文件").append("\n");
+        sb.append(separator).append("\n\n");
+
+        sb.append("ENGLISH:").append("\n");
+        sb.append("-".repeat(70)).append("\n");
+        sb.append("This file indicates that LuomiBlog has been successfully installed.").append("\n");
+        sb.append("DO NOT DELETE THIS FILE unless you want to reinstall the system.").append("\n\n");
+
+        sb.append("WARNING:").append("\n");
+        sb.append("- Deleting this file will expose the installation wizard to the public.").append("\n");
+        sb.append("- This could allow unauthorized users to reconfigure your system.").append("\n");
+        sb.append("- Only delete this file if you are performing a legitimate reinstallation.").append("\n\n");
+
+        sb.append("If you need to reinstall:").append("\n");
+        sb.append("1. Backup your database and files first").append("\n");
+        sb.append("2. Use the admin panel's reinstall feature, OR").append("\n");
+        sb.append("3. Manually delete this file and visit /install").append("\n\n");
+
+        sb.append(separator).append("\n\n");
+
+        sb.append("中文:").append("\n");
+        sb.append("-".repeat(70)).append("\n");
+        sb.append("此文件表示洛米博客已成功安装。").append("\n");
+        sb.append("除非您要重新安装系统，否则请勿删除此文件！").append("\n\n");
+
+        sb.append("警告:").append("\n");
+        sb.append("- 删除此文件会将安装向导暴露给公众访问").append("\n");
+        sb.append("- 这可能允许未授权用户重新配置您的系统").append("\n");
+        sb.append("- 只有在执行合法重新安装时才删除此文件").append("\n\n");
+
+        sb.append("如需重新安装:").append("\n");
+        sb.append("1. 首先备份您的数据库和文件").append("\n");
+        sb.append("2. 使用后台管理面板的重新安装功能，或").append("\n");
+        sb.append("3. 手动删除此文件并访问 /install").append("\n\n");
+
+        sb.append(separator).append("\n");
+        sb.append("Installation Time / 安装时间: ").append(LocalDateTime.now()).append("\n");
+        sb.append("System / 系统: LuomiBlog").append("\n");
+        sb.append(separator).append("\n");
+
+        return sb.toString();
     }
 
     @Override

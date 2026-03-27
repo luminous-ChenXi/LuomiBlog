@@ -7,15 +7,24 @@ import com.luomiblog.entity.*;
 import com.luomiblog.repository.*;
 import com.luomiblog.service.ArticleService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")
@@ -26,6 +35,9 @@ public class ArticleServiceImpl implements ArticleService {
     private final TagRepository tagRepository;
     private final ArticleTagRepository articleTagRepository;
     private final UserRepository userRepository;
+
+    @Value("${article.content.path:../luomiblog-frontend/src/content/blog}")
+    private String contentPath;
 
     @Override
     @Transactional
@@ -66,6 +78,11 @@ public class ArticleServiceImpl implements ArticleService {
             saveArticleTags(article.getId(), request.getTagIds());
         }
 
+        // 如果文章状态为已发布，创建 MD 文件
+        if ("published".equals(article.getStatus())) {
+            createMarkdownFile(article, request.getTagIds());
+        }
+
         return convertToResponse(article);
     }
 
@@ -93,6 +110,7 @@ public class ArticleServiceImpl implements ArticleService {
         article.setAllowComments(request.getAllowComments());
         article.setAllowSuggestions(request.getAllowSuggestions());
 
+        String oldStatus = article.getStatus();
         if (request.getStatus() != null && !request.getStatus().equals(article.getStatus())) {
             article.setStatus(request.getStatus());
             if ("published".equals(request.getStatus()) && article.getPublishedAt() == null) {
@@ -105,6 +123,21 @@ public class ArticleServiceImpl implements ArticleService {
         if (request.getTagIds() != null) {
             articleTagRepository.deleteByArticleId(id);
             saveArticleTags(id, request.getTagIds());
+        }
+
+        // 根据状态变更处理 MD 文件
+        String newStatus = article.getStatus();
+        if (!oldStatus.equals(newStatus)) {
+            if ("published".equals(newStatus)) {
+                // 从草稿/归档变为发布，创建 MD 文件
+                createMarkdownFile(article, request.getTagIds());
+            } else if ("published".equals(oldStatus)) {
+                // 从发布变为草稿/归档，删除 MD 文件
+                deleteMarkdownFile(article.getSlug());
+            }
+        } else if ("published".equals(newStatus)) {
+            // 状态未变但仍是发布状态，更新 MD 文件
+            createMarkdownFile(article, request.getTagIds());
         }
 
         return convertToResponse(article);
@@ -339,5 +372,101 @@ public class ArticleServiceImpl implements ArticleService {
                 .archived(articleRepository.countArchivedArticles())
                 .conflicts(0L) // 冲突数由同步服务单独统计
                 .build();
+    }
+
+    /**
+     * 创建 Markdown 文件
+     */
+    private void createMarkdownFile(Article article, List<Long> tagIds) {
+        try {
+            Path blogDir = Paths.get(contentPath);
+            if (!Files.exists(blogDir)) {
+                Files.createDirectories(blogDir);
+            }
+
+            // 获取分类名称
+            String categoryName = categoryRepository.findById(article.getCategoryId())
+                    .map(Category::getName)
+                    .orElse("未分类");
+
+            // 获取标签列表
+            List<String> tagNames = tagRepository.findByArticleId(article.getId())
+                    .stream()
+                    .map(Tag::getName)
+                    .collect(Collectors.toList());
+
+            // 获取作者名称
+            String authorName = userRepository.findById(article.getAuthorId())
+                    .map(user -> user.getNickname() != null ? user.getNickname() : user.getUsername())
+                    .orElse("管理员");
+
+            // 构建 frontmatter
+            StringBuilder frontmatter = new StringBuilder();
+            frontmatter.append("---\n");
+            frontmatter.append("title: \"").append(escapeYaml(article.getTitle())).append("\"\n");
+            frontmatter.append("description: \"").append(escapeYaml(article.getSummary())).append("\"\n");
+            frontmatter.append("pubDate: ").append(article.getPublishedAt() != null
+                    ? article.getPublishedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    : LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)).append("\n");
+            frontmatter.append("author: \"").append(escapeYaml(authorName)).append("\"\n");
+            frontmatter.append("category: \"").append(escapeYaml(categoryName)).append("\"\n");
+            if (!tagNames.isEmpty()) {
+                frontmatter.append("tags: [");
+                for (int i = 0; i < tagNames.size(); i++) {
+                    if (i > 0) frontmatter.append(", ");
+                    frontmatter.append("\"").append(escapeYaml(tagNames.get(i))).append("\"");
+                }
+                frontmatter.append("]\n");
+            }
+            frontmatter.append("views: ").append(article.getViewCount()).append("\n");
+            frontmatter.append("likes: ").append(article.getLikeCount()).append("\n");
+            frontmatter.append("comments: ").append(article.getCommentCount()).append("\n");
+            frontmatter.append("---\n\n");
+
+            // 写入文件
+            Path filePath = blogDir.resolve(article.getSlug() + ".md");
+            String content = frontmatter.toString() + article.getContent();
+            Files.writeString(filePath, content, StandardCharsets.UTF_8);
+
+            // 更新文章的文件路径
+            article.setFilePath(filePath.toString());
+            articleRepository.save(article);
+
+            log.info("Markdown 文件创建成功: {}", filePath);
+        } catch (IOException e) {
+            log.error("创建 Markdown 文件失败: {}", article.getSlug(), e);
+            throw new RuntimeException("创建 Markdown 文件失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除 Markdown 文件
+     */
+    private void deleteMarkdownFile(String slug) {
+        try {
+            Path blogDir = Paths.get(contentPath);
+            Path filePath = blogDir.resolve(slug + ".md");
+
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                log.info("Markdown 文件删除成功: {}", filePath);
+            }
+        } catch (IOException e) {
+            log.error("删除 Markdown 文件失败: {}", slug, e);
+            // 删除失败不抛出异常，因为数据库状态已经更新
+        }
+    }
+
+    /**
+     * 转义 YAML 字符串中的特殊字符
+     */
+    private String escapeYaml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 }
