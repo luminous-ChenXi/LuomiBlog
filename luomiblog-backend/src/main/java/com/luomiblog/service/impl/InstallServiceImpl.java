@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.time.LocalDateTime;
@@ -813,5 +814,50 @@ public class InstallServiceImpl implements InstallService {
                 request.getDefaultLanguage() != null ? request.getDefaultLanguage() : "zh",
                 request.getTimezone() != null ? request.getTimezone() : "Asia/Shanghai"
         );
+    }
+
+    @Override
+    public boolean verifyLockIntegrity() {
+        try {
+            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            if (!Files.exists(lockPath)) {
+                return false;
+            }
+            String hash = computeFileHash(lockPath);
+            return hash != null;
+        } catch (Exception e) {
+            log.error("安装锁完整性校验失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public String getLockHash() {
+        try {
+            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            if (!Files.exists(lockPath)) {
+                return null;
+            }
+            return computeFileHash(lockPath);
+        } catch (Exception e) {
+            log.error("获取安装锁哈希失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String computeFileHash(Path path) {
+        try {
+            byte[] fileBytes = Files.readAllBytes(path);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(fileBytes);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("计算文件哈希失败: {}", e.getMessage());
+            return null;
+        }
     }
 }

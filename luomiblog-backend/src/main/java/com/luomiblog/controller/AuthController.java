@@ -5,17 +5,21 @@ import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.LoginRequest;
 import com.luomiblog.dto.RegisterRequest;
 import com.luomiblog.service.AuthService;
+import com.luomiblog.service.LoginSecurityService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
+    private final LoginSecurityService loginSecurityService;
 
     @PostMapping("/register")
     public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -23,7 +27,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         return ApiResponse.success(authService.login(request));
     }
 
@@ -31,5 +35,27 @@ public class AuthController {
     public ApiResponse<AuthResponse> refreshToken(@RequestHeader("Authorization") String token) {
         String actualToken = token.replace("Bearer ", "");
         return ApiResponse.success(authService.refreshToken(actualToken));
+    }
+
+    @GetMapping("/login-security")
+    public ApiResponse<Map<String, Object>> getLoginSecurityInfo(HttpServletRequest request) {
+        String clientIp = getClientIpAddress(request);
+        long availableTokens = loginSecurityService.getAvailableTokens(clientIp);
+        return ApiResponse.success(Map.of(
+                "availableAttempts", availableTokens,
+                "maxAttempts", 10
+        ));
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

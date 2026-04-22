@@ -119,7 +119,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
-    @SuppressWarnings("null")
     public void resolveConflict(Long articleId, String resolution) {
         Article article = articleRepository.findById(articleId)
             .orElseThrow(() -> new RuntimeException("文章不存在"));
@@ -283,7 +282,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
         }
     }
 
-    @SuppressWarnings("null")
     private SyncAction processArticleFile(ArticleFileInfo fileInfo, User author) {
         Optional<Article> existing = articleRepository.findBySlug(fileInfo.getSlug());
 
@@ -543,8 +541,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
         User author = getDefaultAuthor();
 
         if (existing.isPresent()) {
-            // 更新现有文章
-            @SuppressWarnings("null")
             Article article = existing.get();
             updateArticleFromFile(article, fileInfo, author);
             articleRepository.save(article);
@@ -558,8 +554,8 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             return result;
         } else {
             // 创建新文章
-            @SuppressWarnings("null")
-            Article article = createArticleFromFile(fileInfo, author);
+            Article article = Objects.requireNonNull(createArticleFromFile(fileInfo, author),
+                "创建文章返回 null");
             if (!autoPublish) {
                 article.setStatus("draft");
             }

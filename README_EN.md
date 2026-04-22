@@ -96,7 +96,7 @@ LuomiBlog provides a WordPress-like visual installation wizard, no manual config
 1. **Start Backend Service**
 ```bash
 cd luomiblog-backend
-./mvnw spring-boot:run
+./mvn spring-boot:run
 ```
 
 2. **Start Frontend Dev Server**

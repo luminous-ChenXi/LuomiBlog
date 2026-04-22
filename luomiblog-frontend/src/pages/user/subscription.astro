@@ -602,8 +602,7 @@ const history = [
 <script>
   import { ElMessage } from 'element-plus';
 
-  // API 基础 URL
-  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+  const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '';
 
   // 获取 Token
   function getToken(): string | null {

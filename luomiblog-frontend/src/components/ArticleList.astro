@@ -14,19 +14,23 @@ const sortedPosts = allPosts.sort((a, b) => {
 });
 
 // 转换为 ArticleCard 需要的格式
-const articles = sortedPosts.map(post => ({
-  title: post.data.title,
-  summary: post.data.description,
-  date: new Date(post.data.pubDate).toISOString().split('T')[0],
-  category: post.data.category || '未分类',
-  tags: post.data.tags || [],
-  slug: post.slug,
-  views: post.data.views || 0,
-  comments: post.data.comments || 0,
-  likes: post.data.likes || 0,
-  cover: post.data.cover,
-  author: post.data.author || '辰汐',
-}));
+const articles = sortedPosts.map(post => {
+  const wordCount = post.body?.split(/\s+/).length || 0;
+  return {
+    title: post.data.title,
+    summary: post.data.description,
+    date: new Date(post.data.pubDate).toISOString().split('T')[0],
+    category: post.data.category || '未分类',
+    tags: post.data.tags || [],
+    slug: post.slug,
+    views: post.data.views || 0,
+    comments: post.data.comments || 0,
+    likes: post.data.likes || 0,
+    cover: post.data.cover,
+    author: post.data.author || '辰汐',
+    readTime: Math.ceil(wordCount / 300),
+  };
+});
 ---
 
 <section class="article-section" id="article-section">

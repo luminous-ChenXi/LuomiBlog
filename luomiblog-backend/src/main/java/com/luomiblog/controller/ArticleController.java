@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ArticleController {
 
     private final ArticleService articleService;
@@ -57,6 +57,7 @@ public class ArticleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:create')")
     public ApiResponse<ArticleResponse> createArticle(
             @Valid @RequestBody ArticleRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -64,6 +65,7 @@ public class ArticleController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:update')")
     public ApiResponse<ArticleResponse> updateArticle(
             @PathVariable Long id,
             @Valid @RequestBody ArticleRequest request,
@@ -72,6 +74,7 @@ public class ArticleController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:delete')")
     public ApiResponse<Void> deleteArticle(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {

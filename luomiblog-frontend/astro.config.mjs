@@ -1,16 +1,25 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-
 import vue from '@astrojs/vue';
 import tailwindcss from '@tailwindcss/vite';
 import partytown from '@astrojs/partytown';
+import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
+import remarkMath from 'remark-math';
+import remarkToc from 'remark-toc';
+import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
 
-// https://astro.build/config
 export default defineConfig({
   integrations: [
     vue({
       appEntrypoint: '/src/app.ts'
     }),
+    mdx({
+      remarkPlugins: [remarkGfm, remarkMath, [remarkToc, { tight: true, heading: '目录' }]],
+      rehypePlugins: [rehypeKatex],
+    }),
+    sitemap(),
     partytown({
       config: {
         forward: ['dataLayer.push'],
@@ -28,24 +37,29 @@ export default defineConfig({
     }
   },
 
-  // 构建配置
   build: {
     format: 'file'
   },
 
-  // 开发服务器配置
   server: {
     port: 4321,
     host: true
   },
 
-  // 站点配置（部署时修改）
-  site: 'http://localhost:4321',
+  site: 'https://luomiblog.com',
 
-  // 输出模式：静态生成（支持 prerender = false 的页面使用 SSR）
   output: 'static',
 
-  // 国际化配置
+  markdown: {
+    gfm: true,
+    shikiConfig: {
+      theme: 'github-dark',
+      wrap: true,
+    },
+    remarkPlugins: [remarkGfm, remarkMath, [remarkToc, { tight: true, heading: '目录' }]],
+    rehypePlugins: [rehypeKatex],
+  },
+
   i18n: {
     defaultLocale: 'zh',
     locales: ['zh', 'en', 'ja'],

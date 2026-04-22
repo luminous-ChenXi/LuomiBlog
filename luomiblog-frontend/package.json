@@ -12,7 +12,9 @@
     "clean": "rm -rf dist .astro"
   },
   "dependencies": {
+    "@astrojs/mdx": "^4.3.14",
     "@astrojs/partytown": "^2.1.5",
+    "@astrojs/sitemap": "^3.7.2",
     "@astrojs/vue": "^5.1.4",
     "@element-plus/icons-vue": "^2.3.2",
     "@pinia/nuxt": "^0.11.3",
@@ -21,6 +23,10 @@
     "element-plus": "^2.13.5",
     "lucide-vue-next": "^0.577.0",
     "pinia": "^3.0.4",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-toc": "^9.0.0",
     "tailwindcss": "^4.2.1",
     "vue": "^3.5.29",
     "vue-router": "^4.6.4"

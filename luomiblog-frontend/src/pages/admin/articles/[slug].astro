@@ -2,13 +2,11 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ArticleEditor from '../../../components/ArticleEditor.vue';
 
-// 禁用预渲染，使用 SSR 模式
-export const prerender = false;
-
-// 获取路由参数
-const { slug } = Astro.params;
+export function getStaticPaths() {
+  return [];
+}
 ---
 
 <AdminLayout title="编辑文章">
-  <ArticleEditor client:load slug={slug} />
+  <ArticleEditor client:load />
 </AdminLayout>
