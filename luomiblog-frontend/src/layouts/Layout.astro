@@ -2,24 +2,45 @@
 export interface Props {
   title?: string;
   description?: string;
+  image?: string;
+  article?: {
+    title: string;
+    description: string;
+    pubDate: string;
+    author: string;
+    tags: string[];
+    slug: string;
+    category?: string;
+  };
 }
 
 const {
   title = "LuomiBlog - 技术知识库",
-  description = "程序员向AI原生增强型知识库博客"
+  description = "程序员向AI原生增强型知识库博客",
+  image,
+  article
 } = Astro.props;
 
+import { API_BASE_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import LoginModal from '../components/LoginModal.vue';
 import RegisterModal from '../components/RegisterModal.vue';
 import BackendStatusBanner from '../components/BackendStatusBanner.vue';
 import '../styles/global.css';
 
-// 获取站点配置
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const siteName = "LuomiBlog";
+const fullTitle = article ? `${article.title} - ${siteName}` : title;
+const ogImage = image || '/img/icon120.png';
+
 let siteFavicon = '/favicon.svg';
 try {
-  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
-  const response = await fetch(`${API_BASE_URL}/api/site/config`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  const response = await fetch(`${API_BASE_URL}/api/site/config`, {
+    signal: controller.signal
+  });
+  clearTimeout(timeoutId);
   if (response.ok) {
     const result = await response.json();
     if (result.code === 200 && result.data?.siteFavicon) {
@@ -27,11 +48,39 @@ try {
     }
   }
 } catch (e) {
-  // 使用默认 favicon
+  console.info('[Layout] 后端不可用，使用默认 favicon');
 }
 
-// 判断 favicon 类型
 const isSvgFavicon = siteFavicon?.trim().startsWith('<svg');
+
+const jsonLd = article ? {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": article.title,
+  "description": article.description,
+  "author": {
+    "@type": "Person",
+    "name": article.author
+  },
+  "datePublished": article.pubDate,
+  "dateModified": article.pubDate,
+  "publisher": {
+    "@type": "Organization",
+    "name": siteName
+  },
+  "url": canonicalURL.href,
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": canonicalURL.href
+  },
+  ...(article.tags?.length > 0 && { "keywords": article.tags.join(', ') })
+} : {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": siteName,
+  "description": description,
+  "url": Astro.site?.href
+};
 ---
 
 <!DOCTYPE html>
@@ -39,30 +88,54 @@ const isSvgFavicon = siteFavicon?.trim().startsWith('<svg');
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
+    <meta name="description" content={article?.description || description} />
+    <meta name="author" content={article?.author || '辰汐'} />
+    {article && article.tags && article.tags.length > 0 && <meta name="keywords" content={article.tags.join(', ')} />}
+    <link rel="canonical" href={canonicalURL.href} />
+
+    <meta name="api-base-url" content={API_BASE_URL} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={article?.description || description} />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content={ogImage} />
+    {article && <meta property="article:published_time" content={article.pubDate} />}
+    {article?.tags?.map(tag => <meta property="article:tag" content={tag} />)}
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={article?.description || description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+
+    <!-- Favicon -->
     {isSvgFavicon ? (
       <link rel="icon" type="image/svg+xml" href={`data:image/svg+xml;utf8,${encodeURIComponent(siteFavicon)}`} />
     ) : (
       <link rel="icon" type={siteFavicon?.endsWith('.png') ? 'image/png' : 'image/x-icon'} href={siteFavicon || '/favicon.svg'} />
     )}
-    <title>{title}</title>
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
     <script is:inline>
-      // 主题初始化脚本 - 在页面渲染前执行，避免闪烁
       const theme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', theme);
     </script>
   </head>
   <body>
-    <!-- 后端状态横幅 - 全局显示 -->
     <BackendStatusBanner client:load />
-    <!-- 加载动画 -->
     <LoadingSpinner client:load />
-    <!-- 登录弹窗 - 全局可用 -->
     <LoginModal client:load />
-    <!-- 注册弹窗 - 全局可用 -->
     <RegisterModal client:load />
     <slot />
   </body>
 </html>
-
-

@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/likes")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class LikeController {
 
     private final LikeService likeService;

@@ -96,7 +96,7 @@ LuomiBlog 提供像 WordPress 一样的可视化安装向导，无需手动修�
 1. **启动后端服务**
 ```bash
 cd luomiblog-backend
-./mvnw spring-boot:run
+./mvn spring-boot:run
 ```
 
 2. **启动前端开发服务器**

@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, API_CONFIG } from '../config/api';
+import { isBackendAvailable, setBackendAvailable } from '../utils/api';
 
 export interface HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'needs_reinstall' | 'not_installed';
@@ -27,23 +28,21 @@ export interface HealthCheckResponse {
   };
 }
 
-// 全局状态
 const backendStatus = ref<HealthCheckResponse | null>(null);
 const isChecking = ref(false);
 const lastCheckTime = ref<Date | null>(null);
 const checkError = ref<string | null>(null);
 
-// 计算属性
 export const useBackendStatus = () => {
   const isHealthy = computed(() => backendStatus.value?.status === 'healthy');
   const isDegraded = computed(() => backendStatus.value?.status === 'degraded');
-  const isUnavailable = computed(() => 
-    !backendStatus.value || 
+  const isUnavailable = computed(() =>
+    !backendStatus.value ||
     backendStatus.value.status === 'unhealthy' ||
     backendStatus.value.database === 'disconnected'
   );
-  const needsInstall = computed(() => 
-    backendStatus.value?.status === 'not_installed' || 
+  const needsInstall = computed(() =>
+    backendStatus.value?.status === 'not_installed' ||
     backendStatus.value?.status === 'needs_reinstall'
   );
 
@@ -56,7 +55,7 @@ export const useBackendStatus = () => {
 
   const statusType = computed(() => {
     if (!backendStatus.value) return 'info';
-    
+
     switch (backendStatus.value.status) {
       case 'healthy':
         return 'success';
@@ -72,44 +71,50 @@ export const useBackendStatus = () => {
   });
 
   const shouldShowBanner = computed(() => {
-    // 只在非健康状态下显示横幅
     return backendStatus.value?.status !== 'healthy';
   });
 
   const canUseFeatures = computed(() => {
-    // 判断哪些功能可用
     if (!backendStatus.value) return {
       login: false,
       register: false,
       like: false,
       comment: false,
       admin: false,
+      aiAssistant: false,
+      search: false,
       readOnly: true
     };
 
     const status = backendStatus.value.status;
     const dbConnected = backendStatus.value.database === 'connected';
+    const healthy = status === 'healthy' && dbConnected;
+    const degraded = status === 'degraded';
 
     return {
-      login: status === 'healthy' && dbConnected,
-      register: status === 'healthy' && dbConnected,
-      like: status === 'healthy' && dbConnected,
-      comment: status === 'healthy' && dbConnected,
-      admin: status === 'healthy' && dbConnected,
-      readOnly: true // 总是可以阅读
+      login: healthy || degraded,
+      register: healthy,
+      like: healthy,
+      comment: healthy,
+      admin: healthy,
+      aiAssistant: healthy,
+      search: healthy || degraded,
+      readOnly: true
     };
   });
 
-  // 检查后端状态
   const checkBackendStatus = async (silent = false) => {
     if (isChecking.value) return;
-    
+
     isChecking.value = true;
     checkError.value = null;
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        API_CONFIG.healthCheckTimeout
+      );
 
       const response = await fetch(`${API_BASE_URL}/api/health`, {
         signal: controller.signal,
@@ -125,18 +130,19 @@ export const useBackendStatus = () => {
       }
 
       const result = await response.json();
-      
+
       if (result.code === 200 && result.data) {
         backendStatus.value = result.data;
         lastCheckTime.value = new Date();
+        setBackendAvailable(true);
       } else {
         throw new Error(result.message || 'Invalid response');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       checkError.value = errorMessage;
-      
-      // 设置一个默认的不可用状态
+      setBackendAvailable(false);
+
       backendStatus.value = {
         status: 'unhealthy',
         database: 'disconnected',
@@ -144,11 +150,11 @@ export const useBackendStatus = () => {
         hasData: false,
         version: 'unknown',
         timestamp: new Date().toISOString(),
-        message: '无法连接到后端服务，仅提供基础浏览功能',
+        message: '无法连接到后端服务，博客内容仍可正常浏览',
         suggestions: [
-          '检查后端服务是否已启动',
-          '检查网络连接',
-          '刷新页面重试'
+          '博客文章来自静态文件，仍可正常阅读',
+          '需要后端的功能（登录、评论、点赞等）暂不可用',
+          '请稍后重试或联系管理员'
         ],
         components: {
           database: {
@@ -168,38 +174,41 @@ export const useBackendStatus = () => {
       };
 
       if (!silent) {
-        console.warn('后端健康检查失败:', errorMessage);
+        console.warn('[BackendStatus] 后端健康检查失败:', errorMessage);
       }
     } finally {
       isChecking.value = false;
     }
   };
 
-  // 简单的 ping 检查（用于快速检测）
   const pingBackend = async (): Promise<boolean> => {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        API_CONFIG.pingTimeout
+      );
 
       const response = await fetch(`${API_BASE_URL}/api/health/ping`, {
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
-      return response.ok;
+      const available = response.ok;
+      setBackendAvailable(available);
+      return available;
     } catch {
+      setBackendAvailable(false);
       return false;
     }
   };
 
   return {
-    // 状态
     backendStatus,
     isChecking,
     lastCheckTime,
     checkError,
-    
-    // 计算属性
+
     isHealthy,
     isDegraded,
     isUnavailable,
@@ -208,12 +217,10 @@ export const useBackendStatus = () => {
     statusType,
     shouldShowBanner,
     canUseFeatures,
-    
-    // 方法
+
     checkBackendStatus,
     pingBackend
   };
 };
 
-// 导出全局状态引用，方便在组件外使用
 export { backendStatus, isChecking, lastCheckTime, checkError };

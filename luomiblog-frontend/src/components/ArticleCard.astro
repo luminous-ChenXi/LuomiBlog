@@ -12,21 +12,26 @@ export interface Props {
   cover?: string;
   author?: string;
   avatar?: string;
+  readTime?: number;
 }
 
-const { 
-  title, 
-  summary, 
-  date, 
+const {
+  title,
+  summary,
+  date,
   category,
-  slug, 
-  views = 0, 
+  tags = [],
+  slug,
+  views = 0,
   comments = 0,
   likes = 0,
   cover,
   author = '辰汐',
-  avatar = '/default-avatar.svg'
+  avatar = '/default-avatar.svg',
+  readTime = 0
 } = Astro.props;
+
+const displayTags = tags.slice(0, 3);
 ---
 
 <article class="article-card">
@@ -47,16 +52,29 @@ const {
         <span class="category-dot"></span>
         {category}
       </div>
+      {readTime > 0 && (
+        <div class="card-read-time">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {readTime} 分钟
+        </div>
+      )}
     </div>
   </a>
-  
+
   <div class="card-content">
+    <div class="card-tags">
+      {displayTags.map((tag) => (
+        <span class="card-tag">{tag}</span>
+      ))}
+      {tags.length > 3 && <span class="card-tag-more">+{tags.length - 3}</span>}
+    </div>
+
     <h3 class="card-title">
       <a href={`/article/${slug}`}>{title}</a>
     </h3>
-    
+
     <p class="card-summary">{summary}</p>
-    
+
     <div class="card-footer">
       <div class="card-author">
         <img src={avatar} alt={author} class="author-avatar" />
@@ -65,7 +83,7 @@ const {
           <span class="post-date">{date}</span>
         </div>
       </div>
-      
+
       <div class="card-meta">
         <div class="meta-item" title="阅读量">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -92,7 +110,6 @@ const {
 </article>
 
 <style>
-  /* 默认列表模式 - 横向布局 */
   .article-card {
     display: flex;
     background: var(--color-card);
@@ -175,6 +192,21 @@ const {
     border-radius: 50%;
   }
 
+  .card-read-time {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    backdrop-filter: blur(10px);
+  }
+
   .card-content {
     flex: 1;
     padding: 20px 24px;
@@ -182,6 +214,40 @@ const {
     flex-direction: column;
     justify-content: space-between;
     min-width: 0;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .card-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    background: rgba(255, 107, 157, 0.08);
+    color: var(--color-brand-primary);
+    font-size: 0.7rem;
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
+  }
+
+  .card-tag:hover {
+    background: var(--color-brand-primary);
+    color: white;
+  }
+
+  .card-tag-more {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    border-radius: var(--radius-full);
   }
 
   .card-title {
@@ -276,7 +342,6 @@ const {
     opacity: 0.7;
   }
 
-  /* 网格模式 - 纵向卡片布局 */
   :global(.article-grid[data-view-mode="grid"]) .article-card {
     flex-direction: column;
     height: auto;
@@ -320,7 +385,6 @@ const {
     transition: all 0.4s ease;
   }
 
-  /* 列表模式动画 */
   :global(.article-grid[data-view-mode="list"]) .article-card {
     animation: cardToList 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -339,7 +403,6 @@ const {
     }
   }
 
-  /* 响应式 */
   @media (max-width: 768px) {
     .article-card {
       flex-direction: column;

@@ -6,20 +6,21 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Set;
 
-/**
- * 自定义 UserDetails 实现，包装 User 实体
- * 使 @AuthenticationPrincipal 可以直接获取 User 实体
- */
 @Getter
 public class UserPrincipal implements UserDetails {
 
     private final User user;
     private final Collection<? extends GrantedAuthority> authorities;
+    private final String roleCode;
+    private final Set<String> permissions;
 
-    public UserPrincipal(User user, Collection<? extends GrantedAuthority> authorities) {
+    public UserPrincipal(User user, Collection<? extends GrantedAuthority> authorities, String roleCode, Set<String> permissions) {
         this.user = user;
         this.authorities = authorities;
+        this.roleCode = roleCode;
+        this.permissions = permissions;
     }
 
     @Override
@@ -39,7 +40,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return !"banned".equals(user.getStatus());
     }
 
     @Override
@@ -49,27 +50,34 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "1".equals(user.getStatus());
+        return "active".equals(user.getStatus());
     }
 
-    /**
-     * 获取用户ID
-     */
     public Long getId() {
         return user.getId();
     }
 
-    /**
-     * 获取用户邮箱
-     */
     public String getEmail() {
         return user.getEmail();
     }
 
-    /**
-     * 获取用户昵称
-     */
     public String getNickname() {
         return user.getNickname();
+    }
+
+    public Integer getRoleId() {
+        return user.getRoleId();
+    }
+
+    public boolean hasPermission(String permissionCode) {
+        return permissions != null && permissions.contains(permissionCode);
+    }
+
+    public boolean isBloggerOrAdmin() {
+        return "blogger".equalsIgnoreCase(roleCode) || "admin".equalsIgnoreCase(roleCode);
+    }
+
+    public boolean isAdmin() {
+        return "admin".equalsIgnoreCase(roleCode);
     }
 }

@@ -7,6 +7,7 @@ import com.luomiblog.service.ArticleStatsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,14 +17,10 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ArticleStatsController {
 
     private final ArticleStatsService articleStatsService;
 
-    /**
-     * 记录文章浏览（24小时去重）
-     */
     @PostMapping("/{articleId}/view")
     public ApiResponse<ArticleStatsResult> recordView(
             @PathVariable Long articleId,
@@ -34,7 +31,6 @@ public class ArticleStatsController {
         String visitorId = request.getVisitorId();
         Long userId = request.getUserId();
 
-        // 如果没有visitorId，生成一个
         if (visitorId == null || visitorId.isEmpty()) {
             visitorId = UUID.randomUUID().toString();
         }
@@ -49,9 +45,6 @@ public class ArticleStatsController {
         return ApiResponse.success(result);
     }
 
-    /**
-     * 切换点赞状态
-     */
     @PostMapping("/{articleId}/like")
     public ApiResponse<ArticleStatsResult> toggleLike(
             @PathVariable Long articleId,
@@ -66,25 +59,16 @@ public class ArticleStatsController {
         return ApiResponse.success(result);
     }
 
-    /**
-     * 切换收藏状态（需要登录）
-     */
     @PostMapping("/{articleId}/favorite")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<ArticleStatsResult> toggleFavorite(
             @PathVariable Long articleId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-
-        if (userPrincipal == null) {
-            return ApiResponse.error(401, "请先登录");
-        }
 
         ArticleStatsResult result = articleStatsService.toggleFavorite(articleId, userPrincipal.getId());
         return ApiResponse.success(result);
     }
 
-    /**
-     * 获取文章统计信息
-     */
     @GetMapping("/{articleId}/stats")
     public ApiResponse<ArticleStatsResult> getStats(
             @PathVariable Long articleId,
@@ -92,7 +76,6 @@ public class ArticleStatsController {
             @RequestParam(required = false) String visitorId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
-        // 优先使用登录用户ID
         if (userPrincipal != null) {
             userId = userPrincipal.getId();
         }
@@ -101,9 +84,6 @@ public class ArticleStatsController {
         return ApiResponse.success(result);
     }
 
-    /**
-     * 检查当前用户是否已点赞/收藏
-     */
     @GetMapping("/{articleId}/check")
     public ApiResponse<ArticleCheckResult> checkStatus(
             @PathVariable Long articleId,
@@ -128,7 +108,6 @@ public class ArticleStatsController {
         return request.getRemoteAddr();
     }
 
-    // DTO classes
     @lombok.Data
     public static class ViewRecordRequest {
         private Long userId;

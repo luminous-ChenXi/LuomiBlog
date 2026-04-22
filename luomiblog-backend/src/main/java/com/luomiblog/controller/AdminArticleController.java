@@ -19,13 +19,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AdminArticleController {
 
     private final ArticleService articleService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<Page<ArticleResponse>> getArticles(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -37,7 +36,7 @@ public class AdminArticleController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:create')")
     public ApiResponse<ArticleResponse> createArticle(
             @Valid @RequestBody ArticleRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -45,7 +44,7 @@ public class AdminArticleController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:update')")
     public ApiResponse<ArticleResponse> updateArticle(
             @PathVariable Long id,
             @Valid @RequestBody ArticleRequest request,
@@ -54,7 +53,7 @@ public class AdminArticleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:delete')")
     public ApiResponse<Void> deleteArticle(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -63,7 +62,7 @@ public class AdminArticleController {
     }
 
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:publish')")
     public ApiResponse<ArticleResponse> publishArticle(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -71,7 +70,7 @@ public class AdminArticleController {
     }
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:unpublish')")
     public ApiResponse<ArticleResponse> archiveArticle(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -79,7 +78,7 @@ public class AdminArticleController {
     }
 
     @PostMapping("/{id}/top")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<ArticleResponse> toggleTop(
             @PathVariable Long id,
             @RequestParam boolean top,
@@ -87,11 +86,8 @@ public class AdminArticleController {
         return ApiResponse.success(articleService.toggleTop(id, top, userPrincipal.getId()));
     }
 
-    /**
-     * 获取文章统计信息
-     */
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<ArticleStatsResponse> getArticleStats() {
         return ApiResponse.success(articleService.getArticleStats());
     }

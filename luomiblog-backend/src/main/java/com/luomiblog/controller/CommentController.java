@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CommentController {
 
     private final CommentService commentService;
@@ -49,6 +49,7 @@ public class CommentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_comment:create')")
     public ApiResponse<CommentResponse> createComment(
             @Valid @RequestBody CommentRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -62,6 +63,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_comment:delete')")
     public ApiResponse<Void> deleteComment(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -70,12 +72,14 @@ public class CommentController {
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_comment:manage')")
     public ApiResponse<Void> approveComment(@PathVariable Long id) {
         commentService.approveComment(id);
         return ApiResponse.success();
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_comment:manage')")
     public ApiResponse<Void> rejectComment(@PathVariable Long id) {
         commentService.rejectComment(id);
         return ApiResponse.success();

@@ -1,6 +1,5 @@
 <template>
   <div class="article-edit-page">
-    <!-- 页面头部 -->
     <header class="admin-section-header">
       <div class="header-actions">
         <a href="/admin/articles" class="btn-back">
@@ -15,15 +14,15 @@
         </div>
       </div>
       <div class="header-buttons">
-        <button class="admin-btn admin-btn-secondary" @click="previewArticle">
+        <button class="admin-btn admin-btn-secondary" @click="togglePreview">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
-          预览
+          {{ showPreview ? '编辑' : '预览' }}
         </button>
-        <button 
-          class="admin-btn admin-btn-primary" 
+        <button
+          class="admin-btn admin-btn-primary"
           :class="{ 'is-loading': isSubmitting }"
           :disabled="isSubmitting"
           @click="saveArticle"
@@ -74,7 +73,6 @@
     </div>
 
     <div v-else class="editor-layout">
-      <!-- 左侧编辑区 -->
       <div class="editor-main">
         <div class="glass-panel editor-panel">
           <div class="form-group" :class="{ 'has-error': validationErrors.title }">
@@ -82,11 +80,11 @@
               文章标题
               <span class="required-mark">*</span>
             </label>
-            <input 
-              type="text" 
-              class="admin-input title-input" 
+            <input
+              type="text"
+              class="admin-input title-input"
               :class="{ 'input-error': validationErrors.title }"
-              v-model="article.title" 
+              v-model="article.title"
               @input="clearFieldError('title')"
               placeholder="请输入文章标题"
               maxlength="200"
@@ -100,11 +98,11 @@
               Slug (URL标识)
               <span class="required-mark">*</span>
             </label>
-            <input 
-              type="text" 
-              class="admin-input" 
+            <input
+              type="text"
+              class="admin-input"
               :class="{ 'input-error': validationErrors.slug }"
-              v-model="article.slug" 
+              v-model="article.slug"
               @input="clearFieldError('slug')"
               placeholder="请输入URL标识，如：my-first-article"
               maxlength="100"
@@ -120,51 +118,109 @@
 
           <div class="form-group" :class="{ 'has-error': validationErrors.content }">
             <label class="form-label">
-              文章内容 (Markdown)
+              文章内容 (Markdown + LaTeX)
               <span class="required-mark">*</span>
             </label>
             <div class="editor-toolbar">
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('**', '**')" title="加粗">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('*', '*')" title="斜体">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('# ', '')" title="标题">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('- ', '')" title="列表">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('```\n', '\n```')" title="代码块">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('> ', '')" title="引用">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('[', '](url)')" title="链接">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-              </button>
-              <button type="button" class="toolbar-btn" @click="insertMarkdown('![alt](', ')')" title="图片">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-              </button>
+              <div class="toolbar-group">
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('**', '**')" title="加粗">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('*', '*')" title="斜体">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('~~', '~~')" title="删除线">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H8"/><path d="M4 12h16"/></svg>
+                </button>
+              </div>
+
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('## ', '')" title="二级标题">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('- ', '')" title="无序列表">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('1. ', '')" title="有序列表">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('- [ ] ', '')" title="任务列表">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                </button>
+              </div>
+
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('> ', '')" title="引用">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('```\n', '\n```')" title="代码块">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertTable" title="表格">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="3" x2="21" y1="15" y2="15"/><line x1="9" x2="9" y1="3" y2="21"/><line x1="15" x2="15" y1="3" y2="21"/></svg>
+                </button>
+              </div>
+
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('[', '](url)')" title="链接">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('![alt](', ')')" title="图片">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                </button>
+              </div>
+
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button type="button" class="toolbar-btn latex-btn" @click="insertMarkdown('$', '$')" title="行内公式 (LaTeX)">
+                  <span class="toolbar-btn-text">f(x)</span>
+                </button>
+                <button type="button" class="toolbar-btn latex-btn" @click="insertBlockFormula" title="块级公式 (LaTeX)">
+                  <span class="toolbar-btn-text">F(x)</span>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMermaid" title="流程图 (Mermaid)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="6" x="2" y="2" rx="1"/><rect width="6" height="6" x="16" y="2" rx="1"/><rect width="6" height="6" x="9" y="16" rx="1"/><path d="M5 8v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M12 12v4"/></svg>
+                </button>
+                <button type="button" class="toolbar-btn" @click="insertMarkdown('<details>\n<summary>', '</summary>\n\n内容\n</details>')" title="折叠块">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                </button>
+              </div>
             </div>
-            <textarea 
-              ref="contentRef" 
-              class="admin-input content-input" 
-              :class="{ 'input-error': validationErrors.content }"
-              v-model="article.content" 
-              @input="clearFieldError('content')"
-              rows="25"
-              placeholder="请输入文章内容，支持 Markdown 格式..."
-            ></textarea>
-            <span v-if="validationErrors.content" class="field-error">{{ validationErrors.content }}</span>
-            <span v-else class="form-hint">文章内容是必填项，建议至少 10 个字符</span>
+
+            <div class="editor-content-area">
+              <textarea
+                ref="contentRef"
+                v-show="!showPreview"
+                class="admin-input content-input"
+                :class="{ 'input-error': validationErrors.content }"
+                v-model="article.content"
+                @input="clearFieldError('content'); updateWordCount()"
+                rows="25"
+                placeholder="请输入文章内容，支持 Markdown + LaTeX 格式...&#10;&#10;示例：&#10;## 二级标题&#10;正文内容，行内公式 $E=mc^2$&#10;&#10;$$&#10;块级公式：&#10;J(\theta) = \frac{1}{2m}\sum_{i=1}^{m}(h_\theta(x^{(i)}) - y^{(i)})^2&#10;$$"
+              ></textarea>
+
+              <div v-if="showPreview" class="preview-panel prose" v-html="renderedContent"></div>
+            </div>
+
+            <div class="content-status-bar">
+              <span v-if="validationErrors.content" class="field-error">{{ validationErrors.content }}</span>
+              <span v-else class="form-hint">支持 Markdown + LaTeX ($...$ / $$...$$) + Mermaid 流程图</span>
+              <div class="word-count-info">
+                <span class="word-count">{{ wordCount }} 字</span>
+                <span class="read-time">约 {{ readTime }} 分钟阅读</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 右侧设置区 -->
       <div class="editor-sidebar">
         <div class="glass-panel settings-panel">
           <h3 class="panel-title">文章设置</h3>
@@ -183,8 +239,8 @@
               分类
               <span v-if="article.status === 'published'" class="required-mark">*</span>
             </label>
-            <select 
-              class="admin-input" 
+            <select
+              class="admin-input"
               :class="{ 'input-error': validationErrors.categoryId }"
               v-model="article.categoryId"
               @change="clearFieldError('categoryId')"
@@ -204,7 +260,7 @@
 
           <div class="form-group">
             <label class="form-label">封面图片</label>
-            <input type="text" class="admin-input" v-model="article.coverImage" />
+            <input type="text" class="admin-input" v-model="article.coverImage" placeholder="输入图片URL" />
           </div>
 
           <div class="form-group author-field">
@@ -212,10 +268,10 @@
               作者
               <span class="field-hint" v-if="isNew">(默认为当前登录用户)</span>
             </label>
-            <input 
-              type="text" 
-              class="admin-input" 
-              v-model="article.author" 
+            <input
+              type="text"
+              class="admin-input"
+              v-model="article.author"
               :placeholder="getCurrentUserDisplayName()"
               :disabled="!canEditAuthor()"
             />
@@ -271,6 +327,42 @@
             <span class="info-value">{{ articleInfo.likeCount || 0 }}</span>
           </div>
         </div>
+
+        <div class="glass-panel format-help-panel">
+          <h3 class="panel-title">格式帮助</h3>
+          <div class="help-item">
+            <code>**粗体**</code>
+            <span>粗体文字</span>
+          </div>
+          <div class="help-item">
+            <code>*斜体*</code>
+            <span>斜体文字</span>
+          </div>
+          <div class="help-item">
+            <code>~~删除线~~</code>
+            <span>删除文字</span>
+          </div>
+          <div class="help-item">
+            <code>$公式$</code>
+            <span>行内公式</span>
+          </div>
+          <div class="help-item">
+            <code>$$公式$$</code>
+            <span>块级公式</span>
+          </div>
+          <div class="help-item">
+            <code>```mermaid</code>
+            <span>流程图</span>
+          </div>
+          <div class="help-item">
+            <code>[链接](url)</code>
+            <span>超链接</span>
+          </div>
+          <div class="help-item">
+            <code>![alt](url)</code>
+            <span>图片</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -312,8 +404,17 @@ const loading = ref(true);
 const loadError = ref<string | null>(null);
 const categories = ref<Category[]>([]);
 const contentRef = ref<HTMLTextAreaElement>();
+const showPreview = ref(false);
+const wordCount = ref(0);
+const readTime = ref(0);
 
-// 表单验证状态
+const currentSlug = computed(() => {
+  if (props.slug) return props.slug;
+  const pathParts = window.location.pathname.split('/');
+  const slugFromUrl = pathParts[pathParts.length - 1];
+  return slugFromUrl && slugFromUrl !== 'new' ? slugFromUrl : '';
+});
+
 const validationErrors = ref<{
   title: string;
   content: string;
@@ -331,7 +432,7 @@ const hasAttemptedSubmit = ref(false);
 
 const article = ref<Article>({
   title: '',
-  slug: props.slug || '',
+  slug: '',
   summary: '',
   content: '',
   status: 'draft',
@@ -353,7 +454,7 @@ const articleInfo = ref({
   likeCount: 0
 });
 
-const isNew = computed(() => !props.slug);
+const isNew = computed(() => !currentSlug.value);
 
 const tagsInput = computed({
   get: () => article.value.tags.join(', '),
@@ -362,22 +463,136 @@ const tagsInput = computed({
   }
 });
 
+const renderedContent = computed(() => {
+  return renderMarkdown(article.value.content);
+});
+
+function renderMarkdown(content: string): string {
+  if (!content) return '<p class="preview-empty">暂无内容，请在编辑区输入 Markdown 内容</p>';
+
+  let html = content;
+
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_match, lang, code) => {
+    const language = lang || 'text';
+    return `<pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`;
+  });
+
+  html = html.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
+    return `<div class="math-block">$$${formula.trim()}$$</div>`;
+  });
+
+  html = html.replace(/\$([^\$\n]+?)\$/g, (_match, formula) => {
+    return `<span class="math-inline">$${formula}$</span>`;
+  });
+
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  html = html.replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
+
+  html = html.replace(/^- \[x\] (.+)$/gm, '<li><input type="checkbox" checked disabled /> $1</li>');
+  html = html.replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox" disabled /> $1</li>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = html.replace(/\n/g, '<br />');
+  html = '<p>' + html + '</p>';
+
+  html = html.replace(/<p><\/p>/g, '');
+  html = html.replace(/<p>(<h[1-6]>)/g, '$1');
+  html = html.replace(/(<\/h[1-6]>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<pre>)/g, '$1');
+  html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<blockquote>)/g, '$1');
+  html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<div class="math-block">)/g, '$1');
+  html = html.replace(/(<\/div>)<\/p>/g, '$1');
+
+  return html;
+}
+
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function updateWordCount() {
+  const content = article.value.content || '';
+  const chineseChars = (content.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const englishWords = (content.match(/[a-zA-Z]+/g) || []).length;
+  wordCount.value = chineseChars + englishWords;
+  readTime.value = Math.max(1, Math.ceil(wordCount.value / 300));
+}
+
+function togglePreview() {
+  showPreview.value = !showPreview.value;
+  if (showPreview.value) {
+    renderKaTeX();
+  }
+}
+
+function renderKaTeX() {
+  setTimeout(() => {
+    const previewPanel = document.querySelector('.preview-panel');
+    if (!previewPanel) return;
+
+    const mathBlocks = previewPanel.querySelectorAll('.math-block');
+    mathBlocks.forEach((block) => {
+      const formula = block.textContent?.replace(/^\$\$/, '').replace(/\$\$$/, '').trim() || '';
+      try {
+        if ((window as any).katex) {
+          block.innerHTML = (window as any).katex.renderToString(formula, { displayMode: true, throwOnError: false });
+        }
+      } catch (e) {
+        console.warn('KaTeX render error:', e);
+      }
+    });
+
+    const mathInlines = previewPanel.querySelectorAll('.math-inline');
+    mathInlines.forEach((inline) => {
+      const formula = inline.textContent?.replace(/^\$/, '').replace(/\$$/, '').trim() || '';
+      try {
+        if ((window as any).katex) {
+          inline.innerHTML = (window as any).katex.renderToString(formula, { displayMode: false, throwOnError: false });
+        }
+      } catch (e) {
+        console.warn('KaTeX render error:', e);
+      }
+    });
+  }, 100);
+}
+
 function getToken() {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 }
 
-// 清除指定字段的错误
 function clearFieldError(field: keyof typeof validationErrors.value) {
   validationErrors.value[field] = '';
 }
 
-// 验证文章表单
 function validateArticle(): boolean {
   hasAttemptedSubmit.value = true;
   let isValid = true;
   const errors: string[] = [];
 
-  // 重置错误状态
   validationErrors.value = {
     title: '',
     content: '',
@@ -385,7 +600,6 @@ function validateArticle(): boolean {
     categoryId: ''
   };
 
-  // 验证标题
   const title = article.value.title?.trim() || '';
   if (!title) {
     validationErrors.value.title = '请输入文章标题';
@@ -401,7 +615,6 @@ function validateArticle(): boolean {
     isValid = false;
   }
 
-  // 验证内容
   const content = article.value.content?.trim() || '';
   if (!content) {
     validationErrors.value.content = '请输入文章内容';
@@ -413,7 +626,6 @@ function validateArticle(): boolean {
     isValid = false;
   }
 
-  // 验证 Slug（新建时必填）
   if (isNew.value) {
     const slug = article.value.slug?.trim() || '';
     if (!slug) {
@@ -431,19 +643,17 @@ function validateArticle(): boolean {
     }
   }
 
-  // 验证分类（发布时必填）
   if (article.value.status === 'published' && !article.value.categoryId) {
     validationErrors.value.categoryId = '发布文章需要选择分类';
     errors.push('请选择文章分类');
     isValid = false;
   }
 
-  // 显示错误提示
   if (!isValid && errors.length > 0) {
-    const errorMessage = errors.length === 1 
-      ? errors[0] 
+    const errorMessage = errors.length === 1
+      ? errors[0]
       : `表单填写有误，共有 ${errors.length} 处错误需要修正`;
-    
+
     ElMessage({
       message: errorMessage,
       type: 'warning',
@@ -451,7 +661,6 @@ function validateArticle(): boolean {
       showClose: true
     });
 
-    // 滚动到第一个错误字段
     setTimeout(() => {
       const firstErrorField = document.querySelector('.field-error');
       if (firstErrorField) {
@@ -463,11 +672,10 @@ function validateArticle(): boolean {
   return isValid;
 }
 
-// 显示保存确认对话框
 async function showSaveConfirm(): Promise<boolean> {
   const isDraft = article.value.status === 'draft';
   const missingFields: string[] = [];
-  
+
   if (!article.value.summary?.trim()) {
     missingFields.push('文章摘要');
   }
@@ -481,7 +689,6 @@ async function showSaveConfirm(): Promise<boolean> {
     missingFields.push('文章标签');
   }
 
-  // 如果有缺失的推荐字段，显示友好提示
   if (missingFields.length > 0 && !isDraft) {
     try {
       await ElMessageBox.confirm(
@@ -497,7 +704,6 @@ async function showSaveConfirm(): Promise<boolean> {
       );
       return true;
     } catch {
-      // 用户选择去完善
       return false;
     }
   }
@@ -527,20 +733,19 @@ async function loadCategories() {
 }
 
 async function loadArticle() {
-  if (!props.slug) {
+  if (!currentSlug.value) {
     loading.value = false;
     return;
   }
 
   try {
     loadError.value = null;
-    const response = await fetch(`${API_BASE_URL}/api/articles/${props.slug}`, {
+    const response = await fetch(`${API_BASE_URL}/api/articles/${currentSlug.value}`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
 
     if (!response.ok) {
       if (response.status === 404) {
-        // 文章在数据库中不存在，检查是否在文件系统中存在
         await checkFileSystemArticle();
         return;
       }
@@ -577,6 +782,8 @@ async function loadArticle() {
       viewCount: data.viewCount || 0,
       likeCount: data.likeCount || 0
     };
+
+    updateWordCount();
   } catch (error) {
     console.error('加载文章失败:', error);
     loadError.value = '无法连接到服务器，请检查网络连接或稍后重试';
@@ -585,10 +792,8 @@ async function loadArticle() {
   }
 }
 
-// 检查文章是否在文件系统中存在
 async function checkFileSystemArticle() {
   try {
-    // 调用同步检查API，查看文件系统中是否有这篇文章
     const checkResponse = await fetch(`${API_BASE_URL}/api/admin/articles/sync/check`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
@@ -596,13 +801,11 @@ async function checkFileSystemArticle() {
     if (checkResponse.ok) {
       const checkResult = await checkResponse.json();
       if (checkResult.code === 200 && checkResult.data?.isSyncNeeded) {
-        // 文件系统中有新文章，提示用户同步
         loadError.value = '此文章尚未同步到数据库。请在文章管理页面点击"同步文件"按钮将文章导入数据库后再编辑。';
         return;
       }
     }
 
-    // 文件系统中也没有，或者无法确定
     loadError.value = '文章不存在，可能已被删除或移动';
   } catch (error) {
     console.error('检查文件系统文章失败:', error);
@@ -622,29 +825,86 @@ function insertMarkdown(before: string, after: string) {
   const selected = text.substring(start, end);
 
   article.value.content = text.substring(0, start) + before + selected + after + text.substring(end);
-  
+
   setTimeout(() => {
     textarea.focus();
     textarea.selectionStart = start + before.length;
     textarea.selectionEnd = start + before.length + selected.length;
   }, 0);
+
+  updateWordCount();
 }
 
-function previewArticle() {
-  if (article.value.slug) {
-    window.open(`/article/${article.value.slug}`, '_blank');
-  } else {
-    ElMessage.warning('请先设置文章 URL 标识');
-  }
+function insertBlockFormula() {
+  const textarea = contentRef.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const text = article.value.content;
+  const selected = text.substring(start, textarea.selectionEnd);
+
+  const formula = selected || 'J(\\theta) = \\frac{1}{2m}\\sum_{i=1}^{m}(h_\\theta(x^{(i)}) - y^{(i)})^2';
+  const insertion = `\n$$\n${formula}\n$$\n`;
+
+  article.value.content = text.substring(0, start) + insertion + text.substring(textarea.selectionEnd);
+
+  setTimeout(() => {
+    textarea.focus();
+    const newPos = start + 4;
+    textarea.selectionStart = newPos;
+    textarea.selectionEnd = newPos + formula.length;
+  }, 0);
+
+  updateWordCount();
+}
+
+function insertMermaid() {
+  const textarea = contentRef.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const text = article.value.content;
+
+  const mermaidTemplate = `\n\`\`\`mermaid\nflowchart LR\n    A[开始] --> B[处理]\n    B --> C[结束]\n\`\`\`\n`;
+
+  article.value.content = text.substring(0, start) + mermaidTemplate + text.substring(textarea.selectionEnd);
+
+  setTimeout(() => {
+    textarea.focus();
+    const newPos = start + 17;
+    textarea.selectionStart = newPos;
+    textarea.selectionEnd = newPos + 42;
+  }, 0);
+
+  updateWordCount();
+}
+
+function insertTable() {
+  const textarea = contentRef.value;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const text = article.value.content;
+
+  const tableTemplate = `\n| 列1 | 列2 | 列3 |\n|------|------|------|\n| 内容 | 内容 | 内容 |\n`;
+
+  article.value.content = text.substring(0, start) + tableTemplate + text.substring(textarea.selectionEnd);
+
+  setTimeout(() => {
+    textarea.focus();
+    const newPos = start + 1;
+    textarea.selectionStart = newPos;
+    textarea.selectionEnd = newPos + 36;
+  }, 0);
+
+  updateWordCount();
 }
 
 async function saveArticle() {
-  // 表单验证
   if (!validateArticle()) {
     return;
   }
 
-  // 显示保存确认（检查可选字段）
   const shouldContinue = await showSaveConfirm();
   if (!shouldContinue) {
     return;
@@ -654,10 +914,9 @@ async function saveArticle() {
 
   try {
     const payload = { ...article.value };
-    
+
     let response;
     if (isNew.value) {
-      // 创建新文章
       response = await fetch(`${API_BASE_URL}/api/articles`, {
         method: 'POST',
         headers: {
@@ -667,7 +926,6 @@ async function saveArticle() {
         body: JSON.stringify(payload)
       });
     } else {
-      // 更新现有文章
       response = await fetch(`${API_BASE_URL}/api/articles/${article.value.id}`, {
         method: 'PUT',
         headers: {
@@ -688,33 +946,29 @@ async function saveArticle() {
       throw new Error(result.message || '保存失败');
     }
 
-    // 个性化成功提示
     const successMessages: Record<string, string> = {
       'draft': '草稿保存成功',
       'published': '文章发布成功',
       'archived': '文章已归档'
     };
-    
+
     ElMessage({
       message: successMessages[article.value.status] || '文章保存成功',
       type: 'success',
       duration: 3000
     });
-    
+
     if (isNew.value) {
-      // 新建文章后跳转到编辑页面
       window.location.href = `/admin/articles/${result.data.slug}`;
     } else {
-      // 更新文章信息
       articleInfo.value.updatedAt = result.data.updatedAt;
     }
   } catch (error) {
     console.error('保存文章失败:', error);
-    
-    // 个性化错误提示
+
     const errorMsg = (error as Error).message;
     let displayMsg = '保存失败';
-    
+
     if (errorMsg.includes('Duplicate entry') || errorMsg.includes('唯一约束')) {
       displayMsg = '文章URL标识已存在，请更换一个';
       validationErrors.value.slug = '该URL标识已被使用';
@@ -725,7 +979,7 @@ async function saveArticle() {
     } else if (errorMsg) {
       displayMsg = errorMsg;
     }
-    
+
     ElMessage({
       message: displayMsg,
       type: 'error',
@@ -770,40 +1024,44 @@ async function deleteArticle() {
   }
 }
 
-// 获取当前用户的显示名称
 function getCurrentUserDisplayName(): string {
   const user = getUser();
   if (!user) return '管理员';
   return user.nickname || user.username || '管理员';
 }
 
-// 检查当前用户是否可以编辑作者
 function canEditAuthor(): boolean {
   const user = getUser();
   if (!user) return false;
-  // 仅博主(blogger)和管理员(admin)可以修改作者
   return user.role === 'blogger' || user.role === 'admin';
-}
-
-// 获取当前用户的角色
-function getCurrentUserRole(): string {
-  const user = getUser();
-  return user?.role || 'visitor';
 }
 
 onMounted(async () => {
   await loadCategories();
   await loadArticle();
-  
-  // 如果是新建文章，设置默认作者为当前用户
+
   if (isNew.value) {
     const user = getUser();
     if (user) {
-      // 仅博主和管理员可以设置作者，其他角色不设置
       if (user.role === 'blogger' || user.role === 'admin') {
         article.value.author = user.nickname || user.username || '';
       }
     }
+  }
+
+  updateWordCount();
+
+  if (!(window as any).katex) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
+    script.crossOrigin = 'anonymous';
+    document.head.appendChild(script);
   }
 });
 </script>
@@ -1002,22 +1260,29 @@ onMounted(async () => {
   min-height: 80px;
 }
 
-.content-input {
-  resize: vertical;
-  min-height: 400px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
 .editor-toolbar {
   display: flex;
-  gap: 4px;
-  padding: 8px;
+  gap: 2px;
+  padding: 8px 10px;
   background: var(--admin-input-bg);
   border: 1px solid var(--admin-card-border);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--admin-card-border);
+  margin: 0 6px;
+  flex-shrink: 0;
 }
 
 .toolbar-btn {
@@ -1039,6 +1304,166 @@ onMounted(async () => {
   color: var(--admin-text);
 }
 
+.toolbar-btn-text {
+  font-size: 11px;
+  font-weight: 600;
+  font-style: italic;
+  font-family: 'Times New Roman', serif;
+}
+
+.latex-btn {
+  width: auto;
+  padding: 0 8px;
+}
+
+.latex-btn:hover {
+  color: var(--admin-primary);
+  background: rgba(255, 107, 157, 0.1);
+}
+
+.editor-content-area {
+  position: relative;
+}
+
+.content-input {
+  resize: vertical;
+  min-height: 400px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  border-radius: 0 0 8px 8px;
+}
+
+.content-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.word-count-info {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+.preview-panel {
+  min-height: 400px;
+  padding: 24px;
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-card-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow-y: auto;
+  max-height: 600px;
+  line-height: 1.8;
+  font-size: 15px;
+  color: var(--admin-text);
+}
+
+.preview-panel :deep(h1),
+.preview-panel :deep(h2),
+.preview-panel :deep(h3) {
+  color: var(--admin-text);
+  margin: 24px 0 12px;
+  font-weight: 600;
+}
+
+.preview-panel :deep(h2) {
+  font-size: 1.5rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-card-border);
+}
+
+.preview-panel :deep(h3) {
+  font-size: 1.25rem;
+}
+
+.preview-panel :deep(pre) {
+  background: #1e1e2e;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.preview-panel :deep(code) {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.preview-panel :deep(:not(pre) > code) {
+  background: rgba(255, 107, 157, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--admin-primary);
+}
+
+.preview-panel :deep(pre code) {
+  background: transparent;
+  color: #cdd6f4;
+}
+
+.preview-panel :deep(blockquote) {
+  border-left: 4px solid var(--admin-primary);
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: rgba(255, 107, 157, 0.05);
+  border-radius: 0 8px 8px 0;
+}
+
+.preview-panel :deep(.math-block) {
+  margin: 20px 0;
+  text-align: center;
+  overflow-x: auto;
+  padding: 12px 0;
+}
+
+.preview-panel :deep(.math-inline) {
+  display: inline;
+}
+
+.preview-panel :deep(img) {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.preview-panel :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.preview-panel :deep(th),
+.preview-panel :deep(td) {
+  padding: 8px 12px;
+  border: 1px solid var(--admin-card-border);
+  text-align: left;
+}
+
+.preview-panel :deep(th) {
+  background: var(--admin-hover-bg);
+  font-weight: 600;
+}
+
+.preview-panel :deep(a) {
+  color: var(--admin-primary);
+  text-decoration: none;
+}
+
+.preview-panel :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.preview-empty {
+  color: var(--admin-text-muted);
+  text-align: center;
+  padding: 60px 20px;
+  font-style: italic;
+}
+
 .editor-sidebar {
   display: flex;
   flex-direction: column;
@@ -1046,7 +1471,8 @@ onMounted(async () => {
 }
 
 .settings-panel,
-.info-panel {
+.info-panel,
+.format-help-panel {
   padding: 20px;
 }
 
@@ -1102,6 +1528,32 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.format-help-panel {
+  padding: 20px;
+}
+
+.help-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.help-item code {
+  background: var(--admin-input-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--admin-primary);
+}
+
+.help-item span {
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+
 .error-state {
   display: flex;
   flex-direction: column;
@@ -1143,7 +1595,6 @@ onMounted(async () => {
   justify-content: center;
 }
 
-/* 表单验证样式 */
 .required-mark {
   color: #ef4444;
   margin-left: 4px;
@@ -1187,7 +1638,6 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* 按钮加载状态 */
 .admin-btn.is-loading {
   opacity: 0.7;
   cursor: not-allowed;
@@ -1207,11 +1657,6 @@ onMounted(async () => {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 保存确认对话框样式 */
 :global(.article-save-confirm) {
   max-width: 420px;
 }
@@ -1225,7 +1670,6 @@ onMounted(async () => {
   color: var(--admin-text);
 }
 
-/* 作者字段样式 */
 .author-field .field-hint {
   font-size: 12px;
   color: var(--admin-text-secondary);

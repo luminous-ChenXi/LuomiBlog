@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/install")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class InstallController {
 
     private final InstallService installService;
@@ -21,6 +20,18 @@ public class InstallController {
     @GetMapping("/status")
     public ApiResponse<InstallStatusResponse> getInstallStatus() {
         return ApiResponse.success(installService.getInstallStatus());
+    }
+
+    @GetMapping("/lock-integrity")
+    public ApiResponse<Map<String, Object>> verifyLockIntegrity() {
+        InstallStatusResponse status = installService.getInstallStatus();
+        boolean integrity = installService.verifyLockIntegrity();
+        String hash = installService.getLockHash();
+        return ApiResponse.success(Map.of(
+                "installed", status.isLocked(),
+                "integrityValid", integrity,
+                "lockHash", hash != null ? hash.substring(0, 16) + "..." : null
+        ));
     }
 
     @PostMapping("/check-environment")

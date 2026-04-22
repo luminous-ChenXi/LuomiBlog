@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tags")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class TagController {
 
     private final TagService tagService;
@@ -52,11 +52,13 @@ public class TagController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<TagResponse> createTag(@Valid @RequestBody TagRequest request) {
         return ApiResponse.success(tagService.createTag(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<TagResponse> updateTag(
             @PathVariable Long id,
             @Valid @RequestBody TagRequest request) {
@@ -64,6 +66,7 @@ public class TagController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('PERM_article:manage')")
     public ApiResponse<Void> deleteTag(@PathVariable Long id) {
         tagService.deleteTag(id);
         return ApiResponse.success();
