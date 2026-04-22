@@ -53,7 +53,7 @@ jwt:
 
 app:
   cors:
-    allowed-origins: http://localhost:4321,http://localhost:3000
+    allowed-origins: http://localhost:4321,http://localhost:4322,http://localhost:3000,http://127.0.0.1:4321,http://127.0.0.1:4322,http://127.0.0.1:3000
   pagination:
     default-page-size: 10
     max-page-size: 100
