@@ -1,22 +1,22 @@
 ---
+import { API_BASE_URL } from '../config/api';
+
 export interface Props {
   title?: string;
 }
 
 const { title = '管理后台' } = Astro.props;
 
-// 获取当前路径
 const currentPath = Astro.url.pathname;
 
-// 侧边栏菜单
 const menuItems = [
-  { href: '/admin', label: '仪表盘', subtitle: 'overview', icon: 'LayoutDashboard' },
-  { href: '/admin/users', label: '用户管理', subtitle: 'members', icon: 'Users' },
-  { href: '/admin/articles', label: '文章管理', subtitle: 'content', icon: 'FileText' },
-  { href: '/admin/announcements', label: '公告管理', subtitle: 'notices', icon: 'Megaphone' },
-  { href: '/admin/comments', label: '评价管理', subtitle: 'reviews', icon: 'MessageSquare' },
-  { href: '/admin/settings', label: '系统设置', subtitle: 'settings', icon: 'Settings' },
-  { href: '/admin/mail', label: '邮箱设置', subtitle: 'messaging', icon: 'Mail' },
+  { href: '/admin', label: '仪表盘', subtitle: 'overview', icon: 'LayoutDashboard', roles: ['admin', 'blogger'] },
+  { href: '/admin/users', label: '用户管理', subtitle: 'members', icon: 'Users', roles: ['admin'] },
+  { href: '/admin/articles', label: '文章管理', subtitle: 'content', icon: 'FileText', roles: ['admin', 'blogger'] },
+  { href: '/admin/announcements', label: '公告管理', subtitle: 'notices', icon: 'Megaphone', roles: ['admin', 'blogger'] },
+  { href: '/admin/comments', label: '评价管理', subtitle: 'reviews', icon: 'MessageSquare', roles: ['admin', 'blogger'] },
+  { href: '/admin/settings', label: '系统设置', subtitle: 'settings', icon: 'Settings', roles: ['admin'] },
+  { href: '/admin/mail', label: '邮箱设置', subtitle: 'messaging', icon: 'Mail', roles: ['admin'] },
 ];
 
 const isActive = (href: string) => {
@@ -60,6 +60,7 @@ const isActive = (href: string) => {
             <a 
               href={item.href} 
               class={`nav-item ${isActive(item.href) ? 'active' : ''}`}
+              data-roles={item.roles.join(',')}
             >
               <span class="nav-icon">
                 {item.icon === 'LayoutDashboard' && (
@@ -264,25 +265,23 @@ const isActive = (href: string) => {
   }
 </style>
 
-<script>
-  // 主题切换功能
+<script define:vars={{ apiBaseUrl: API_BASE_URL }}>
+  const API_BASE = apiBaseUrl;
+
   (function initTheme() {
     const themeToggle = document.getElementById('theme-toggle');
     const html = document.documentElement;
     
-    // 从 localStorage 读取主题设置
     const savedTheme = localStorage.getItem('admin-theme');
     if (savedTheme === 'dark') {
       html.setAttribute('data-theme', 'dark');
     } else if (savedTheme === 'light') {
       html.setAttribute('data-theme', 'light');
     } else {
-      // 默认使用系统偏好
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     }
     
-    // 绑定切换事件
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
         const currentTheme = html.getAttribute('data-theme');
@@ -293,12 +292,56 @@ const isActive = (href: string) => {
     }
   })();
 
-  // 检查管理员权限
+  const ROLE_ACCESS_MAP = {
+    admin: ['/admin', '/admin/users', '/admin/articles', '/admin/announcements', '/admin/comments', '/admin/settings', '/admin/mail'],
+    blogger: ['/admin', '/admin/articles', '/admin/announcements', '/admin/comments'],
+  };
+
+  const ROLE_REDIRECT_MAP = {
+    blogger: '/admin',
+    member: '/',
+    visitor: '/',
+  };
+
+  function filterMenuByRole(role) {
+    const navItems = document.querySelectorAll('.nav-item[data-roles]');
+    navItems.forEach(item => {
+      const allowedRoles = item.getAttribute('data-roles')?.split(',') || [];
+      if (!allowedRoles.includes(role)) {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  function checkPageAccess(role) {
+    const currentPath = window.location.pathname;
+    const allowedPaths = ROLE_ACCESS_MAP[role];
+    if (!allowedPaths) return false;
+
+    if (allowedPaths.includes(currentPath)) return true;
+
+    for (const allowed of allowedPaths) {
+      if (allowed !== '/admin' && currentPath.startsWith(allowed)) return true;
+    }
+
+    return false;
+  }
+
+  function redirectBasedOnRole(role) {
+    const currentPath = window.location.pathname;
+    const redirectPath = ROLE_REDIRECT_MAP[role];
+    if (redirectPath && redirectPath !== currentPath) {
+      window.location.href = redirectPath;
+      return true;
+    }
+    return false;
+  }
+
   (function checkAdminAuth() {
-    const authLayer = document.getElementById('auth-check-layer') as HTMLElement | null;
-    const noPermissionLayer = document.getElementById('no-permission-layer') as HTMLElement | null;
-    const backendDownLayer = document.getElementById('backend-down-layer') as HTMLElement | null;
-    const adminLayout = document.querySelector('.admin-layout') as HTMLElement | null;
+    const authLayer = document.getElementById('auth-check-layer');
+    const noPermissionLayer = document.getElementById('no-permission-layer');
+    const backendDownLayer = document.getElementById('backend-down-layer');
+    const adminLayout = document.querySelector('.admin-layout');
     
     if (adminLayout) {
       adminLayout.style.visibility = 'hidden';
@@ -325,6 +368,17 @@ const isActive = (href: string) => {
         setTimeout(() => { window.location.href = '/'; }, 3000);
         return;
       }
+
+      filterMenuByRole(role);
+
+      if (!checkPageAccess(role)) {
+        if (authLayer) authLayer.style.display = 'none';
+        if (!redirectBasedOnRole(role)) {
+          if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
+          setTimeout(() => { window.location.href = '/'; }, 3000);
+        }
+        return;
+      }
       
       checkBackendAndShow();
     } catch {
@@ -335,14 +389,14 @@ const isActive = (href: string) => {
   })();
 
   async function checkBackendAndShow() {
-    const authLayer = document.getElementById('auth-check-layer') as HTMLElement | null;
-    const backendDownLayer = document.getElementById('backend-down-layer') as HTMLElement | null;
-    const adminLayout = document.querySelector('.admin-layout') as HTMLElement | null;
+    const authLayer = document.getElementById('auth-check-layer');
+    const backendDownLayer = document.getElementById('backend-down-layer');
+    const adminLayout = document.querySelector('.admin-layout');
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch('/api/health', { signal: controller.signal });
+      const response = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (response.ok) {
@@ -360,7 +414,7 @@ const isActive = (href: string) => {
     if (backendDownLayer) backendDownLayer.style.display = 'flex';
   }
 
-  function showAdminLayout(adminLayout: HTMLElement | null) {
+  function showAdminLayout(adminLayout) {
     if (adminLayout) {
       adminLayout.style.visibility = 'visible';
       adminLayout.style.opacity = '0';
@@ -381,7 +435,7 @@ const isActive = (href: string) => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch('/api/health', { signal: controller.signal });
+        const response = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (response.ok) {

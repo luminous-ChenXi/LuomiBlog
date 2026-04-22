@@ -888,16 +888,12 @@ const articleData = {
     return base?.getAttribute('content') || '';
   })();
 
-  function getApiUrl(path: string): string {
+  function getApiUrl(path) {
     if (API_BASE) return `${API_BASE}${path}`;
     return path;
   }
 
-  function isBackendReachable(): boolean {
-    return !document.querySelector('[data-backend-down]');
-  }
-
-  async function safeFetch(url: string, options: RequestInit = {}): Promise<Response | null> {
+  async function safeFetch(url, options = {}) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -912,7 +908,7 @@ const articleData = {
     }
   }
 
-  function showFeatureDisabled(element: HTMLElement | null, message: string) {
+  function showFeatureDisabled(element, message) {
     if (!element) return;
     element.style.opacity = '0.5';
     element.style.cursor = 'not-allowed';
@@ -971,7 +967,7 @@ const articleData = {
   function getVisitorId() {
     let visitorId = localStorage.getItem('lm_visitor_id');
     if (!visitorId) {
-      visitorId = 'v_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      visitorId = 'v_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
       localStorage.setItem('lm_visitor_id', visitorId);
     }
     return visitorId;
@@ -1064,7 +1060,7 @@ const articleData = {
         const commentBtn = document.querySelector('.comment-btn');
         showFeatureDisabled(likeBtn, '后端服务不可用，点赞功能暂不可用');
         showFeatureDisabled(favoriteBtn, '后端服务不可用，收藏功能暂不可用');
-        showFeatureDisabled(commentBtn as HTMLElement, '后端服务不可用，评论功能暂不可用');
+        showFeatureDisabled(commentBtn, '后端服务不可用，评论功能暂不可用');
       }
     }
 
@@ -1087,7 +1083,8 @@ const articleData = {
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
       script.onload = () => {
-        (window as any).mermaid.initialize({
+        const mermaidWin = window;
+        mermaidWin.mermaid.initialize({
           startOnLoad: false,
           theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default',
           securityLevel: 'loose'
@@ -1097,9 +1094,8 @@ const articleData = {
           if (!pre) return;
           const code = block.textContent || '';
           try {
-            const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js');
             const id = `mermaid-${index}`;
-            const { svg } = await (window as any).mermaid.render(id, code);
+            const { svg } = await mermaidWin.mermaid.render(id, code);
             const container = document.createElement('div');
             container.className = 'mermaid-container';
             container.innerHTML = svg;
@@ -1114,5 +1110,10 @@ const articleData = {
       };
       document.head.appendChild(script);
     }
+
+    window.handleLike = handleLike;
+    window.handleShare = handleShare;
+    window.scrollToComments = scrollToComments;
+    window.handleFavorite = handleFavorite;
   });
 </script>

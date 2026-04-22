@@ -1,7 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { API_BASE_URL } from '../../config/api';
 
-// 初始数据为空，将在客户端获取
 const initialStats = [
   { label: '总用户数', value: '-', change: '-', icon: 'users', trend: 'up' },
   { label: '文章数量', value: '-', change: '-', icon: 'articles', trend: 'up' },
@@ -12,8 +12,8 @@ const initialStats = [
 const quickActions = [
   { label: '写文章', icon: 'edit', href: '/admin/articles/new' },
   { label: '发布公告', icon: 'megaphone', href: '/admin/announcements/new' },
-  { label: '管理用户', icon: 'users', href: '/admin/users' },
-  { label: '系统设置', icon: 'settings', href: '/admin/settings' },
+  { label: '管理用户', icon: 'users', href: '/admin/users', roles: ['admin'] },
+  { label: '系统设置', icon: 'settings', href: '/admin/settings', roles: ['admin'] },
 ];
 ---
 
@@ -62,7 +62,7 @@ const quickActions = [
       <h3 class="panel-title">快捷操作</h3>
       <div class="actions-grid">
         {quickActions.map((action) => (
-          <a href={action.href} class="action-card">
+          <a href={action.href} class="action-card" data-roles={action.roles ? action.roles.join(',') : 'admin,blogger'}>
             <div class="action-icon">
               {action.icon === 'edit' && (
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -97,14 +97,14 @@ const quickActions = [
   </div>
 </AdminLayout>
 
-<script>
-  // 获取 Token
+<script define:vars={{ apiBaseUrl: API_BASE_URL }}>
+  const API_BASE = apiBaseUrl;
+
   function getToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
   }
 
-  // 格式化数字
-  function formatNumber(num: number): string {
+  function formatNumber(num) {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {
@@ -113,22 +113,35 @@ const quickActions = [
     return num.toString();
   }
 
-  // 格式化增长率
-  function formatGrowth(growth: number): string {
+  function formatGrowth(growth) {
     const sign = growth >= 0 ? '+' : '';
     return sign + growth + '%';
   }
 
-  // 加载仪表盘数据
+  (function filterQuickActions() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return;
+    try {
+      const user = JSON.parse(userStr);
+      const role = user.role?.toLowerCase();
+      const actionCards = document.querySelectorAll('.action-card[data-roles]');
+      actionCards.forEach(card => {
+        const allowedRoles = card.getAttribute('data-roles')?.split(',') || [];
+        if (!allowedRoles.includes(role)) {
+          card.style.display = 'none';
+        }
+      });
+    } catch {}
+  })();
+
   async function loadDashboardStats() {
     const token = getToken();
     if (!token) {
-      console.error('未登录');
       return;
     }
 
     try {
-      const response = await fetch('/api/admin/dashboard/stats', {
+      const response = await fetch(`${API_BASE}/api/admin/dashboard/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -139,38 +152,14 @@ const quickActions = [
         if (result.code === 200) {
           updateDashboard(result.data);
         }
-      } else {
-        console.error('获取仪表盘数据失败:', response.status);
       }
     } catch (error) {
       console.error('获取仪表盘数据出错:', error);
     }
   }
 
-  // 定义统计数据类型
-  interface DashboardData {
-    totalUsers: number;
-    userGrowth: number;
-    totalArticles: number;
-    articleGrowth: number;
-    totalComments: number;
-    commentGrowth: number;
-    todayViews: number;
-    viewGrowth: number;
-    recentActivities: Activity[];
-  }
-
-  interface Activity {
-    type: 'user' | 'article' | 'comment' | 'system';
-    action: string;
-    time: string;
-    detail: string;
-  }
-
-  // 更新仪表盘显示
-  function updateDashboard(data: DashboardData): void {
-    // 更新统计卡片
-    const statsMap: Record<string, { value: number; change: number }> = {
+  function updateDashboard(data) {
+    const statsMap = {
       'users': { value: data.totalUsers, change: data.userGrowth },
       'articles': { value: data.totalArticles, change: data.articleGrowth },
       'comments': { value: data.totalComments, change: data.commentGrowth },
@@ -199,10 +188,9 @@ const quickActions = [
       }
     });
 
-    // 更新最近动态
     const activitiesList = document.getElementById('activities-list');
     if (activitiesList && data.recentActivities && data.recentActivities.length > 0) {
-      activitiesList.innerHTML = data.recentActivities.map((activity: Activity) => `
+      activitiesList.innerHTML = data.recentActivities.map((activity) => `
         <div class="activity-item">
           <div class="activity-icon ${activity.type}">
             ${getActivityIcon(activity.type)}
@@ -221,9 +209,8 @@ const quickActions = [
     }
   }
 
-  // 获取活动图标
-  function getActivityIcon(type: Activity['type']): string {
-    const icons: Record<Activity['type'], string> = {
+  function getActivityIcon(type) {
+    const icons = {
       'user': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       'article': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
       'comment': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
@@ -232,7 +219,6 @@ const quickActions = [
     return icons[type] || icons['system'];
   }
 
-  // 页面加载完成后获取数据
   document.addEventListener('DOMContentLoaded', loadDashboardStats);
 </script>
 
