@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import partytown from '@astrojs/partytown';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
+import node from '@astrojs/node';
 import remarkMath from 'remark-math';
 import remarkToc from 'remark-toc';
 import rehypeKatex from 'rehype-katex';
@@ -34,6 +35,14 @@ export default defineConfig({
     },
     build: {
       chunkSizeWarningLimit: 1000
+    },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        }
+      }
     }
   },
 
@@ -48,7 +57,9 @@ export default defineConfig({
 
   site: 'https://luomiblog.com',
 
-  output: 'static',
+  adapter: node({
+    mode: 'standalone'
+  }),
 
   markdown: {
     gfm: true,

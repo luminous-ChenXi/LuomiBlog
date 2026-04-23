@@ -119,6 +119,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public void resolveConflict(Long articleId, String resolution) {
         Article article = articleRepository.findById(articleId)
             .orElseThrow(() -> new RuntimeException("文章不存在"));
@@ -282,6 +283,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
         }
     }
 
+    @SuppressWarnings("null")
     private SyncAction processArticleFile(ArticleFileInfo fileInfo, User author) {
         Optional<Article> existing = articleRepository.findBySlug(fileInfo.getSlug());
 
@@ -504,6 +506,7 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public Map<String, Object> uploadArticle(UploadArticleRequest request) {
         String filename = request.getFilename();
         String content = request.getContent();

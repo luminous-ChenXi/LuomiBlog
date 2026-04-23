@@ -1,0 +1,10 @@
+此日志文件记录浏览器控制台信息。
+
+注意：以下错误是浏览器扩展相关错误，不影响应用程序功能：
+- chrome-extension://invalid/ - 浏览器扩展加载错误
+- chrome-extension://ncennffkjdiamlpmcbajkmaiiiddgioo/manifest.json - 扩展资源访问错误
+
+这些错误来自浏览器扩展，与应用程序代码无关，可以安全忽略。
+
+应用程序已修复的问题：
+- toggleMoreMenu 函数调用问题已修复（使用 window.toggleMoreMenu）
