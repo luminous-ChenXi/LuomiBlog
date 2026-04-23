@@ -570,7 +570,7 @@ import { API_BASE_URL } from '../../config/api';
             <span class="status-badge ${status.class}">${status.label}</span>
           </td>
           <td class="col-more">
-            <div class="more-btn" role="button" tabindex="0" onclick="toggleMoreMenu(${article.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' ')toggleMoreMenu(${article.id}, event)">
+            <div class="more-btn" role="button" tabindex="0" onclick="window.toggleMoreMenu(${article.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.toggleMoreMenu(${article.id}, event)">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </div>
           </td>

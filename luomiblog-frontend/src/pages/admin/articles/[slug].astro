@@ -2,9 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ArticleEditor from '../../../components/ArticleEditor.vue';
 
-export function getStaticPaths() {
-  return [];
-}
+export const prerender = false;
 ---
 
 <AdminLayout title="编辑文章">

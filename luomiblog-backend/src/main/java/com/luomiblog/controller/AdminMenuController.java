@@ -24,6 +24,7 @@ public class AdminMenuController {
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
     public ApiResponse<List<PermissionService.MenuPermissionItem>> getAdminMenus(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        @SuppressWarnings("null")
         List<PermissionService.MenuPermissionItem> menus =
                 permissionService.getAdminMenuByRoleCode(userPrincipal.getRoleCode());
         return ApiResponse.success(menus);

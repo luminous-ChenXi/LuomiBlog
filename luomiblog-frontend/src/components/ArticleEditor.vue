@@ -408,12 +408,7 @@ const showPreview = ref(false);
 const wordCount = ref(0);
 const readTime = ref(0);
 
-const currentSlug = computed(() => {
-  if (props.slug) return props.slug;
-  const pathParts = window.location.pathname.split('/');
-  const slugFromUrl = pathParts[pathParts.length - 1];
-  return slugFromUrl && slugFromUrl !== 'new' ? slugFromUrl : '';
-});
+const currentSlug = ref('');
 
 const validationErrors = ref<{
   title: string;
@@ -1037,6 +1032,15 @@ function canEditAuthor(): boolean {
 }
 
 onMounted(async () => {
+  // 设置 currentSlug
+  if (props.slug) {
+    currentSlug.value = props.slug;
+  } else if (typeof window !== 'undefined') {
+    const pathParts = window.location.pathname.split('/');
+    const slugFromUrl = pathParts[pathParts.length - 1];
+    currentSlug.value = slugFromUrl && slugFromUrl !== 'new' ? slugFromUrl : '';
+  }
+
   await loadCategories();
   await loadArticle();
 
