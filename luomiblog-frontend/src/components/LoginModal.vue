@@ -55,7 +55,7 @@ const validateForm = () => {
 
   if (!form.value.password) {
     errors.value.password = '请输入密码';
-  }
+    isValid = false;
   }
 
   return isValid;
