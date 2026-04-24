@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
 import { ApiError, API_ERROR_CODES } from '../config/api';
 import { isBackendAvailable, setBackendAvailable } from '../utils/api';
-import type { ApiErrorCode } from '../config/api';
+import type { ComputedRef } from 'vue';
 
 interface UseApiOptions<T> {
   defaultValue?: T;
@@ -15,8 +15,8 @@ interface UseApiReturn<T> {
   data: ReturnType<typeof ref<T | null>>;
   error: ReturnType<typeof ref<ApiError | null>>;
   isLoading: ReturnType<typeof ref<boolean>>;
-  isBackendDown: ReturnType<typeof computed<boolean>>;
-  errorMessage: ReturnType<typeof computed<string>>;
+  isBackendDown: ComputedRef<boolean>;
+  errorMessage: ComputedRef<string>;
   execute: (apiCall: () => Promise<T>) => Promise<T | null>;
   reset: () => void;
 }
