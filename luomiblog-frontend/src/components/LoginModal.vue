@@ -55,10 +55,7 @@ const validateForm = () => {
 
   if (!form.value.password) {
     errors.value.password = '请输入密码';
-    isValid = false;
-  } else if (form.value.password.length < 6) {
-    errors.value.password = '密码长度至少6位';
-    isValid = false;
+  }
   }
 
   return isValid;
@@ -92,8 +89,13 @@ const handleSubmit = async () => {
     // 关闭弹窗
     handleClose();
 
-    // 跳转到个人中心
-    window.location.href = '/user';
+    // 根据角色重定向
+    const role = response.user?.role?.toLowerCase();
+    if (role === 'admin' || role === 'blogger') {
+      window.location.href = '/admin';
+    } else {
+      window.location.href = '/user';
+    }
   } catch (error: any) {
     const errorMessage = error.message || '';
     

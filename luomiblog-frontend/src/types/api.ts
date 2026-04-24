@@ -208,6 +208,56 @@ export interface FaviconConfigRequest {
   content: string;
 }
 
+// 管理后台用户类型
+export interface AdminUser {
+  id: number;
+  username: string;
+  nickname: string | null;
+  email: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  signature: string | null;
+  location: string | null;
+  website: string | null;
+  role: string;
+  roleName: string | null;
+  roleId: number;
+  status: string;
+  emailVerified: boolean;
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  articleCount: number;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 管理员更新用户请求
+export interface AdminUserUpdateRequest {
+  nickname?: string;
+  email?: string;
+  bio?: string;
+  signature?: string;
+  location?: string;
+  website?: string;
+  avatarUrl?: string;
+}
+
+// 管理员变更角色请求
+export interface AdminRoleChangeRequest {
+  roleId: number;
+}
+
+// 管理员变更状态请求
+export interface AdminStatusChangeRequest {
+  status: 'active' | 'inactive' | 'banned';
+}
+
+// 管理员重置密码请求
+export interface AdminResetPasswordRequest {
+  newPassword: string;
+}
+
 // 健康检查响应
 export interface HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'needs_reinstall' | 'not_installed';

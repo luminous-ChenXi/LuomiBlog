@@ -18,11 +18,15 @@ import type {
   SiteConfigRequest,
   SmtpConfigRequest,
   FaviconConfigRequest,
-  HealthCheckResponse
+  HealthCheckResponse,
+  AdminUser,
+  AdminUserUpdateRequest,
+  AdminRoleChangeRequest,
+  AdminStatusChangeRequest,
+  AdminResetPasswordRequest
 } from '../types/api';
 
 import { API_BASE_URL, API_CONFIG, API_ERROR_CODES, ApiError } from '../config/api';
-import type { ApiErrorCode } from '../config/api';
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -439,6 +443,45 @@ export const api = {
 
     getFavicon: () =>
       request<string>('/api/site/favicon', { silent: true })
+  },
+
+  adminUsers: {
+    getList: (page = 0, size = 20, search?: string, role?: string, status?: string) =>
+      request<PageResponse<AdminUser>>('/api/admin/users', {
+        params: { page, size, search, role, status }
+      }),
+
+    getById: (id: number) =>
+      request<AdminUser>(`/api/admin/users/${id}`),
+
+    update: (id: number, data: AdminUserUpdateRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    changeRole: (id: number, data: AdminRoleChangeRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}/role`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    changeStatus: (id: number, data: AdminStatusChangeRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    delete: (id: number) =>
+      request<void>(`/api/admin/users/${id}`, {
+        method: 'DELETE'
+      }),
+
+    resetPassword: (id: number, data: AdminResetPasswordRequest) =>
+      request<void>(`/api/admin/users/${id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
   }
 };
 

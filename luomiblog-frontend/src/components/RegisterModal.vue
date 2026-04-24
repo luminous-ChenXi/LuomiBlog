@@ -65,8 +65,10 @@ const validateStep2 = () => {
   
   if (!formData.value.password) {
     errors.value.password = '请输入密码';
-  } else if (formData.value.password.length < 6) {
-    errors.value.password = '密码至少6个字符';
+  } else if (formData.value.password.length < 8) {
+    errors.value.password = '密码至少8个字符';
+  } else if (!/[A-Z]/.test(formData.value.password) || !/[a-z]/.test(formData.value.password) || !/[0-9]/.test(formData.value.password)) {
+    errors.value.password = '密码需包含大小写字母和数字';
   }
   
   if (formData.value.password !== formData.value.confirmPassword) {
@@ -120,7 +122,7 @@ const handleSubmit = async () => {
     // 触发注册成功事件
     window.dispatchEvent(new CustomEvent('register-success'));
 
-    // 跳转到个人中心
+    // 根据角色重定向（新注册用户默认为member，跳转到个人中心）
     window.location.href = '/user';
   } catch (error: any) {
     registerError.value = error.message || '注册失败，请检查输入信息';
@@ -268,7 +270,7 @@ onUnmounted(() => {
                     v-model="formData.password"
                     type="password" 
                     class="form-input" 
-                    placeholder="请设置密码（至少6位）"
+                    placeholder="请设置密码（至少8位，含大小写字母和数字）"
                     :class="{ error: errors.password }"
                   />
                   <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
