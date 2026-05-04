@@ -50,7 +50,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "active".equals(user.getStatus());
+        return "active".equals(user.getStatus()) && user.getDeletedAt() == null;
     }
 
     public Long getId() {
@@ -65,7 +65,7 @@ public class UserPrincipal implements UserDetails {
         return user.getNickname();
     }
 
-    public Integer getRoleId() {
+    public Long getRoleId() {
         return user.getRoleId();
     }
 

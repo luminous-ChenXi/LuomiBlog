@@ -7,5 +7,5 @@ import lombok.Data;
 public class AdminRoleChangeRequest {
 
     @NotNull(message = "角色ID不能为空")
-    private Integer roleId;
+    private Long roleId;
 }

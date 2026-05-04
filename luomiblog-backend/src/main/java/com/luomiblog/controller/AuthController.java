@@ -3,6 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.LoginRequest;
+import com.luomiblog.dto.RefreshTokenRequest;
 import com.luomiblog.dto.RegisterRequest;
 import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
@@ -27,14 +28,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<AuthResponse> refreshToken(@RequestHeader("Authorization") String token) {
-        String actualToken = token.replace("Bearer ", "");
-        return ApiResponse.success(authService.refreshToken(actualToken));
+    public ApiResponse<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.success(authService.refreshToken(request.getRefreshToken()));
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String token) {
+        String accessToken = token.replace("Bearer ", "");
+        authService.logout(accessToken);
+        return ApiResponse.success();
     }
 
     @GetMapping("/login-security")

@@ -22,30 +22,22 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @Column(name = "username", unique = true, length = 64)
     private String username;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
+    @Column(name = "email", unique = true, length = 180)
     private String email;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(name = "password", length = 255)
     private String password;
 
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    @Column(name = "nickname", length = 50)
+    @Column(name = "nickname", length = 120)
     private String nickname;
 
-    @Column(name = "avatar_url", length = 255)
+    @Column(name = "avatar_url", length = 512)
     private String avatarUrl;
 
-    @Column(name = "bio", length = 500)
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     @Column(name = "signature", length = 255)
@@ -58,13 +50,18 @@ public class User {
     private String website;
 
     @Column(name = "role_id", nullable = false)
-    private Integer roleId;
+    private Long roleId;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    @Builder.Default
+    private String status = "active";
 
     @Column(name = "email_verified", nullable = false)
-    private Boolean emailVerified;
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    @Column(name = "settings", columnDefinition = "JSON")
+    private String settings;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
@@ -82,4 +79,24 @@ public class User {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public boolean isBanned() {
+        return "banned".equals(status);
+    }
+
+    public boolean isActive() {
+        return "active".equals(status) && deletedAt == null;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

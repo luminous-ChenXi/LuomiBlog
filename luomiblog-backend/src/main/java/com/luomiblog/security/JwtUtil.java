@@ -12,6 +12,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -25,16 +26,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Authentication authentication) {
+    public String generateAccessToken(Authentication authentication) {
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        return generateToken(
+        return generateAccessToken(
                 userPrincipal.getUsername(),
                 userPrincipal.getRoleCode(),
                 userPrincipal.getPermissions().stream().toList()
         );
     }
 
-    public String generateToken(String username, String roleCode, List<String> permissions) {
+    public String generateAccessToken(String username, String roleCode, List<String> permissions) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
 
@@ -42,14 +43,27 @@ public class JwtUtil {
                 .subject(username)
                 .claim("role", roleCode)
                 .claim("perms", permissions)
+                .claim("type", "access")
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
     }
 
-    public String generateToken(String username) {
-        return generateToken(username, null, null);
+    public String generateRefreshToken(String username) {
+        Date now = new Date();
+        long refreshExpiration = jwtConfig.getExpiration() * 7;
+        Date expiryDate = new Date(now.getTime() + refreshExpiration);
+
+        return Jwts.builder()
+                .subject(username)
+                .claim("type", "refresh")
+                .id(UUID.randomUUID().toString())
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
     }
 
     public String getUsernameFromToken(String token) {
@@ -70,6 +84,16 @@ public class JwtUtil {
             return (List<String>) perms;
         }
         return List.of();
+    }
+
+    public boolean isRefreshToken(String token) {
+        Claims claims = parseToken(token);
+        return "refresh".equals(claims.get("type", String.class));
+    }
+
+    public String getTokenId(String token) {
+        Claims claims = parseToken(token);
+        return claims.getId();
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {

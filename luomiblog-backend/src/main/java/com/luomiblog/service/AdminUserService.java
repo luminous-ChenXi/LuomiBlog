@@ -10,13 +10,13 @@ public interface AdminUserService {
 
     AdminUserResponse getUserById(Long id);
 
-    AdminUserResponse updateUser(Long id, AdminUserUpdateRequest request);
+    AdminUserResponse updateUser(Long id, AdminUserUpdateRequest request, Long operatorId);
 
-    AdminUserResponse changeRole(Long id, AdminRoleChangeRequest request);
+    AdminUserResponse changeRole(Long id, AdminRoleChangeRequest request, Long operatorId);
 
-    AdminUserResponse changeStatus(Long id, AdminStatusChangeRequest request);
+    AdminUserResponse changeStatus(Long id, AdminStatusChangeRequest request, Long operatorId);
 
-    void deleteUser(Long id);
+    void deleteUser(Long id, Long operatorId);
 
-    void resetPassword(Long id, AdminResetPasswordRequest request);
+    void resetPassword(Long id, AdminResetPasswordRequest request, Long operatorId);
 }
