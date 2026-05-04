@@ -23,7 +23,7 @@ public class AdminUserResponse {
     private String website;
     private String role;
     private String roleName;
-    private Integer roleId;
+    private Long roleId;
     private String status;
     private Boolean emailVerified;
     private LocalDateTime lastLoginAt;

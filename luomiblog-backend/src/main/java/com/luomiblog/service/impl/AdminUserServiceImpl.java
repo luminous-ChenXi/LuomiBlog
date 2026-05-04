@@ -1,5 +1,7 @@
 package com.luomiblog.service.impl;
 
+import com.luomiblog.common.exception.BusinessException;
+import com.luomiblog.common.exception.ErrorCode;
 import com.luomiblog.dto.*;
 import com.luomiblog.entity.Role;
 import com.luomiblog.entity.User;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final ArticleRepository articleRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional(readOnly = true)
@@ -74,29 +78,21 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional(readOnly = true)
     public AdminUserResponse getUserById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
-        }
+        User user = findActiveUserById(id);
         return convertToAdminResponse(user);
     }
 
     @Override
     @Transactional
-    public AdminUserResponse updateUser(Long id, AdminUserUpdateRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
-        }
+    public AdminUserResponse updateUser(Long id, AdminUserUpdateRequest request, Long operatorId) {
+        User user = findActiveUserById(id);
 
         if (request.getNickname() != null) {
             user.setNickname(request.getNickname());
         }
         if (request.getEmail() != null) {
             if (!request.getEmail().equals(user.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("邮箱已被其他用户使用");
+                throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
             }
             user.setEmail(request.getEmail());
         }
@@ -117,70 +113,119 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
 
         userRepository.save(user);
-        log.info("管理员更新用户信息: userId={}", id);
+        logAudit("UPDATE_USER", operatorId, id, "更新用户信息");
+        log.info("管理员更新用户信息: userId={}, operatorId={}", id, operatorId);
         return convertToAdminResponse(user);
     }
 
     @Override
     @Transactional
-    public AdminUserResponse changeRole(Long id, AdminRoleChangeRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
+    public AdminUserResponse changeRole(Long id, AdminRoleChangeRequest request, Long operatorId) {
+        if (id.equals(operatorId)) {
+            throw new BusinessException(ErrorCode.CANNOT_CHANGE_OWN_ROLE);
         }
+
+        User user = findActiveUserById(id);
 
         Role newRole = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("角色不存在"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
 
+        Long oldRoleId = user.getRoleId();
         user.setRoleId(newRole.getId());
         userRepository.save(user);
-        log.info("管理员变更用户角色: userId={}, newRole={}", id, newRole.getCode());
+
+        String oldRoleCode = "unknown";
+        if (oldRoleId != null) {
+            oldRoleCode = roleRepository.findById(oldRoleId).map(Role::getCode).orElse("unknown");
+        }
+        logAudit("CHANGE_ROLE", operatorId, id, "角色变更: " + oldRoleCode + " -> " + newRole.getCode());
+        log.info("管理员变更用户角色: userId={}, newRole={}, operatorId={}", id, newRole.getCode(), operatorId);
         return convertToAdminResponse(user);
     }
 
     @Override
     @Transactional
-    public AdminUserResponse changeStatus(Long id, AdminStatusChangeRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
+    public AdminUserResponse changeStatus(Long id, AdminStatusChangeRequest request, Long operatorId) {
+        if (id.equals(operatorId)) {
+            throw new BusinessException(ErrorCode.CANNOT_MODIFY_SELF_STATUS);
         }
 
+        User user = findActiveUserById(id);
+
+        if ("banned".equals(request.getStatus()) && isAdminUser(user)) {
+            throw new BusinessException(ErrorCode.CANNOT_BAN_ADMIN);
+        }
+
+        String oldStatus = user.getStatus();
         user.setStatus(request.getStatus());
         userRepository.save(user);
-        log.info("管理员变更用户状态: userId={}, newStatus={}", id, request.getStatus());
+
+        logAudit("CHANGE_STATUS", operatorId, id, "状态变更: " + oldStatus + " -> " + request.getStatus());
+        log.info("管理员变更用户状态: userId={}, newStatus={}, operatorId={}", id, request.getStatus(), operatorId);
         return convertToAdminResponse(user);
     }
 
     @Override
     @Transactional
-    public void deleteUser(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
+    public void deleteUser(Long id, Long operatorId) {
+        if (id.equals(operatorId)) {
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_ADMIN);
+        }
+
+        User user = findActiveUserById(id);
+
+        if (isAdminUser(user)) {
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_ADMIN);
         }
 
         user.setDeletedAt(LocalDateTime.now());
         user.setStatus("inactive");
         userRepository.save(user);
-        log.info("管理员删除用户: userId={}", id);
+
+        logAudit("DELETE_USER", operatorId, id, "软删除用户");
+        log.info("管理员删除用户: userId={}, operatorId={}", id, operatorId);
     }
 
     @Override
     @Transactional
-    public void resetPassword(Long id, AdminResetPasswordRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("用户已被删除");
-        }
+    public void resetPassword(Long id, AdminResetPasswordRequest request, Long operatorId) {
+        User user = findActiveUserById(id);
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        log.info("管理员重置用户密码: userId={}", id);
+
+        logAudit("RESET_PASSWORD", operatorId, id, "重置用户密码");
+        log.info("管理员重置用户密码: userId={}, operatorId={}", id, operatorId);
+    }
+
+    private User findActiveUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (user.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户已被删除");
+        }
+        return user;
+    }
+
+    private boolean isAdminUser(User user) {
+        if (user.getRoleId() == null) {
+            return false;
+        }
+        return roleRepository.findById(user.getRoleId())
+                .map(role -> "admin".equalsIgnoreCase(role.getCode()))
+                .orElse(false);
+    }
+
+    private void logAudit(String action, Long operatorId, Long targetUserId, String detail) {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO audit_log (action, operator_id, target_type, target_id, detail, created_at) " +
+                    "VALUES (?, ?, 'user', ?, ?, NOW())",
+                    action, operatorId, targetUserId, detail
+            );
+        } catch (Exception e) {
+            log.warn("审计日志写入失败: {}", e.getMessage());
+        }
     }
 
     private AdminUserResponse convertToAdminResponse(User user) {

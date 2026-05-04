@@ -1,98 +1,111 @@
 package com.luomiblog.service.impl;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.luomiblog.service.MemoryCacheService;
-import org.springframework.scheduling.annotation.Scheduled;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class MemoryCacheServiceImpl implements MemoryCacheService {
-    
-    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
-    
-    private static class CacheEntry {
-        final Object value;
-        final long expireTime;
-        
-        CacheEntry(Object value, long ttlSeconds) {
-            this.value = value;
-            this.expireTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(ttlSeconds);
-        }
-        
-        boolean isExpired() {
-            return System.currentTimeMillis() > expireTime;
-        }
-        
-        long remainingTTL() {
-            long remaining = expireTime - System.currentTimeMillis();
-            return remaining > 0 ? TimeUnit.MILLISECONDS.toSeconds(remaining) : 0;
-        }
+
+    private final Cache<String, CacheEntry> cache;
+
+    public MemoryCacheServiceImpl() {
+        this.cache = Caffeine.newBuilder()
+                .maximumSize(10000)
+                .expireAfterWrite(24, TimeUnit.HOURS)
+                .build();
     }
-    
+
     @Override
     public void set(String key, Object value, long ttlSeconds) {
-        cache.put(key, new CacheEntry(value, ttlSeconds));
+        long expireAt = System.currentTimeMillis() + ttlSeconds * 1000;
+        cache.put(key, new CacheEntry(value, expireAt));
     }
-    
+
+    @Override
+    public Object get(String key) {
+        CacheEntry entry = cache.getIfPresent(key);
+        if (entry == null) {
+            return null;
+        }
+        if (System.currentTimeMillis() > entry.expireAt) {
+            cache.invalidate(key);
+            return null;
+        }
+        return entry.value;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> type) {
-        CacheEntry entry = cache.get(key);
-        if (entry == null || entry.isExpired()) {
-            cache.remove(key);
+        Object value = get(key);
+        if (value == null) {
             return null;
         }
-        return (T) entry.value;
+        return (T) value;
     }
-    
-    @Override
-    public void delete(String key) {
-        cache.remove(key);
-    }
-    
+
     @Override
     public boolean exists(String key) {
-        CacheEntry entry = cache.get(key);
+        return get(key) != null;
+    }
+
+    @Override
+    public void delete(String key) {
+        cache.invalidate(key);
+    }
+
+    @Override
+    public long increment(String key) {
+        CacheEntry entry = cache.getIfPresent(key);
+        if (entry == null || System.currentTimeMillis() > entry.expireAt) {
+            set(key, 1L, 1800L);
+            return 1L;
+        }
+        long newValue = ((Number) entry.value).longValue() + 1;
+        entry.value = newValue;
+        return newValue;
+    }
+
+    @Override
+    public void expire(String key, long ttlSeconds) {
+        CacheEntry entry = cache.getIfPresent(key);
+        if (entry != null) {
+            entry.expireAt = System.currentTimeMillis() + ttlSeconds * 1000;
+        }
+    }
+
+    @Override
+    public long getCounter(String key) {
+        Object value = get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
+    @Override
+    public long getTtl(String key) {
+        CacheEntry entry = cache.getIfPresent(key);
         if (entry == null) {
-            return false;
+            return 0L;
         }
-        if (entry.isExpired()) {
-            cache.remove(key);
-            return false;
+        long remainingMs = entry.expireAt - System.currentTimeMillis();
+        return remainingMs > 0 ? remainingMs / 1000 : 0L;
+    }
+
+    private static class CacheEntry {
+        Object value;
+        long expireAt;
+
+        CacheEntry(Object value, long expireAt) {
+            this.value = value;
+            this.expireAt = expireAt;
         }
-        return true;
-    }
-    
-    @Override
-    public long getTTL(String key) {
-        CacheEntry entry = cache.get(key);
-        if (entry == null) {
-            return -2;
-        }
-        return entry.remainingTTL();
-    }
-    
-    @Override
-    public void increment(String key) {
-        CacheEntry entry = cache.get(key);
-        if (entry == null || entry.isExpired()) {
-            cache.put(key, new CacheEntry(1, 900));
-        } else {
-            Integer count = (Integer) entry.value;
-            cache.put(key, new CacheEntry(count + 1, entry.remainingTTL()));
-        }
-    }
-    
-    @Override
-    public Integer getAsInteger(String key) {
-        return get(key, Integer.class);
-    }
-    
-    @Scheduled(fixedRate = 60000)
-    public void cleanupExpired() {
-        cache.entrySet().removeIf(entry -> entry.getValue().isExpired());
     }
 }

@@ -531,13 +531,12 @@ public class InstallServiceImpl implements InstallService {
 
             // 验证逻辑：遍历所有管理员/博主用户，验证密码是否匹配任意一个
             // 这样多个管理员中的任何一个都可以验证通过
-            Integer adminRoleId = adminRole != null ? adminRole.getId() : null;
-            Integer bloggerRoleId = bloggerRole != null ? bloggerRole.getId() : null;
+            Long adminRoleId = adminRole != null ? adminRole.getId() : null;
+            Long bloggerRoleId = bloggerRole != null ? bloggerRole.getId() : null;
 
-            // 获取所有管理员和博主用户
             boolean verified = userRepository.findAll().stream()
                     .filter(user -> {
-                        Integer userRoleId = user.getRoleId();
+                        Long userRoleId = user.getRoleId();
                         return userRoleId != null &&
                                (userRoleId.equals(adminRoleId) || userRoleId.equals(bloggerRoleId));
                     })

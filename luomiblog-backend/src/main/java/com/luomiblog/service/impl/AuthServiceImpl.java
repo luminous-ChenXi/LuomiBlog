@@ -1,5 +1,8 @@
 package com.luomiblog.service.impl;
 
+import com.luomiblog.common.exception.AuthenticationException;
+import com.luomiblog.common.exception.BusinessException;
+import com.luomiblog.common.exception.ErrorCode;
 import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.LoginRequest;
 import com.luomiblog.dto.RegisterRequest;
@@ -10,10 +13,12 @@ import com.luomiblog.repository.UserRepository;
 import com.luomiblog.security.JwtUtil;
 import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
+import com.luomiblog.service.MemoryCacheService;
 import com.luomiblog.service.PermissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -43,23 +48,35 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final LoginSecurityService loginSecurityService;
     private final PermissionService permissionService;
+    private final MemoryCacheService memoryCacheService;
+
+    @Value("${app.registration-enabled:true}")
+    private boolean registrationEnabled;
+
+    private static final long ACCESS_TOKEN_EXPIRES_SECONDS = 86400L;
+    private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (!registrationEnabled) {
+            throw new BusinessException(ErrorCode.REGISTRATION_DISABLED);
+        }
+
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
+            throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已被注册");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         if (!isPasswordStrong(request.getPassword())) {
-            throw new RuntimeException("密码强度不足，需包含大小写字母和数字，至少8位");
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_WEAK,
+                    "需包含大小写字母和数字，至少8位");
         }
 
         Role memberRole = roleRepository.findByCode("member")
-                .orElseThrow(() -> new RuntimeException("默认角色不存在"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND, "默认会员角色不存在"));
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -74,9 +91,12 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(memberRole.getId());
-        String token = jwtUtil.generateToken(user.getUsername(), memberRole.getCode(), permissions.stream().toList());
+        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), memberRole.getCode(), permissions.stream().toList());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
-        return buildAuthResponse(token, user, memberRole.getCode(), permissions);
+        log.info("用户注册成功: {}, 角色: {}", request.getUsername(), memberRole.getCode());
+
+        return buildAuthResponse(accessToken, refreshToken, user, memberRole, permissions);
     }
 
     @Override
@@ -86,12 +106,14 @@ public class AuthServiceImpl implements AuthService {
 
         if (!loginSecurityService.tryAcquire(clientIp)) {
             long availableTokens = loginSecurityService.getAvailableTokens(clientIp);
-            throw new RuntimeException("登录过于频繁，请稍后重试。剩余可用次数：" + availableTokens);
+            throw new BusinessException(ErrorCode.LOGIN_TOO_FREQUENT,
+                    "剩余可用次数：" + availableTokens);
         }
 
         if (loginSecurityService.isLocked(identifier)) {
             long remainingTime = loginSecurityService.getRemainingLockoutTime(identifier);
-            throw new RuntimeException("账户已锁定，请 " + (remainingTime / 60) + " 分钟后重试");
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED,
+                    (remainingTime / 60) + " 分钟后重试");
         }
 
         try {
@@ -106,18 +128,19 @@ public class AuthServiceImpl implements AuthService {
 
             User user = userRepository.findActiveByUsername(request.getUsernameOrEmail())
                     .orElseGet(() -> userRepository.findActiveByEmail(request.getUsernameOrEmail())
-                            .orElseThrow(() -> new RuntimeException("用户不存在")));
+                            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND)));
 
-            if ("banned".equals(user.getStatus())) {
-                throw new RuntimeException("账号已被封禁，请联系管理员");
+            if (user.isBanned()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
             }
 
             Role role = roleRepository.findById(user.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("角色不存在"));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
 
             Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
 
-            String token = jwtUtil.generateToken(authentication);
+            String accessToken = jwtUtil.generateAccessToken(authentication);
+            String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
             loginSecurityService.clearFailedAttempts(identifier);
 
@@ -125,26 +148,76 @@ public class AuthServiceImpl implements AuthService {
 
             log.info("用户登录成功: {} from {}, 角色: {}", request.getUsernameOrEmail(), clientIp, role.getCode());
 
-            return buildAuthResponse(token, user, role.getCode(), permissions);
+            return buildAuthResponse(accessToken, refreshToken, user, role, permissions);
         } catch (BadCredentialsException e) {
             loginSecurityService.recordFailedAttempt(identifier);
             int remainingAttempts = loginSecurityService.getRemainingAttempts(identifier);
             log.warn("登录失败: {} from {}, 剩余尝试次数: {}", request.getUsernameOrEmail(), clientIp, remainingAttempts);
             if (remainingAttempts <= 2) {
-                throw new RuntimeException("用户名或密码错误，还剩 " + remainingAttempts + " 次机会，之后将锁定账户");
+                throw new AuthenticationException(ErrorCode.USER_NOT_FOUND,
+                        "还剩 " + remainingAttempts + " 次机会，之后将锁定账户");
             }
-            throw new RuntimeException("用户名或密码错误，还剩 " + remainingAttempts + " 次机会");
+            throw new AuthenticationException(ErrorCode.USER_NOT_FOUND,
+                    "还剩 " + remainingAttempts + " 次机会");
         } catch (LockedException e) {
-            throw new RuntimeException("账号已被锁定，请稍后重试");
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         } catch (DisabledException e) {
-            throw new RuntimeException("账号已被禁用，请联系管理员");
-        } catch (RuntimeException e) {
-            if (!e.getMessage().contains("用户名或密码错误") &&
-                !e.getMessage().contains("账号已被") &&
-                !e.getMessage().contains("锁定")) {
-                loginSecurityService.recordFailedAttempt(identifier);
-            }
+            throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
+        } catch (AuthenticationException e) {
             throw e;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            loginSecurityService.recordFailedAttempt(identifier);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        if (!jwtUtil.validateToken(refreshToken)) {
+            throw new AuthenticationException(ErrorCode.TOKEN_INVALID);
+        }
+
+        if (!jwtUtil.isRefreshToken(refreshToken)) {
+            throw new AuthenticationException(ErrorCode.TOKEN_INVALID, "不是有效的刷新令牌");
+        }
+
+        String tokenId = jwtUtil.getTokenId(refreshToken);
+        if (isTokenBlacklisted(tokenId)) {
+            throw new AuthenticationException(ErrorCode.TOKEN_INVALID, "令牌已被撤销");
+        }
+
+        String username = jwtUtil.getUsernameFromToken(refreshToken);
+        User user = userRepository.findActiveByUsername(username)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isBanned()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
+        }
+
+        Role role = roleRepository.findById(user.getRoleId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
+
+        Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
+
+        blacklistToken(tokenId, 86400L);
+
+        String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList());
+        String newRefreshToken = jwtUtil.generateRefreshToken(username);
+
+        log.info("令牌刷新成功: {}", username);
+
+        return buildAuthResponse(newAccessToken, newRefreshToken, user, role, permissions);
+    }
+
+    @Override
+    public void logout(String accessToken) {
+        if (jwtUtil.validateToken(accessToken)) {
+            String tokenId = jwtUtil.getTokenId(accessToken);
+            long ttl = ACCESS_TOKEN_EXPIRES_SECONDS;
+            blacklistToken(tokenId, ttl);
+            log.info("用户登出成功, tokenId: {}", tokenId);
         }
     }
 
@@ -179,41 +252,20 @@ public class AuthServiceImpl implements AuthService {
         return "unknown";
     }
 
-    @Override
-    public AuthResponse refreshToken(String token) {
-        if (!jwtUtil.validateToken(token)) {
-            throw new RuntimeException("无效的token");
-        }
-
-        String username = jwtUtil.getUsernameFromToken(token);
-        User user = userRepository.findActiveByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-
-        if ("banned".equals(user.getStatus())) {
-            throw new RuntimeException("账号已被封禁");
-        }
-
-        Role role = roleRepository.findById(user.getRoleId())
-                .orElseThrow(() -> new RuntimeException("角色不存在"));
-
-        Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
-        String newToken = jwtUtil.generateToken(username, role.getCode(), permissions.stream().toList());
-
-        return buildAuthResponse(newToken, user, role.getCode(), permissions);
-    }
-
-    private AuthResponse buildAuthResponse(String token, User user, String roleCode, Set<String> permissions) {
+    private AuthResponse buildAuthResponse(String accessToken, String refreshToken, User user, Role role, Set<String> permissions) {
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .tokenType("Bearer")
-                .expiresIn(86400L)
+                .expiresIn(ACCESS_TOKEN_EXPIRES_SECONDS)
                 .user(AuthResponse.UserInfo.builder()
                         .id(user.getId())
                         .username(user.getUsername())
                         .email(user.getEmail())
                         .nickname(user.getNickname())
                         .avatarUrl(user.getAvatarUrl())
-                        .role(roleCode)
+                        .role(role.getCode())
+                        .roleName(role.getName())
                         .permissions(permissions.stream().toList())
                         .build())
                 .build();
@@ -232,5 +284,13 @@ public class AuthServiceImpl implements AuthService {
             if (Character.isDigit(c)) hasDigit = true;
         }
         return hasUpper && hasLower && hasDigit;
+    }
+
+    private void blacklistToken(String tokenId, long ttlSeconds) {
+        memoryCacheService.set(TOKEN_BLACKLIST_PREFIX + tokenId, true, ttlSeconds);
+    }
+
+    private boolean isTokenBlacklisted(String tokenId) {
+        return memoryCacheService.exists(TOKEN_BLACKLIST_PREFIX + tokenId);
     }
 }

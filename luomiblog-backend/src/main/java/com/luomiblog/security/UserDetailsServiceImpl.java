@@ -32,7 +32,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                         .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + usernameOrEmail)));
 
         String roleCode = "visitor";
-        Integer roleId = user.getRoleId();
+        Long roleId = user.getRoleId();
         if (roleId != null) {
             Role role = roleRepository.findById(roleId).orElse(null);
             if (role != null) {

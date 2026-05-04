@@ -405,13 +405,13 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
      */
     private User getDefaultAuthor() {
         // 1. 优先查找博主角色(roleId=2)
-        List<User> bloggers = userRepository.findByRoleId(2);
+        List<User> bloggers = userRepository.findByRoleId(2L);
         if (!bloggers.isEmpty()) {
             return bloggers.get(0);
         }
 
         // 2. 查找管理员角色(roleId=1)
-        List<User> admins = userRepository.findByRoleId(1);
+        List<User> admins = userRepository.findByRoleId(1L);
         if (!admins.isEmpty()) {
             return admins.get(0);
         }
