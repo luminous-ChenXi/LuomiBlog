@@ -47,6 +47,16 @@ function getToken(): string | null {
   return null;
 }
 
+function clearAuthState() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new CustomEvent('auth-state-changed', {
+      detail: { authenticated: false }
+    }));
+  }
+}
+
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     const url = new URL(path);
@@ -86,6 +96,27 @@ function classifyError(error: unknown): ApiError {
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function markBackendUnavailable() {
+  const wasAvailable = backendAvailable.value;
+  backendAvailable.value = false;
+  lastBackendCheck = Date.now();
+  if (wasAvailable) {
+    clearAuthState();
+  }
+}
+
+function markBackendAvailable(silent: boolean) {
+  const wasUnavailable = !backendAvailable.value;
+  backendAvailable.value = true;
+  lastBackendCheck = Date.now();
+  if (wasUnavailable && !silent) {
+    console.info('[API] 后端服务已恢复');
+    window.dispatchEvent(new CustomEvent('backend-status-changed', {
+      detail: { available: true }
+    }));
+  }
+}
 
 async function request<T>(path: string, config: RequestConfig = {}): Promise<T> {
   const {
@@ -131,19 +162,10 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
 
       clearTimeout(timeoutId);
 
-      if (!backendAvailable.value) {
-        backendAvailable.value = true;
-        lastBackendCheck = Date.now();
-        if (!silent) {
-          console.info('[API] 后端服务已恢复');
-        }
-      }
+      markBackendAvailable(silent);
 
       if (response.status === 401) {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+        clearAuthState();
         throw new ApiError('登录已过期，请重新登录', API_ERROR_CODES.AUTH_ERROR, 401);
       }
 
@@ -191,8 +213,7 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
       if (lastError.code === API_ERROR_CODES.NETWORK_ERROR ||
           lastError.code === API_ERROR_CODES.TIMEOUT ||
           lastError.code === API_ERROR_CODES.SERVER_ERROR) {
-        backendAvailable.value = false;
-        lastBackendCheck = Date.now();
+        markBackendUnavailable();
       }
 
       throw lastError;
@@ -205,8 +226,12 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
 export const isBackendAvailable = () => backendAvailable.value;
 
 export const setBackendAvailable = (available: boolean) => {
-  backendAvailable.value = available;
-  lastBackendCheck = Date.now();
+  if (available) {
+    backendAvailable.value = true;
+    lastBackendCheck = Date.now();
+  } else {
+    markBackendUnavailable();
+  }
 };
 
 export const api = {
@@ -316,7 +341,9 @@ export const api = {
 
   install: {
     getStatus: () =>
-      request<InstallStatusResponse>('/api/install/status'),
+      request<InstallStatusResponse>('/api/install/status', {
+        requireBackend: false
+      }),
 
     checkEnvironment: () =>
       request<EnvironmentCheckResponse>('/api/install/check-environment', {
@@ -439,10 +466,10 @@ export const api = {
         seoTitle: string;
         seoKeywords: string;
         seoDescription: string;
-      }>('/api/site/config', { silent: true }),
+      }>('/api/site/config', { silent: true, requireBackend: false }),
 
     getFavicon: () =>
-      request<string>('/api/site/favicon', { silent: true })
+      request<string>('/api/site/favicon', { silent: true, requireBackend: false })
   },
 
   adminUsers: {

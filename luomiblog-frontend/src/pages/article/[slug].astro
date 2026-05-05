@@ -1097,8 +1097,36 @@ function escapeHtml(text: string): string {
   document.addEventListener('DOMContentLoaded', async () => {
     const articleContainer = document.querySelector('.article-container');
     const articleId = articleContainer?.getAttribute('data-article-id');
+    const isSynced = articleContainer?.getAttribute('data-is-synced') === 'true';
 
-    if (articleId) {
+    let backendOnline = false;
+    try {
+      const API_BASE = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '';
+      const pingResp = await fetch(`${API_BASE}/api/health/ping`, { signal: AbortSignal.timeout(3000) });
+      backendOnline = pingResp.ok;
+    } catch {
+      backendOnline = false;
+    }
+
+    if (!backendOnline || !isSynced) {
+      document.querySelectorAll('.like-btn, .favorite-btn, .comment-btn').forEach((btn) => {
+        (btn as HTMLElement).style.opacity = '0.5';
+        (btn as HTMLElement).style.cursor = 'not-allowed';
+        (btn as HTMLElement).title = '后端服务不可用，此功能暂不可用';
+      });
+
+      const aiSection = document.querySelector('.article-ai-section');
+      if (aiSection) {
+        (aiSection as HTMLElement).style.opacity = '0.5';
+        (aiSection as HTMLElement).style.pointerEvents = 'none';
+        const aiDesc = aiSection.querySelector('.ai-section-desc');
+        if (aiDesc) {
+          aiDesc.textContent = '后端服务不可用，AI 助手暂不可用';
+        }
+      }
+    }
+
+    if (articleId && backendOnline) {
       setTimeout(() => {
         safeFetch(getApiUrl(`/api/articles/${articleId}/view`), {
           method: 'POST',

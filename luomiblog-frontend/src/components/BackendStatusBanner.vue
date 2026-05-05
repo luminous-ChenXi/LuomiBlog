@@ -78,6 +78,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Warning, CircleClose, InfoFilled, Close } from '@element-plus/icons-vue';
 import { useBackendStatus } from '../composables/useBackendStatus';
+import { isBackendAvailable } from '../utils/api';
 
 const {
   backendStatus,
@@ -93,6 +94,7 @@ const {
 const showBanner = ref(true);
 const showDetails = ref(false);
 let checkInterval: number | null = null;
+let wasUnavailable = false;
 
 const bannerClass = computed(() => {
   return `banner-${statusType.value}`;
@@ -110,6 +112,12 @@ const retryCheck = async () => {
   await checkBackendStatus();
   if (backendStatus.value?.status === 'healthy') {
     ElMessage.success('后端服务已恢复正常');
+    if (wasUnavailable) {
+      wasUnavailable = false;
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
   } else {
     ElMessage.warning('后端服务仍不可用');
   }
@@ -128,22 +136,41 @@ const dismissBanner = () => {
 
 const startPeriodicCheck = () => {
   checkBackendStatus(true);
-  checkInterval = window.setInterval(() => {
-    checkBackendStatus(true);
-    if (backendStatus.value?.status === 'healthy' && !showBanner.value) {
-      showBanner.value = true;
+  checkInterval = window.setInterval(async () => {
+    const wasDown = isUnavailable.value;
+    await checkBackendStatus(true);
+    if (wasDown && backendStatus.value?.status === 'healthy') {
+      if (!showBanner.value) {
+        showBanner.value = true;
+      }
+      wasUnavailable = true;
     }
   }, 30000);
 };
 
+const handleBackendStatusChanged = ((event: CustomEvent) => {
+  if (event.detail?.available && wasUnavailable) {
+    ElMessage.success('后端服务已恢复，页面将自动刷新');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  }
+  if (!event.detail?.available) {
+    wasUnavailable = true;
+  }
+}) as EventListener;
+
 onMounted(() => {
+  wasUnavailable = !isBackendAvailable();
   startPeriodicCheck();
+  window.addEventListener('backend-status-changed', handleBackendStatusChanged);
 });
 
 onUnmounted(() => {
   if (checkInterval) {
     clearInterval(checkInterval);
   }
+  window.removeEventListener('backend-status-changed', handleBackendStatusChanged);
 });
 </script>
 

@@ -33,6 +33,13 @@ const isChecking = ref(false);
 const lastCheckTime = ref<Date | null>(null);
 const checkError = ref<string | null>(null);
 
+function clearLocalAuth() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+}
+
 export const useBackendStatus = () => {
   const isHealthy = computed(() => backendStatus.value?.status === 'healthy');
   const isDegraded = computed(() => backendStatus.value?.status === 'degraded');
@@ -132,16 +139,34 @@ export const useBackendStatus = () => {
       const result = await response.json();
 
       if (result.code === 200 && result.data) {
+        const wasUnavailable = !isBackendAvailable();
         backendStatus.value = result.data;
         lastCheckTime.value = new Date();
         setBackendAvailable(true);
+        if (wasUnavailable && !silent) {
+          window.dispatchEvent(new CustomEvent('backend-status-changed', {
+            detail: { available: true }
+          }));
+        }
       } else {
         throw new Error(result.message || 'Invalid response');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       checkError.value = errorMessage;
+
+      const wasAvailable = isBackendAvailable();
       setBackendAvailable(false);
+
+      if (wasAvailable) {
+        clearLocalAuth();
+        window.dispatchEvent(new CustomEvent('auth-state-changed', {
+          detail: { authenticated: false }
+        }));
+        window.dispatchEvent(new CustomEvent('backend-status-changed', {
+          detail: { available: false }
+        }));
+      }
 
       backendStatus.value = {
         status: 'unhealthy',
@@ -195,10 +220,32 @@ export const useBackendStatus = () => {
 
       clearTimeout(timeoutId);
       const available = response.ok;
-      setBackendAvailable(available);
+
+      if (available !== isBackendAvailable()) {
+        setBackendAvailable(available);
+        if (!available) {
+          clearLocalAuth();
+          window.dispatchEvent(new CustomEvent('auth-state-changed', {
+            detail: { authenticated: false }
+          }));
+        }
+        window.dispatchEvent(new CustomEvent('backend-status-changed', {
+          detail: { available }
+        }));
+      }
+
       return available;
     } catch {
-      setBackendAvailable(false);
+      if (isBackendAvailable()) {
+        setBackendAvailable(false);
+        clearLocalAuth();
+        window.dispatchEvent(new CustomEvent('auth-state-changed', {
+          detail: { authenticated: false }
+        }));
+        window.dispatchEvent(new CustomEvent('backend-status-changed', {
+          detail: { available: false }
+        }));
+      }
       return false;
     }
   };

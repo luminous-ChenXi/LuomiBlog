@@ -1,12 +1,10 @@
 import { ref, computed } from 'vue';
 import type { User, AuthResponse } from '../types/api';
 
-// 用户状态
 const user = ref<User | null>(null);
 const token = ref<string | null>(null);
 const isAuthenticated = computed(() => !!token.value && !!user.value);
 
-// 从 localStorage 恢复状态
 function initAuth() {
   if (typeof localStorage !== 'undefined') {
     const savedToken = localStorage.getItem('token');
@@ -22,9 +20,24 @@ function initAuth() {
       }
     }
   }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('auth-state-changed', ((event: CustomEvent) => {
+      if (!event.detail?.authenticated) {
+        token.value = null;
+        user.value = null;
+      }
+    }) as EventListener);
+
+    window.addEventListener('backend-status-changed', ((event: CustomEvent) => {
+      if (!event.detail?.available) {
+        token.value = null;
+        user.value = null;
+      }
+    }) as EventListener);
+  }
 }
 
-// 设置认证信息
 function setAuth(auth: AuthResponse) {
   token.value = auth.token;
   user.value = auth.user;
@@ -34,7 +47,6 @@ function setAuth(auth: AuthResponse) {
   }
 }
 
-// 清除认证信息
 function clearAuth() {
   token.value = null;
   user.value = null;
@@ -44,12 +56,10 @@ function clearAuth() {
   }
 }
 
-// 获取 Token
 function getToken(): string | null {
   return token.value;
 }
 
-// 获取当前用户
 function getUser(): User | null {
   return user.value;
 }
@@ -65,5 +75,4 @@ export const useUserStore = () => ({
   getUser
 });
 
-// 导出单例方法供非组件使用
 export { initAuth, setAuth, clearAuth, getToken, getUser, isAuthenticated };
