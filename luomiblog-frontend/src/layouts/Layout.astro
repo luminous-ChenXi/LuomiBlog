@@ -134,8 +134,8 @@ const jsonLd = article ? {
   <body>
     <BackendStatusBanner client:load />
     <LoadingSpinner client:load />
-    <LoginModal client:load />
-    <RegisterModal client:load />
+    <LoginModal client:only="vue" />
+    <RegisterModal client:only="vue" />
     <slot />
   </body>
 </html>
