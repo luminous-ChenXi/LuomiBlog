@@ -66,9 +66,10 @@ Demo/
 demo/
 demos/
 
-# 项目文档（可选，根据需要决定是否忽略）
+# 项目文档（可选，根据需要决定是否忽略；仅放行开源集成文档）
 项目文档/
-docs/
+docs/*
+!docs/chenxi-integration.md
 
 # 锁文件（根据项目规则）
 package-lock.json
@@ -84,3 +85,14 @@ coverage/
 
 # 日志文件
 log.log
+*.log
+
+# 应用运行时文件（安装状态与本地生成的配置，泄露部署信息）
+luomiblog-backend/install.lock
+luomiblog-backend/config/custom-application.yml
+
+# 数据库备份/损坏的历史文件
+luomiblog-backend/src/main/resources/db/schema.sql.backup
+
+# 本地压缩包
+LuomiBlog.zip

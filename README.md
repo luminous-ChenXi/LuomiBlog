@@ -18,7 +18,7 @@
     <img src="https://img.shields.io/badge/astro-5.17.1-brightgreen.svg?style=flat-square&logo=astro" alt="astro">
   </a>
   <a href="https://github.com/luminous-ChenXi/LuomiBlog/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license">
+    <img src="https://img.shields.io/badge/license-GPL--3.0--with--Additional--Terms--(Non--Commercial)-blue.svg?style=flat-square" alt="license">
   </a>
   <a href="https://github.com/luminous-ChenXi/LuomiBlog/releases">
     <img src="https://img.shields.io/github/release/luminous-ChenXi/LuomiBlog.svg?style=flat-square" alt="GitHub release">
@@ -220,7 +220,13 @@ server {
 
 ## 许可证
 
-[MIT](LICENSE)
+本项目基于 **GPL-3.0 with Additional Terms (Non-Commercial)**（GPL-3.0 + 非商用附加条款）协议发布，完整文本见 [LICENSE](LICENSE)。
+
+- 你可以自由地部署、运行、修改和发布本软件；
+- 未经版权人（ChenXi / 辰汐）事先书面授权，禁止将本软件或其衍生作品用于任何商业用途（包括但不限于出售、付费服务/SaaS 收费、商业产品捆绑、广告变现）；
+- 任何衍生作品必须保留原始版权声明与本协议全文，并在显著位置（关于页/README/文档）注明原始项目名称与仓库地址，且以相同的"GPL-3.0 + 附加条款"协议发布。
+
+> 若受本项目启发，欢迎附上出处链接。
 
 ---
 

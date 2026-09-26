@@ -18,7 +18,7 @@
     <img src="https://img.shields.io/badge/astro-5.17.1-brightgreen.svg?style=flat-square&logo=astro" alt="astro">
   </a>
   <a href="https://github.com/luminous-ChenXi/LuomiBlog/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license">
+    <img src="https://img.shields.io/badge/license-GPL--3.0--with--Additional--Terms--(Non--Commercial)-blue.svg?style=flat-square" alt="license">
   </a>
   <a href="https://github.com/luminous-ChenXi/LuomiBlog/releases">
     <img src="https://img.shields.io/github/release/luminous-ChenXi/LuomiBlog.svg?style=flat-square" alt="GitHub release">
@@ -220,7 +220,13 @@ Includes 36 tables covering:
 
 ## License
 
-[MIT](LICENSE)
+This project is released under **GPL-3.0 with Additional Terms (Non-Commercial)**. See [LICENSE](LICENSE) for the full text.
+
+- You are free to deploy, run, modify, and distribute this software;
+- Commercial use of this software or its derivative works without prior written authorization from the copyright holder (ChenXi) is prohibited (including but not limited to selling, paid services/SaaS, commercial bundling, or advertising monetization);
+- Any derivative work must retain the original copyright notice and this license in full, credit the original project name and repository URL in a prominent location (About page / README / documentation), and be released under the same "GPL-3.0 + Additional Terms".
+
+> If this project inspires your work, a link back is appreciated.
 
 ---
 
