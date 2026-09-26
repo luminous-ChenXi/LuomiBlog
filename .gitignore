@@ -96,3 +96,6 @@ luomiblog-backend/src/main/resources/db/schema.sql.backup
 
 # 本地压缩包
 LuomiBlog.zip
+
+# 本地参考资料（技术落地手册等私人笔记，不作为仓库产物）
+项目具体实施细节/
