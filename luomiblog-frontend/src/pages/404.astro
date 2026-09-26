@@ -1,0 +1,100 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="页面不存在 - LuomiBlog" description="您访问的页面不存在或已被移除">
+  <Header />
+  <main class="not-found-page">
+    <div class="not-found-content">
+      <p class="not-found-code">404</p>
+      <h1 class="not-found-title">页面不存在</h1>
+      <p class="not-found-desc">您访问的页面不存在或已被移除，请返回首页继续浏览。</p>
+      <div class="not-found-actions">
+        <a href="/" class="btn btn-primary">返回首页</a>
+        <a href="/articles" class="btn btn-outline">浏览文章</a>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .not-found-page {
+    min-height: calc(100vh - 200px);
+    background: var(--color-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+  }
+
+  .not-found-content {
+    max-width: 560px;
+    text-align: center;
+  }
+
+  .not-found-code {
+    font-size: 96px;
+    font-weight: 800;
+    line-height: 1;
+    margin: 0 0 16px 0;
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .not-found-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 12px 0;
+  }
+
+  .not-found-desc {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    margin: 0 0 32px 0;
+  }
+
+  .not-found-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .btn-outline:hover {
+    border-color: #ff6b9d;
+    color: #ff6b9d;
+  }
+</style>

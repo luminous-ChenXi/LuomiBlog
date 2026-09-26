@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class UserController {
 
     private final UserService userService;
@@ -36,12 +35,6 @@ public class UserController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody PasswordChangeRequest request) {
         userService.changePassword(userPrincipal.getId(), request);
-        return ApiResponse.success();
-    }
-
-    @PostMapping("/verify-code")
-    public ApiResponse<Void> sendVerifyCode(@AuthenticationPrincipal UserPrincipal userPrincipal) {
-        userService.sendVerifyCode(userPrincipal.getId());
         return ApiResponse.success();
     }
 

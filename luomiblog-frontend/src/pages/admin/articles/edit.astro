@@ -2,13 +2,10 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ArticleEditor from '../../../components/ArticleEditor.vue';
 
-// 禁用预渲染，使用 SSR 模式
-export const prerender = false;
-
-// 获取路由参数
-const { slug } = Astro.params;
+// 静态生成空壳页面（编辑 URL 形如 /admin/articles/edit?slug=xxx），
+// 文章数据由 ArticleEditor 客户端通过 API 加载
 ---
 
 <AdminLayout title="编辑文章">
-  <ArticleEditor client:load slug={slug} />
+  <ArticleEditor client:load />
 </AdminLayout>

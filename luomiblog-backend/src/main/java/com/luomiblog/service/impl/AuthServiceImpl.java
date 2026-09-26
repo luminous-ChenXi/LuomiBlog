@@ -1,5 +1,8 @@
 package com.luomiblog.service.impl;
 
+import com.luomiblog.common.BusinessException;
+import com.luomiblog.common.ClientIpResolver;
+import com.luomiblog.common.UserStatus;
 import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.LoginRequest;
 import com.luomiblog.dto.RegisterRequest;
@@ -10,7 +13,6 @@ import com.luomiblog.repository.UserRepository;
 import com.luomiblog.security.JwtUtil;
 import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,8 +23,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Slf4j
 @Service
@@ -36,19 +36,20 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final LoginSecurityService loginSecurityService;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
+            throw new BusinessException(409, "用户名已存在");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已被注册");
+            throw new BusinessException(409, "邮箱已被注册");
         }
 
         Role memberRole = roleRepository.findByCode("member")
-                .orElseThrow(() -> new RuntimeException("默认角色不存在"));
+                .orElseThrow(() -> new BusinessException(500, "默认角色不存在"));
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -56,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .nickname(request.getNickname() != null ? request.getNickname() : request.getUsername())
                 .roleId(memberRole.getId())
-                .status("active")
+                .status(UserStatus.ACTIVE)
                 .emailVerified(false)
                 .build();
 
@@ -71,17 +72,17 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         String clientIp = getClientIp();
         String identifier = request.getUsernameOrEmail() + ":" + clientIp;
-        
+
         if (!loginSecurityService.tryAcquire(clientIp)) {
             long availableTokens = loginSecurityService.getAvailableTokens(clientIp);
-            throw new RuntimeException("登录过于频繁，请稍后重试。剩余可用次数：" + availableTokens);
+            throw new BusinessException(429, "登录过于频繁，请稍后重试。剩余可用次数：" + availableTokens);
         }
-        
+
         if (loginSecurityService.isLocked(identifier)) {
             long remainingTime = loginSecurityService.getRemainingLockoutTime(identifier);
-            throw new RuntimeException("账户已锁定，请 " + (remainingTime / 60) + " 分钟后重试");
+            throw new BusinessException(429, "账户已锁定，请 " + (remainingTime / 60) + " 分钟后重试");
         }
-        
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -94,13 +95,13 @@ public class AuthServiceImpl implements AuthService {
 
             User user = userRepository.findActiveByUsername(request.getUsernameOrEmail())
                     .orElseGet(() -> userRepository.findActiveByEmail(request.getUsernameOrEmail())
-                            .orElseThrow(() -> new RuntimeException("用户不存在")));
+                            .orElseThrow(() -> new BusinessException(401, "用户名或密码错误")));
 
             Role role = roleRepository.findById(user.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("角色不存在"));
+                    .orElseThrow(() -> new BusinessException(500, "角色不存在"));
 
             String token = jwtUtil.generateToken(authentication);
-            
+
             loginSecurityService.clearFailedAttempts(identifier);
             log.info("用户登录成功: {} from {}", request.getUsernameOrEmail(), clientIp);
 
@@ -109,20 +110,16 @@ public class AuthServiceImpl implements AuthService {
             loginSecurityService.recordFailedAttempt(identifier);
             int remainingAttempts = loginSecurityService.getRemainingAttempts(identifier);
             log.warn("登录失败: {} from {}, 剩余尝试次数: {}", request.getUsernameOrEmail(), clientIp, remainingAttempts);
-            throw new RuntimeException("用户名或密码错误，还剩 " + remainingAttempts + " 次机会");
+            throw new BusinessException(401, "用户名或密码错误，还剩 " + remainingAttempts + " 次机会");
         }
     }
-    
+
     private String getClientIp() {
         try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes != null) {
-                HttpServletRequest request = attributes.getRequest();
-                String xForwardedFor = request.getHeader("X-Forwarded-For");
-                if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-                    return xForwardedFor.split(",")[0].trim();
-                }
-                return request.getRemoteAddr();
+            org.springframework.web.context.request.RequestAttributes attributes =
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttributes) {
+                return clientIpResolver.resolve(servletAttributes.getRequest());
             }
         } catch (Exception e) {
             log.warn("获取客户端IP失败", e);
@@ -133,15 +130,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse refreshToken(String token) {
         if (!jwtUtil.validateToken(token)) {
-            throw new RuntimeException("无效的token");
+            throw new BusinessException(401, "无效的token");
         }
 
         String username = jwtUtil.getUsernameFromToken(token);
         User user = userRepository.findActiveByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException(401, "用户不存在"));
 
         Role role = roleRepository.findById(user.getRoleId())
-                .orElseThrow(() -> new RuntimeException("角色不存在"));
+                .orElseThrow(() -> new BusinessException(500, "角色不存在"));
 
         String newToken = jwtUtil.generateToken(username);
 

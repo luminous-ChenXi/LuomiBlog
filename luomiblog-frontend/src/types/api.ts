@@ -129,6 +129,21 @@ export interface AuthResponse {
   user: User;
 }
 
+// 辰汐通行证登录配置（公开"门牌"信息，公共客户端没有任何密钥）
+export interface ChenxiConfig {
+  enabled: boolean;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  scopes: string;
+}
+
+// 辰汐通行证授权码交换请求
+export interface ChenxiExchangeRequest {
+  code: string;
+  codeVerifier: string;
+}
+
 // AI 问答请求
 export interface AIAskRequest {
   articleId: number;

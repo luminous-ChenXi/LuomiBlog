@@ -81,14 +81,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void sendVerifyCode(Long userId) {
-        // TODO: 实现邮箱验证码发送逻辑
-        // 需要集成邮件服务
-        throw new UnsupportedOperationException("邮箱验证码功能待实现");
-    }
-
-    @Override
-    @Transactional
     public void uploadAvatar(Long userId, String avatarUrl) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));

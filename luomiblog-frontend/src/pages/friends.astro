@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { getSiteUrl } from '../config/site';
 
 const defaultAvatar = '/default-avatar.svg';
 
@@ -60,7 +61,7 @@ const applyInfo = {
   ],
   myInfo: {
     name: '辰汐博客',
-    url: 'https://luminouschenxi.com',
+    url: getSiteUrl(Astro.site),
     description: '记录生活，分享技术',
     avatar: defaultAvatar
   }

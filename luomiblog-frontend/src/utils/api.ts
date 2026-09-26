@@ -11,6 +11,8 @@ import type {
   LoginRequest,
   RegisterRequest,
   AuthResponse,
+  ChenxiConfig,
+  ChenxiExchangeRequest,
   AIAskRequest,
   AIAskResponse,
   InstallStatusResponse,
@@ -22,9 +24,8 @@ import type {
   FaviconConfigRequest,
   HealthCheckResponse
 } from '../types/api';
-
-// API 基础 URL
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
+import { API_BASE_URL } from '../config/api';
+import { setToken } from '../stores/user';
 
 // 请求配置
 interface RequestConfig extends RequestInit {
@@ -37,6 +38,14 @@ function getToken(): string | null {
     return localStorage.getItem('token');
   }
   return null;
+}
+
+// 静默替换本地登录态（滑动续期下发的新令牌）
+function applyRefreshedToken(newToken: string): void {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('token', newToken);
+  }
+  setToken(newToken);
 }
 
 // 构建 URL
@@ -74,6 +83,13 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
     headers
   });
 
+  // 辰汐会话滑动续期：后端在令牌活跃使用且剩余寿命不足一半时，
+  // 通过 X-New-Token 响应头下发新令牌，这里静默替换本地登录态
+  const newToken = response.headers.get('X-New-Token');
+  if (newToken) {
+    applyRefreshedToken(newToken);
+  }
+
   // 处理响应
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -87,6 +103,14 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
   }
 
   return result.data;
+}
+
+// 通用 POST 请求（用于未封装到 api 对象的接口）
+export function post<T>(path: string, data: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
 }
 
 // API 方法
@@ -110,6 +134,20 @@ export const api = {
 
     me: () =>
       request<User>('/api/auth/me')
+  },
+
+  // 辰汐通行证登录（标准 OIDC 授权码 + PKCE 公共客户端）
+  chenxi: {
+    // 登录配置（公开门牌信息，前端根据 enabled 决定是否展示登录入口）
+    config: () =>
+      request<ChenxiConfig>('/api/auth/chenxi/config'),
+
+    // 授权码 + PKCE 校验器换取本站会话，响应结构与登录接口一致
+    exchange: (data: ChenxiExchangeRequest) =>
+      request<AuthResponse>('/api/auth/chenxi/exchange', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
   },
 
   // 文章相关
@@ -257,10 +295,11 @@ export const api = {
         method: 'POST'
       }),
 
-    verifyReinstall: (password: string) =>
+    // 需要已认证的 ADMIN token（请求包装器自动附带），confirm 必须为 "REINSTALL"
+    verifyReinstall: (password: string, confirm: string) =>
       request<{ success: boolean; message: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
         method: 'POST',
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password, confirm })
       }),
 
     getReinstallOptions: () =>
@@ -272,10 +311,11 @@ export const api = {
         method: 'GET'
       }),
 
-    executeReinstall: (option: string, database?: DatabaseConfigRequest) =>
+    // 需要已认证的 ADMIN token；confirm 为 "REINSTALL"，fresh_install 时必须为 "DROP_ALL_TABLES"
+    executeReinstall: (option: string, confirm: string, database?: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string; option: string }>('/api/install/reinstall', {
         method: 'POST',
-        body: JSON.stringify({ option, database })
+        body: JSON.stringify({ option, confirm, database })
       })
   },
 

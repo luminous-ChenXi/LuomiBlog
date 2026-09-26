@@ -5,12 +5,15 @@ spring:
   application:
     name: luomiblog
 
+  # 安装向导生成的自定义配置（数据库账号、JWT 密钥等），文件不存在时忽略
+  config:
+    import: optional:file:./config/custom-application.yml
+
   datasource:
     url: jdbc:mysql://localhost:3306/luomiblog?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
-    # username: ${DB_USERNAME:}
-    # password: ${DB_PASSWORD:}
-    username: luomiblog
-    password: ${DB_PASSWORD}
+    # 通过环境变量注入，请勿在代码仓库中硬编码数据库账号密码
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -21,10 +24,8 @@ spring:
 
   jpa:
     hibernate:
-      # ORM 自动建表
-      # ddl-auto: update
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
@@ -35,25 +36,56 @@ spring:
     init:
       mode: never
 
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=10m
-
 logging:
   level:
     com.luomiblog: INFO
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"
 
 jwt:
-  secret: ${JWT_SECRET:luomiblog-secret-key-change-in-production}
+  # 生产环境必须通过环境变量 JWT_SECRET 注入（至少 32 字节）。
+  # 未配置时应用会在启动时生成随机密钥，重启后已签发的 token 将失效。
+  secret: ${JWT_SECRET:}
   expiration: 86400000
 
 app:
   cors:
     allowed-origins: http://localhost:4321,http://localhost:3000
+  security:
+    # 是否信任反向代理传递的 X-Forwarded-For 头（直连部署必须保持 false，防止伪造 IP 绕过限流）
+    trust-proxy: false
   pagination:
     default-page-size: 10
     max-page-size: 100
+
+# 辰汐生态集成（与 AstrNest 孪生项目统一规范对齐，所有开关默认关闭）
+chenxi:
+  passport:
+    # 辰汐通行证登录总开关（标准 OAuth 2.1 / OIDC 授权码 + PKCE 公共客户端，没有任何密钥）
+    # 默认关闭；关闭时本地账号登录行为与未集成时完全一致
+    enabled: ${CHENXI_ENABLED:false}
+    # 主站通行证 issuer（留空表示未配置，启用前必须填写）
+    issuer: ${CHENXI_ISSUER:}
+    # 在通行证侧注册的客户端 ID（公共客户端，只有 ID 没有密钥）
+    client-id: ${CHENXI_CLIENT_ID:}
+    # 授权回调地址，必须与通行证侧注册的 redirect_uri 完全一致
+    redirect-uri: ${CHENXI_REDIRECT_URI:}
+    # 授权范围（逗号分隔，与 AstrNest 规范一致）
+    scopes: ${CHENXI_SCOPES:openid,profile}
+    # 本站会话令牌不活动过期天数（滑动刷新：活跃使用自动续期）
+    access-token-days: ${CHENXI_ACCESS_TOKEN_DAYS:30}
+  license:
+    # 正版授权校验总开关（N2 占位，服务端协议仅定义到接口层）
+    enabled: ${CHENXI_LICENSE_ENABLED:false}
+    # 预留：授权校验端点
+    verify-url: ${CHENXI_LICENSE_VERIFY_URL:}
+    # 校验结果本地缓存天数
+    cache-days: ${CHENXI_LICENSE_CACHE_DAYS:7}
+    # 离线宽限天数（超期仅前端横幅提示，绝不锁数据）
+    offline-grace-days: ${CHENXI_LICENSE_OFFLINE_GRACE_DAYS:3}
+  stats:
+    # 统计上报总开关（N2 占位）
+    enabled: ${CHENXI_STATS_ENABLED:false}
+    # 预留：统计上报端点
+    report-url: ${CHENXI_STATS_REPORT_URL:}

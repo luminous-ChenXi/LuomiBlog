@@ -25,6 +25,12 @@ export default defineConfig({
     },
     build: {
       chunkSizeWarningLimit: 1000
+    },
+    // 开发环境代理：将 /api 请求转发到本地后端
+    server: {
+      proxy: {
+        '/api': 'http://localhost:8080'
+      }
     }
   },
 
@@ -39,18 +45,9 @@ export default defineConfig({
     host: true
   },
 
-  // 站点配置（部署时修改）
-  site: 'http://localhost:4321',
+  // 站点配置（部署时通过 PUBLIC_SITE_URL 环境变量修改）
+  site: process.env.PUBLIC_SITE_URL || 'http://localhost:4321',
 
-  // 输出模式：静态生成（支持 prerender = false 的页面使用 SSR）
-  output: 'static',
-
-  // 国际化配置
-  i18n: {
-    defaultLocale: 'zh',
-    locales: ['zh', 'en', 'ja'],
-    routing: {
-      prefixDefaultLocale: false
-    }
-  }
+  // 输出模式：静态生成
+  output: 'static'
 });

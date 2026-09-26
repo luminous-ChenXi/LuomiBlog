@@ -66,6 +66,10 @@ public class User {
     @Column(name = "email_verified", nullable = false)
     private Boolean emailVerified;
 
+    /** 辰汐通行证 sub（OIDC 唯一标识，影子账号锚点），本地注册的密码账号为 NULL */
+    @Column(name = "chenxi_sub", length = 64)
+    private String chenxiSub;
+
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 

@@ -21,6 +21,8 @@ public class LoginSecurityServiceImpl implements LoginSecurityService {
     private static final long ATTEMPT_WINDOW_SECONDS = 900;
     
     private static final int RATE_LIMIT_CAPACITY = 10;
+    /** 限流桶缓存上限，防止 Map 随 IP 数量无限增长 */
+    private static final int MAX_RATE_LIMITER_ENTRIES = 10_000;
     private final Map<String, TokenBucket> rateLimiters = new ConcurrentHashMap<>();
     
     private static class TokenBucket {
@@ -108,13 +110,27 @@ public class LoginSecurityServiceImpl implements LoginSecurityService {
     
     @Override
     public boolean tryAcquire(String clientIp) {
+        if (rateLimiters.size() >= MAX_RATE_LIMITER_ENTRIES && !rateLimiters.containsKey(clientIp)) {
+            evictOldestBuckets();
+        }
         TokenBucket bucket = rateLimiters.computeIfAbsent(clientIp, k -> new TokenBucket());
         return bucket.tryConsume();
     }
-    
+
     @Override
     public long getAvailableTokens(String clientIp) {
         TokenBucket bucket = rateLimiters.get(clientIp);
         return bucket != null ? bucket.getAvailableTokens() : RATE_LIMIT_CAPACITY;
+    }
+
+    /**
+     * 容量达到上限时，淘汰最久未活跃（最后补充时间最早）的桶
+     */
+    private void evictOldestBuckets() {
+        int toEvict = Math.max(1, MAX_RATE_LIMITER_ENTRIES / 10);
+        rateLimiters.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue((a, b) -> Long.compare(a.lastRefillTime, b.lastRefillTime)))
+                .limit(toEvict)
+                .forEach(entry -> rateLimiters.remove(entry.getKey(), entry.getValue()));
     }
 }

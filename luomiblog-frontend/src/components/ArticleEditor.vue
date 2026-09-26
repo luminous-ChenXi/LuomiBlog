@@ -308,6 +308,11 @@ const props = defineProps<{
   slug?: string;
 }>();
 
+// 编辑页为静态空壳页面：优先使用 props，否则从 URL 查询参数中读取 slug
+// （SSR 阶段无 window，跳过读取，客户端水合时再解析）
+const routeSlug = props.slug
+  || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('slug') || '' : '');
+
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const categories = ref<Category[]>([]);
@@ -331,7 +336,7 @@ const hasAttemptedSubmit = ref(false);
 
 const article = ref<Article>({
   title: '',
-  slug: props.slug || '',
+  slug: routeSlug,
   summary: '',
   content: '',
   status: 'draft',
@@ -353,7 +358,7 @@ const articleInfo = ref({
   likeCount: 0
 });
 
-const isNew = computed(() => !props.slug);
+const isNew = computed(() => !routeSlug);
 
 const tagsInput = computed({
   get: () => article.value.tags.join(', '),
@@ -363,7 +368,7 @@ const tagsInput = computed({
 });
 
 function getToken() {
-  return localStorage.getItem('token') || sessionStorage.getItem('token');
+  return localStorage.getItem('token');
 }
 
 // 清除指定字段的错误
@@ -527,14 +532,14 @@ async function loadCategories() {
 }
 
 async function loadArticle() {
-  if (!props.slug) {
+  if (!routeSlug) {
     loading.value = false;
     return;
   }
 
   try {
     loadError.value = null;
-    const response = await fetch(`${API_BASE_URL}/api/articles/${props.slug}`, {
+    const response = await fetch(`${API_BASE_URL}/api/articles/${routeSlug}`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
 
@@ -658,7 +663,7 @@ async function saveArticle() {
     let response;
     if (isNew.value) {
       // 创建新文章
-      response = await fetch(`${API_BASE_URL}/api/articles`, {
+      response = await fetch(`${API_BASE_URL}/api/admin/articles`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getToken()}`,
@@ -668,7 +673,7 @@ async function saveArticle() {
       });
     } else {
       // 更新现有文章
-      response = await fetch(`${API_BASE_URL}/api/articles/${article.value.id}`, {
+      response = await fetch(`${API_BASE_URL}/api/admin/articles/${article.value.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getToken()}`,
@@ -703,7 +708,7 @@ async function saveArticle() {
     
     if (isNew.value) {
       // 新建文章后跳转到编辑页面
-      window.location.href = `/admin/articles/${result.data.slug}`;
+      window.location.href = `/admin/articles/edit?slug=${encodeURIComponent(result.data.slug)}`;
     } else {
       // 更新文章信息
       articleInfo.value.updatedAt = result.data.updatedAt;

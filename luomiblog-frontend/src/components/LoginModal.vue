@@ -3,11 +3,16 @@ import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { api } from '../utils/api';
 import { setAuth } from '../stores/user';
+import { startChenxiLogin } from '../utils/chenxi';
 import { useBackendStatus } from '../composables/useBackendStatus';
 
 const isVisible = ref(false);
 const loginError = ref('');
 const backendError = ref('');
+
+// 辰汐通行证登录（后端启用时才显示入口，配置懒加载、不阻塞表单）
+const chenxiEnabled = ref(false);
+const chenxiLoading = ref(false);
 
 const { isUnavailable, backendStatus, checkBackendStatus } = useBackendStatus();
 
@@ -35,12 +40,30 @@ const handleOpen = async () => {
   // 打开前检查后端状态
   backendError.value = '';
   await checkBackendStatus(true);
-  
+
   if (isUnavailable.value) {
     backendError.value = backendStatus.value?.message || '后端服务暂时不可用，无法登录';
   }
-  
+
+  // 懒加载辰汐通行证配置（fire-and-forget，失败就不显示按钮）
+  api.chenxi.config()
+    .then((config) => { chenxiEnabled.value = config.enabled; })
+    .catch(() => { chenxiEnabled.value = false; });
+
   isVisible.value = true;
+};
+
+// 辰汐通行证登录：跳转通行证授权页（成功时整页离开，失败提示在弹窗内展示）
+const handleChenxiLogin = async () => {
+  if (chenxiLoading.value) return;
+  chenxiLoading.value = true;
+  loginError.value = '';
+  try {
+    await startChenxiLogin();
+  } catch (error: any) {
+    loginError.value = error?.message || '无法发起辰汐通行证登录，请稍后再试';
+    chenxiLoading.value = false;
+  }
 };
 
 const validateForm = () => {
@@ -139,9 +162,15 @@ onMounted(() => {
   // 将打开方法挂载到 window 对象
   (window as any).openLoginModal = handleOpen;
   (window as any).closeLoginModal = handleClose;
-  
+
   // 监听自定义事件
   window.addEventListener('open-login-modal', handleOpen as EventListener);
+
+  // 安装向导完成安装后强制跳转登录：/?login=1 自动弹出登录框并清理 URL 参数
+  if (new URLSearchParams(window.location.search).get('login') === '1') {
+    window.history.replaceState(null, '', window.location.pathname);
+    handleOpen();
+  }
 });
 
 onUnmounted(() => {
@@ -266,6 +295,23 @@ onUnmounted(() => {
                   <span v-else-if="!submitting">登录</span>
                   <span v-else class="loading-spinner"></span>
                 </button>
+
+                <!-- 辰汐通行证登录（后端启用时显示） -->
+                <div v-if="chenxiEnabled" class="chenxi-login">
+                  <div class="chenxi-divider"><span>或</span></div>
+                  <button
+                    type="button"
+                    class="btn-chenxi"
+                    :disabled="chenxiLoading"
+                    @click="handleChenxiLogin"
+                  >
+                    <svg class="chenxi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span v-if="!chenxiLoading">使用辰汐通行证登录</span>
+                    <span v-else class="loading-spinner chenxi-spinner"></span>
+                  </button>
+                </div>
 
                 <div class="form-footer">
                   <span class="footer-text">还没有账号？</span>
@@ -632,6 +678,69 @@ onUnmounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
+/* 辰汐通行证登录入口 */
+.chenxi-login {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.chenxi-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.chenxi-divider::before,
+.chenxi-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+/* 微渐变描边按钮（gradient border 技法：内层纯色 + 外层渐变） */
+.btn-chenxi {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(135deg, #F9A8C8 0%, #E87A9F 50%, #8EC5FC 100%) border-box;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #E87A9F;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-chenxi:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(232, 122, 159, 0.25);
+}
+
+.btn-chenxi:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.chenxi-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.loading-spinner.chenxi-spinner {
+  border-color: rgba(232, 122, 159, 0.3);
+  border-top-color: #E87A9F;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -713,6 +822,18 @@ onUnmounted(() => {
 [data-theme="dark"] .modal-close {
   background: rgba(255, 255, 255, 0.1);
   color: #a0a0b0;
+}
+
+[data-theme="dark"] .btn-chenxi {
+  background:
+    linear-gradient(#252538, #252538) padding-box,
+    linear-gradient(135deg, #F9A8C8 0%, #E87A9F 50%, #8EC5FC 100%) border-box;
+  color: #F9A8C8;
+}
+
+[data-theme="dark"] .chenxi-divider::before,
+[data-theme="dark"] .chenxi-divider::after {
+  background: #3a3a4a;
 }
 
 [data-theme="dark"] .modal-close:hover {

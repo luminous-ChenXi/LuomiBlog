@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.ArticleStatsResult;
 import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleStatsService;
@@ -16,31 +17,36 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ArticleStatsController {
 
     private final ArticleStatsService articleStatsService;
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * 记录文章浏览（24小时去重）
+     * 注意：用户归属只信任服务端登录态，不信任请求体中的 userId
      */
     @PostMapping("/{articleId}/view")
     public ApiResponse<ArticleStatsResult> recordView(
             @PathVariable Long articleId,
-            @RequestBody ViewRecordRequest request,
+            @RequestBody(required = false) ViewRecordRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             HttpServletRequest httpRequest) {
 
-        String ipAddress = getClientIpAddress(httpRequest);
-        String visitorId = request.getVisitorId();
-        Long userId = request.getUserId();
+        String ipAddress = clientIpResolver.resolve(httpRequest);
+        String visitorId = request != null ? request.getVisitorId() : null;
+        // 归属用户只从登录态获取，匿名时为 null
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         // 如果没有visitorId，生成一个
         if (visitorId == null || visitorId.isEmpty()) {
             visitorId = UUID.randomUUID().toString();
         }
 
+        String userAgent = request != null ? request.getUserAgent() : null;
+
         boolean recorded = articleStatsService.recordView(
-                articleId, userId, visitorId, ipAddress, request.getUserAgent());
+                articleId, userId, visitorId, ipAddress, userAgent);
 
         ArticleStatsResult result = articleStatsService.getArticleStats(articleId, userId, visitorId);
         result.setSuccess(recorded);
@@ -51,17 +57,22 @@ public class ArticleStatsController {
 
     /**
      * 切换点赞状态
+     * 注意：用户归属只信任服务端登录态，不信任请求体中的 userId
      */
     @PostMapping("/{articleId}/like")
     public ApiResponse<ArticleStatsResult> toggleLike(
             @PathVariable Long articleId,
-            @RequestBody LikeRequest request,
+            @RequestBody(required = false) LikeRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             HttpServletRequest httpRequest) {
 
-        String ipAddress = getClientIpAddress(httpRequest);
+        String ipAddress = clientIpResolver.resolve(httpRequest);
+        String visitorId = request != null ? request.getVisitorId() : null;
+        // 归属用户只从登录态获取，匿名时为 null
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         ArticleStatsResult result = articleStatsService.toggleLike(
-                articleId, request.getUserId(), request.getVisitorId(), ipAddress);
+                articleId, userId, visitorId, ipAddress);
 
         return ApiResponse.success(result);
     }
@@ -120,25 +131,17 @@ public class ArticleStatsController {
         return ApiResponse.success(result);
     }
 
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
     // DTO classes
     @lombok.Data
     public static class ViewRecordRequest {
-        private Long userId;
+        private Long userId;      // 已废弃：仅保留兼容旧客户端，服务端不信任该字段
         private String visitorId;
         private String userAgent;
     }
 
     @lombok.Data
     public static class LikeRequest {
-        private Long userId;
+        private Long userId;      // 已废弃：仅保留兼容旧客户端，服务端不信任该字段
         private String visitorId;
     }
 

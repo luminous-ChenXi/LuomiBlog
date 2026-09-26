@@ -12,7 +12,5 @@ public interface UserService {
 
     void changePassword(Long userId, PasswordChangeRequest request);
 
-    void sendVerifyCode(Long userId);
-
     void uploadAvatar(Long userId, String avatarUrl);
 }

@@ -23,6 +23,9 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    /** 滑动续期新令牌的响应头（CORS 侧已同步暴露） */
+    public static final String NEW_TOKEN_HEADER = "X-New-Token";
+
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
@@ -45,6 +48,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                // 辰汐会话令牌滑动续期：活跃使用且剩余寿命不足一半时，
+                // 通过 X-New-Token 响应头下发新令牌，前端负责替换本地存储
+                if (jwtUtil.shouldSlide(jwt)) {
+                    response.setHeader(NEW_TOKEN_HEADER, jwtUtil.slideToken(jwt));
+                }
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

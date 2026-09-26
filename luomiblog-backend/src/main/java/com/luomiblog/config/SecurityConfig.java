@@ -2,8 +2,10 @@ package com.luomiblog.config;
 
 import com.luomiblog.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,6 +25,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -34,6 +37,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
 
+    @Value("${app.cors.allowed-origins:http://localhost:4321,http://localhost:3000}")
+    private String allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -42,13 +48,33 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // 安装接口本身放行，已安装时的写操作由 InstallController/InstallServiceImpl 内部校验，
+                        // verify-reinstall/reinstall 另有 @PreAuthorize("hasRole('ADMIN')") 方法级控制
                         .requestMatchers("/api/install/**").permitAll()
                         .requestMatchers("/api/health/**").permitAll()
-                        .requestMatchers("/api/site/**").permitAll()
-                        .requestMatchers("/api/articles", "/api/articles/{slug}", "/api/articles/id/{id}").permitAll()
-                        .requestMatchers("/api/articles/category/{categoryId}").permitAll()
-                        .requestMatchers("/api/articles/search").permitAll()
-                        .requestMatchers("/api/articles/{id}/view", "/api/articles/{id}/like").permitAll()
+                        // 授权状态横幅（N2 占位，公开只读，绝不影响功能可用性）
+                        .requestMatchers(HttpMethod.GET, "/api/license/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/site/**").permitAll()
+                        // 文章公开读接口（仅 GET，写操作必须认证 + 角色）
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/articles",
+                                "/api/articles/search",
+                                "/api/articles/category/{categoryId}",
+                                "/api/articles/id/{id}",
+                                "/api/articles/{slug}",
+                                "/api/articles/{articleId}/stats",
+                                "/api/articles/{articleId}/check").permitAll()
+                        // 浏览/点赞/收藏统计（匿名可上报，归属不信任请求体）
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/articles/{articleId}/view",
+                                "/api/articles/{articleId}/like",
+                                "/api/articles/{articleId}/favorite").permitAll()
+                        // 评论/分类/标签公开读
+                        .requestMatchers(HttpMethod.GET, "/api/comments/article/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
+                        // 点赞状态查询（匿名可查）
+                        .requestMatchers(HttpMethod.GET, "/api/likes/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -60,10 +86,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*"));
+        // 只允许配置的白名单来源（app.cors.allowed-origins），不允许 * 通配
+        configuration.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList()));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(false);
+        // 让浏览器端跨域请求能读到辰汐会话滑动续期下发的新令牌
+        configuration.setExposedHeaders(Arrays.asList(JwtAuthenticationFilter.NEW_TOKEN_HEADER));
+        configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

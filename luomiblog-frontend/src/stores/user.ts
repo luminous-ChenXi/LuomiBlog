@@ -54,6 +54,11 @@ function getUser(): User | null {
   return user.value;
 }
 
+// 静默替换令牌（辰汐会话滑动续期时由 api 客户端调用）
+function setToken(newToken: string) {
+  token.value = newToken;
+}
+
 export const useUserStore = () => ({
   user: computed(() => user.value),
   token: computed(() => token.value),
@@ -66,4 +71,4 @@ export const useUserStore = () => ({
 });
 
 // 导出单例方法供非组件使用
-export { initAuth, setAuth, clearAuth, getToken, getUser, isAuthenticated };
+export { initAuth, setAuth, clearAuth, getToken, getUser, setToken, isAuthenticated };

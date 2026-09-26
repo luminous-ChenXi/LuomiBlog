@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AdminArticleController {
 
     private final ArticleService articleService;

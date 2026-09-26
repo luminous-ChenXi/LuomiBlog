@@ -6,19 +6,19 @@ export interface Props {
 
 const {
   title = "LuomiBlog - 技术知识库",
-  description = "程序员向AI原生增强型知识库博客"
+  description = "LuomiBlog - 程序员向AI原生增强型知识库博客"
 } = Astro.props;
 
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import LoginModal from '../components/LoginModal.vue';
 import RegisterModal from '../components/RegisterModal.vue';
 import BackendStatusBanner from '../components/BackendStatusBanner.vue';
+import { API_BASE_URL } from '../config/api';
 import '../styles/global.css';
 
 // 获取站点配置
 let siteFavicon = '/favicon.svg';
 try {
-  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8080';
   const response = await fetch(`${API_BASE_URL}/api/site/config`);
   if (response.ok) {
     const result = await response.json();

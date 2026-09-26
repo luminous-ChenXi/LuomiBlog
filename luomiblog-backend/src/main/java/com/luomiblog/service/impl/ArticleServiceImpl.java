@@ -1,5 +1,6 @@
 package com.luomiblog.service.impl;
 
+import com.luomiblog.common.BusinessException;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.dto.ArticleStatsResponse;
@@ -11,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -161,7 +165,8 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional(readOnly = true)
     public ArticleResponse getArticleBySlug(String slug) {
         Article article = articleRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        checkArticleVisible(article);
         return convertToResponse(article);
     }
 
@@ -169,8 +174,38 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional(readOnly = true)
     public ArticleResponse getArticleById(Long id) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
+        checkArticleVisible(article);
         return convertToResponse(article);
+    }
+
+    /**
+     * 公开访问的可见性校验：
+     * 匿名/普通用户只能访问已发布且未删除的文章；
+     * ADMIN/BLOGGER（已认证）可以访问任意状态的文章（草稿预览等）
+     */
+    private void checkArticleVisible(Article article) {
+        if (isPrivilegedUser()) {
+            return;
+        }
+        boolean publishedAndNotDeleted = "published".equals(article.getStatus()) && article.getDeletedAt() == null;
+        if (!publishedAndNotDeleted) {
+            // 对外统一表现为文章不存在，避免泄露草稿/已删除文章的存在性
+            throw new BusinessException(404, "文章不存在");
+        }
+    }
+
+    private boolean isPrivilegedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return false;
+        }
+        return authentication.getAuthorities().stream().anyMatch(authority -> {
+            String name = authority.getAuthority();
+            return "ROLE_ADMIN".equals(name) || "ROLE_BLOGGER".equals(name);
+        });
     }
 
     @Override

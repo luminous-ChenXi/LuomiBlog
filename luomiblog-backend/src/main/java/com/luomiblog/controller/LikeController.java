@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.LikeRequest;
 import com.luomiblog.dto.LikeResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -14,10 +15,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/likes")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class LikeController {
 
     private final LikeService likeService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/article")
     public ApiResponse<LikeResponse> toggleArticleLike(
@@ -25,7 +26,7 @@ public class LikeController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
-        String ipAddress = getClientIpAddress(httpRequest);
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         return ApiResponse.success(likeService.toggleArticleLike(request, userId, visitorId, ipAddress));
@@ -37,7 +38,7 @@ public class LikeController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
-        String ipAddress = getClientIpAddress(httpRequest);
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
         return ApiResponse.success(likeService.toggleCommentLike(request, userId, visitorId, ipAddress));
@@ -59,13 +60,5 @@ public class LikeController {
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId) {
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
         return ApiResponse.success(likeService.getCommentLikeStatus(commentId, userId, visitorId));
-    }
-
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

@@ -1,25 +1,25 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
-import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
-import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 文章公开读接口（仅 GET）
+ * 写操作统一走 /api/admin/articles（AdminArticleController），
+ * 浏览/点赞统计走 /{articleId}/view、/{articleId}/like（ArticleStatsController）
+ */
 @RestController
 @RequestMapping("/api/articles")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ArticleController {
 
     private final ArticleService articleService;
@@ -54,40 +54,5 @@ public class ArticleController {
     @GetMapping("/search")
     public ApiResponse<List<ArticleResponse>> searchArticles(@RequestParam String keyword) {
         return ApiResponse.success(articleService.searchArticles(keyword));
-    }
-
-    @PostMapping
-    public ApiResponse<ArticleResponse> createArticle(
-            @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        return ApiResponse.success(articleService.createArticle(request, userPrincipal.getId()));
-    }
-
-    @PutMapping("/{id}")
-    public ApiResponse<ArticleResponse> updateArticle(
-            @PathVariable Long id,
-            @Valid @RequestBody ArticleRequest request,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        return ApiResponse.success(articleService.updateArticle(id, request, userPrincipal.getId()));
-    }
-
-    @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteArticle(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        articleService.deleteArticle(id, userPrincipal.getId());
-        return ApiResponse.success();
-    }
-
-    @PostMapping("/{id}/view")
-    public ApiResponse<Void> incrementViewCount(@PathVariable Long id) {
-        articleService.incrementViewCount(id);
-        return ApiResponse.success();
-    }
-
-    @PostMapping("/{id}/like")
-    public ApiResponse<Void> incrementLikeCount(@PathVariable Long id) {
-        articleService.incrementLikeCount(id);
-        return ApiResponse.success();
     }
 }

@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,10 +22,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CommentController {
 
     private final CommentService commentService;
+    private final ClientIpResolver clientIpResolver;
 
     @GetMapping("/article/{articleId}")
     public ApiResponse<Page<CommentResponse>> getCommentsByArticle(
@@ -54,7 +56,7 @@ public class CommentController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
-        String ipAddress = getClientIpAddress(httpRequest);
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
@@ -70,22 +72,16 @@ public class CommentController {
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> approveComment(@PathVariable Long id) {
         commentService.approveComment(id);
         return ApiResponse.success();
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> rejectComment(@PathVariable Long id) {
         commentService.rejectComment(id);
         return ApiResponse.success();
-    }
-
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

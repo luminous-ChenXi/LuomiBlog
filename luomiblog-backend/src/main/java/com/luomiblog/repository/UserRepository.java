@@ -16,6 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    /** 辰汐通行证影子账号锚点（OIDC sub） */
+    Optional<User> findByChenxiSub(String chenxiSub);
+
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);

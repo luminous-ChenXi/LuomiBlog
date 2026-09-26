@@ -133,7 +133,7 @@ import { API_BASE_URL } from '../../../config/api';
 <script define:vars={{ API_BASE_URL }}>
   // 获取Token
   function getToken() {
-    return localStorage.getItem('token') || sessionStorage.getItem('token');
+    return localStorage.getItem('token');
   }
 
   // 初始化
@@ -320,7 +320,7 @@ import { API_BASE_URL } from '../../../config/api';
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/articles`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/articles`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getToken()}`,

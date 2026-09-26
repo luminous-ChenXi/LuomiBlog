@@ -98,9 +98,11 @@ const quickActions = [
 </AdminLayout>
 
 <script>
+  import { API_BASE_URL } from '../../config/api';
+
   // 获取 Token
   function getToken() {
-    return localStorage.getItem('token') || sessionStorage.getItem('token');
+    return localStorage.getItem('token');
   }
 
   // 格式化数字
@@ -128,7 +130,7 @@ const quickActions = [
     }
 
     try {
-      const response = await fetch('/api/admin/dashboard/stats', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

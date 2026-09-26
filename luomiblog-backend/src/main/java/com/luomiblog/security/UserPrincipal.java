@@ -1,5 +1,6 @@
 package com.luomiblog.security;
 
+import com.luomiblog.common.UserStatus;
 import com.luomiblog.entity.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -49,7 +50,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "1".equals(user.getStatus());
+        return UserStatus.ACTIVE.equals(user.getStatus());
     }
 
     /**

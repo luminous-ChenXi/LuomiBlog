@@ -1,17 +1,18 @@
 import type { APIRoute } from 'astro';
+import { getSiteUrl } from '../config/site';
 
-export const GET: APIRoute = async () => {
-  const site = 'https://luminouschenxi.com';
-  
+export const GET: APIRoute = async ({ site }) => {
+  const siteUrl = getSiteUrl(site);
+
   const robots = `User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: ${site}/sitemap.xml
+Sitemap: ${siteUrl}/sitemap.xml
 
 # RSS Feeds
-Sitemap: ${site}/rss.xml
-Sitemap: ${site}/atom.xml
+Sitemap: ${siteUrl}/rss.xml
+Sitemap: ${siteUrl}/atom.xml
 
 # Disallow admin and private routes
 Disallow: /admin/
