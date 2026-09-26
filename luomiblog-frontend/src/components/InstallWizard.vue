@@ -59,6 +59,65 @@ const adminForm = reactive({
   nickname: ''
 });
 
+// ============ 强密码生成（N1 管理员私密保障） ============
+// 16 位随机密码，至少包含大写字母/小写字母/数字/符号各一；
+// 刻意排除易混淆字符（0/O、1/l/I）；明文仅在生成时展示一次，
+// 之后任何界面（含安装完成页）都不再回显，需二次输入确认。
+const PASSWORD_LENGTH = 16;
+const PASSWORD_SETS = [
+  'ABCDEFGHJKLMNPQRSTUVWXYZ', // 大写（不含 I、O）
+  'abcdefghijkmnpqrstuvwxyz', // 小写（不含 l、o）
+  '23456789',                 // 数字（不含 0、1）
+  '!@#$%^&*()-_=+[]{}?'      // 符号（不含尖括号与引号，便于复制展示）
+];
+
+// 密码学安全随机整数 [0, max)
+const secureRandomInt = (max: number): number => {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] % max;
+};
+
+// 标记密码是否为本次会话生成（生成的密码必须在"确认密码"中二次输入）
+const passwordGenerated = ref(false);
+
+const generateStrongPassword = () => {
+  const allSets = PASSWORD_SETS.join('');
+  // 保证每类字符至少一个
+  const chars: string[] = PASSWORD_SETS.map(set => set[secureRandomInt(set.length)]);
+  while (chars.length < PASSWORD_LENGTH) {
+    chars.push(allSets[secureRandomInt(allSets.length)]);
+  }
+  // Fisher-Yates 洗牌，避免每类字符固定在开头位置
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  adminForm.password = chars.join('');
+  adminForm.confirmPassword = '';
+  passwordGenerated.value = true;
+  showGeneratedPasswordOnce(adminForm.password);
+};
+
+// 明文仅此一次展示：请管理员立即复制保存，并要求二次输入确认
+const showGeneratedPasswordOnce = (password: string) => {
+  ElMessageBox.alert(
+    `<div style="text-align:left;">
+      <p style="margin:0 0 10px;font-size:14px;">已生成 16 位强密码，<b>明文仅展示这一次</b>，请立即复制并妥善保存：</p>
+      <p style="margin:0 0 10px;padding:10px 14px;background:#f5f7fa;border-radius:8px;font-family:monospace;font-size:16px;letter-spacing:1px;user-select:all;">${password}</p>
+      <p style="margin:0;color:#e6a23c;font-size:13px;">关闭本提示后将无法再次查看，需在下方"确认密码"框中再次输入该密码以完成确认。</p>
+    </div>`,
+    '强密码已生成',
+    {
+      confirmButtonText: '我已保存',
+      dangerouslyUseHTMLString: true,
+      showClose: false,
+      closeOnClickModal: false,
+      closeOnPressEscape: false
+    }
+  );
+};
+
 // SMTP配置表单
 const smtpForm = reactive({
   enabled: false,
@@ -343,7 +402,7 @@ const verifyReinstall = async () => {
 
   verifying.value = true;
   try {
-    const response = await api.install.verifyReinstall(verifyPassword.value);
+    const response = await api.install.verifyReinstall(verifyPassword.value, 'REINSTALL');
     if (response.success) {
       ElMessage.success('验证通过');
       showReinstallVerify.value = false;
@@ -421,8 +480,11 @@ const executeReinstall = async () => {
 
   executingReinstall.value = true;
   try {
+    // 后端要求显式确认字段：全新安装必须传 DROP_ALL_TABLES，其余传 REINSTALL
+    const confirm = selectedReinstallOption.value === 'fresh_install' ? 'DROP_ALL_TABLES' : 'REINSTALL';
     const response = await api.install.executeReinstall(
       selectedReinstallOption.value,
+      confirm,
       dbForm
     );
 
@@ -603,6 +665,12 @@ const createAdmin = async () => {
     return;
   }
 
+  // 生成的强密码必须完成二次输入确认（确认框由用户手工键入）
+  if (passwordGenerated.value && !adminForm.confirmPassword) {
+    ElMessage.warning('已使用生成的强密码，请在"确认密码"框中再次输入以确认');
+    return;
+  }
+
   // 检查SQL脚本是否已执行
   if (!sqlExecuted.value) {
     ElMessage.error('请先完成数据库初始化步骤');
@@ -716,8 +784,9 @@ const completeInstall = async () => {
     const response = await api.install.complete();
     if (response.success) {
       ElMessage.success('安装完成！');
+      // 安装完成后强制跳转登录页：/?login=1 会自动弹出登录框（LoginModal 挂载时检测）
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = '/?login=1';
       }, 1500);
     } else {
       ElMessage.error(response.message);
@@ -1360,9 +1429,18 @@ onMounted(() => {
           
           <div class="form-group">
             <label class="form-label">登录密码</label>
-            <input v-model="adminForm.password" type="password" class="form-input" placeholder="请输入密码（至少8位）" />
+            <div class="password-row">
+              <input v-model="adminForm.password" type="password" class="form-input" placeholder="请输入密码（至少8位），或点击右侧生成" />
+              <button
+                type="button"
+                class="btn-generate"
+                :disabled="loading"
+                @click="generateStrongPassword"
+              >生成强密码</button>
+            </div>
+            <p class="form-hint">生成 16 位强密码：明文仅展示一次，需在下方"确认密码"中再次输入确认，任何页面（含安装完成页）均不再回显</p>
           </div>
-          
+
           <div class="form-group">
             <label class="form-label">确认密码</label>
             <input v-model="adminForm.confirmPassword" type="password" class="form-input" placeholder="请再次输入密码" />
@@ -1400,15 +1478,15 @@ onMounted(() => {
             <span class="info-value">{{ adminForm.username }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">登录地址</span>
-            <span class="info-value">/login</span>
+            <span class="info-label">登录方式</span>
+            <span class="info-value">完成安装后将自动跳转登录页（出于安全考虑，密码不再展示）</span>
           </div>
         </div>
 
         <div class="step-actions">
           <button class="btn-primary btn-large" :disabled="loading" @click="completeInstall">
             <span v-if="loading" class="btn-loading"></span>
-            <span v-else>完成安装并进入网站</span>
+            <span v-else>完成安装并前往登录</span>
           </button>
         </div>
       </div>
@@ -1477,6 +1555,48 @@ onMounted(() => {
 
 .step-card {
   min-height: 360px;
+}
+
+/* 强密码生成（N1） */
+.password-row {
+  display: flex;
+  gap: 0.625rem;
+  align-items: stretch;
+}
+
+.password-row .form-input {
+  flex: 1;
+}
+
+.btn-generate {
+  flex-shrink: 0;
+  padding: 0 1rem;
+  border: 1px solid var(--color-brand-primary);
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255, 107, 157, 0.08);
+  color: var(--color-brand-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s ease);
+}
+
+.btn-generate:hover:not(:disabled) {
+  background: var(--color-brand-primary);
+  color: white;
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #909399);
+  line-height: 1.5;
 }
 
 .card-header {

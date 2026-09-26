@@ -51,6 +51,7 @@ public enum ReinstallOption {
                 return option;
             }
         }
-        return FRESH_INSTALL; // 默认全新安装
+        // 安全考虑：未知选项不允许默认为 FRESH_INSTALL（会清空所有数据）
+        throw new IllegalArgumentException("未知的安装选项: " + code);
     }
 }

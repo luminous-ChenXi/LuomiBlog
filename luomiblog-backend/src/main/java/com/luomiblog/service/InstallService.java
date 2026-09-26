@@ -54,4 +54,24 @@ public interface InstallService {
      * @return 是否需要显示选项
      */
     boolean needsReinstallOptions();
+
+    /**
+     * 重新安装验证的限流（按 IP，5 次/分钟）
+     * @param clientIp 客户端 IP
+     * @return 是否允许本次尝试
+     */
+    boolean tryAcquireReinstallVerifyAttempt(String clientIp);
+
+    /**
+     * 重新安装验证是否已被锁定（连续失败过多次）
+     * @param clientIp 客户端 IP
+     * @return 是否锁定中
+     */
+    boolean isReinstallVerifyLocked(String clientIp);
+
+    /**
+     * 记录一次重新安装验证失败（达到阈值后锁定一段时间）
+     * @param clientIp 客户端 IP
+     */
+    void recordReinstallVerifyFailure(String clientIp);
 }
