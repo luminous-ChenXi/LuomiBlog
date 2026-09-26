@@ -34,6 +34,8 @@
 
 </div>
 
+> 🪺 **辰汐生态（Chenxi Ecosystem）** 成员项目 —— 与 [LuomiNest](https://github.com/LuminousCX/LuomiNest)（桌面 AI 陪伴）、[AstrNest](https://github.com/luminous-ChenXi/AstrNest)（图床/媒体管理）、Teachenxi（学习陪伴 App）同属辰汐生态。本项目的角色：静态优先的 AI 知识库博客系统。
+
 ## 核心特性
 
 - **可视化安装向导** - 像 WordPress 一样，通过 Web 界面完成安装配置，无需手动修改配置文件
@@ -181,6 +183,10 @@ server {
     }
 }
 ```
+
+## 辰汐通行证登录（可选）
+
+LuomiBlog 支持通过"辰汐通行证"一键登录（标准 OAuth 2.1 / OIDC 授权码 + PKCE 公共客户端，**无任何密钥**）。功能默认关闭，需要时在通行证侧注册客户端后设置 `CHENXI_ENABLED=true` 等环境变量即可启用；首次登录会自动创建关联的影子账号。详见 [docs/chenxi-integration.md](docs/chenxi-integration.md)。
 
 ## 数据库设计
 

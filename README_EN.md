@@ -34,6 +34,8 @@
 
 </div>
 
+> 🪺 A member of the **Chenxi Ecosystem (辰汐生态)** — alongside [LuomiNest](https://github.com/LuminousCX/LuomiNest) (desktop AI companion), [AstrNest](https://github.com/luminous-ChenXi/AstrNest) (image hosting / media management), and Teachenxi (learning companion app). This project's role: a static-first AI-powered knowledge base blog system.
+
 ## Core Features
 
 - **Visual Installation Wizard** - Complete installation via web interface like WordPress, no manual configuration needed
