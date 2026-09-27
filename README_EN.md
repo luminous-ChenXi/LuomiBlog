@@ -45,6 +45,7 @@
 - [Five-Minute Deployment (Production)](#five-minute-deployment-production)
 - [Nginx Reverse Proxy Example](#nginx-reverse-proxy-example)
 - [From Source to Production: CI/CD](#from-source-to-production-cicd)
+- [Admin Frontend CDN Deployment (COS + CDN)](#admin-frontend-cdn-deployment-cos--cdn)
 - [Installation Security Mechanism](#installation-security-mechanism)
 - [Post-Install Configuration: Admin Security Switches](#post-install-configuration-admin-security-switches)
 - [FAQ](#faq)
@@ -200,7 +201,7 @@ PORT=4321 node ./dist/server/entry.mjs
 Notes:
 
 - The build produces two parts: `dist/client/` (static assets) and `dist/server/` (SSR server).
-- **You must run the node standalone server** (`node ./dist/server/entry.mjs`). Although 90%+ pages are pre-rendered HTML, 5 pages including article detail/list are SSR — pure static hosting (e.g. object storage) would 404.
+- **You must run the node standalone server** (`node ./dist/server/entry.mjs`). Although 90%+ pages are pre-rendered HTML, 5 pages including article detail/list are SSR — pure static hosting (e.g. object storage) would 404. For the boundaries and viable routes of putting the site (or its static parts) on a CDN, see "[Admin Frontend CDN Deployment (COS + CDN)](#admin-frontend-cdn-deployment-cos--cdn)" below.
 - **Always set `PORT` explicitly**: the node standalone default port is **8080, which collides with the backend**; the example above uses 4321. Use the `HOST` environment variable to bind the listening address.
 - `PUBLIC_API_URL` is inlined **at build time**: use `/api` for same-domain reverse proxy (recommended); if frontend and backend live on separate domains, use the full backend URL and mind CORS (`app.cors.allowed-origins` on the backend).
 
@@ -308,6 +309,63 @@ npm run build
 ```
 
 With both green, ship the artifacts (jar + `dist/`) following [Five-Minute Deployment](#five-minute-deployment-production).
+
+## Admin Frontend CDN Deployment (COS + CDN)
+
+**Applicability (read first)**: the LuomiBlog frontend is an Astro 5 **hybrid** app — the vast majority of pages are pre-rendered to pure static HTML, but **exactly 5 pages are SSR** (`prerender = false`, requiring live rendering by the node standalone server): `articles/index` (article list), `article/[slug]` (article detail), `admin/users`, `admin/articles/edit`, `admin/articles/new`. Uploading the whole site to object storage + CDN would therefore **404 outright** (the boundary noted in "Step 2" above). Two routes:
+
+| | Route A: node standalone (current, **recommended**) | Route B: static parts on COS + CDN (advanced, pending rework) |
+| --- | --- | --- |
+| Admin panel pages | All produced by node (4321) | Only 6 **static** admin pages can go to the bucket: `admin.html` (dashboard), `admin/announcements.html`, `admin/articles.html`, `admin/comments.html`, `admin/mail.html`, `admin/settings.html` |
+| SSR admin pages (users / articles/edit / articles/new) | Normal | `dist/client/` contains **no** HTML for them — they cannot go on the CDN; first convert these 3 pages to `prerender` or client rendering (**TODO**), or keep routing these paths to node |
+| Article list/detail (SSR, public pages) | Normal | Unrelated to the admin frontend; always origin-pulled from node |
+| Effort | Zero | Upload pipeline + CDN path rules + SSR admin page rework |
+| Verdict | **Default route; keep as is** | Re-evaluate when acceleration demand is real |
+
+Two more facts, verified against this repo's build configuration, distinguish this from a pure SPA like AstrNest:
+
+- `astro.config.mjs` sets **no `base`** (default `/`): the current same-domain root deployment needs no change; only a future whole-site sub-path deployment would require setting base;
+- `build.format: 'file'` produces **flat filenames** such as `admin.html` (see `dist/client/`), so clean URLs like `/admin` have no matching object on COS (`admin/index.html` does not exist) — a CDN rollout needs URL rewriting to `admin.html`, or switching format to `directory` (also a **TODO**).
+
+### Route B, If You Build It: Architecture and Key Points
+
+```text
+User browser → Tencent Cloud CDN (same domain, split by path, HTTPS certificate attached)
+   ├─ /_astro/*  → origin-pull to COS (site-wide content-hashed static assets, long cache; public pages benefit too)
+   ├─ /admin/*   → origin-pull to COS (only the 6 static admin page objects listed above)
+   │               Exceptions: /admin/users, /admin/articles/edit, /admin/articles/new must still origin-pull to node (SSR)
+   │               until the SSR admin page rework is done
+   └─ everything else → origin-pull to source nginx → node standalone (4321) + Spring Boot (8080), same as the "Nginx Reverse Proxy Example"
+```
+
+- **Implementing the split**: same idea as the "Nginx Reverse Proxy Example" — the CDN has a single origin pointing at the source nginx; inside nginx, `location ^~ /_astro/` and `location ^~ /admin/` `proxy_pass` to the COS static website endpoint (with `error_page 404` pointing at `404.html`), and everything else keeps forwarding to 4321/8080. The advanced variant uses the Tencent Cloud CDN "Rule Engine" to route paths straight to the COS origin (rule order, origin Host, COS origin authentication — the same general points; subject to console availability).
+- **Build and upload** (preview script; until the SSR admin pages are reworked, step 2's objects only cover the static admin pages):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+BUCKET=luomiblog-admin-1250000000        # bucket name (including APPID)
+cd luomiblog-frontend
+npm ci && npm run build                  # static output in dist/client/
+
+# 1) Upload site-wide hashed assets first (incremental; old versions stay in the bucket for instant rollback)
+coscli sync dist/client/_astro/ cos://$BUCKET/_astro/
+
+# 2) Then upload the static admin page HTML (HTML last = the content switch; note the 3 SSR pages are not in the output)
+coscli sync dist/client/admin/   cos://$BUCKET/admin/
+coscli cp  dist/client/admin.html cos://$BUCKET/admin.html
+
+# 3) Purge the CDN: console "Cache Purge → Directory Purge" with https://your-domain/admin/ (or the API:
+#    directory purge PurgePathsCache / URL purge PurgeUrlsCache)
+```
+
+- **Caching policy**: `/_astro/*` (hashed filenames) uses `public, max-age=31536000, immutable` — `dist/client/_headers` already encodes the same policy; HTML pages (including `admin.html`) use `no-cache` or `max-age=60`; `/api/*` is never cached; **every release must purge the CDN**.
+- **Fallback page**: Astro is an MPA, so no SPA-style 404 fallback is needed — set `404.html` as the COS static website error document.
+- **Security**: prefer a private bucket + CDN origin authentication, or public read + Referer hotlink protection with "list objects" kept disabled; attach an HTTPS certificate to the CDN domain and force HTTPS; `PUBLIC_API_URL=/api` keeps the same-domain semantics with no CORS; the XSS exposure of a localStorage JWT is unchanged by the deployment style — keep a strict CSP on the admin side.
+
+### Relation to the Existing Deployment Sections
+
+"Five-Minute Deployment" and the "Nginx Reverse Proxy Example" (including its commented-out `/_astro/` nginx direct-serving optimization) remain the recommended route; Route B merely moves `/_astro/` and the static admin pages from the local machine to COS + CDN. The backend and the `/api` reverse-proxy chain are untouched, and you can switch back at any time.
 
 ## Installation Security Mechanism
 

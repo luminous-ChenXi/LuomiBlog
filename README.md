@@ -45,6 +45,7 @@
 - [五分钟部署（生产上线）](#五分钟部署生产上线)
 - [Nginx 反代样例](#nginx-反代样例)
 - [从源码到上线：CI/CD](#从源码到上线cicd)
+- [管理前端 CDN 部署（COS + CDN）](#管理前端-cdn-部署cos--cdn)
 - [安装安全机制](#安装安全机制)
 - [安装后配置：站长安全开关](#安装后配置站长安全开关)
 - [常见问题 FAQ](#常见问题-faq)
@@ -199,7 +200,7 @@ PORT=4321 node ./dist/server/entry.mjs
 说明：
 
 - 构建产物分两部分：`dist/client/`（静态资源）与 `dist/server/`（SSR 服务器）。
-- **必须用 node standalone 启动**（`node ./dist/server/entry.mjs`）。虽然有 90%+ 页面是预渲染 HTML，但文章详情/列表等 5 个页面是 SSR，纯静态托管（如对象存储直传）会 404。
+- **必须用 node standalone 启动**（`node ./dist/server/entry.mjs`）。虽然有 90%+ 页面是预渲染 HTML，但文章详情/列表等 5 个页面是 SSR，纯静态托管（如对象存储直传）会 404。整站/静态部分上 CDN 的可行边界与路线见下文「[管理前端 CDN 部署（COS + CDN）](#管理前端-cdn-部署cos--cdn)」。
 - **必须显式设置 `PORT`**：node standalone 的默认端口是 **8080，与后端冲突**；上面示例用 4321，`HOST` 环境变量可绑定监听地址。
 - `PUBLIC_API_URL` 是**构建时**注入的：同域反代用 `/api`（推荐）；前后端分域名则填后端完整地址，并注意 CORS 配置（后端 `app.cors.allowed-origins`）。
 
@@ -307,6 +308,63 @@ npm run build
 ```
 
 两项都绿即可按[五分钟部署](#五分钟部署生产上线)的产物（jar + `dist/`）上线。
+
+## 管理前端 CDN 部署（COS + CDN）
+
+**适用性结论（先读）**：LuomiBlog 前端是 Astro 5 **混合渲染**——绝大多数页面预渲染为纯静态 HTML，但**恰好 5 个页面是 SSR**（`prerender = false`，必须由 node standalone 实时渲染）：`articles/index`（文章列表）、`article/[slug]`（文章详情）、`admin/users`、`admin/articles/edit`、`admin/articles/new`。因此**整站打包上传对象存储 + CDN 会直接 404**（即上文「第 2 步」说明的边界）。本节给出两条路线：
+
+| | 路线 A：node standalone（现状，**推荐**） | 路线 B：静态部分上 COS + CDN（进阶，待改造） |
+| --- | --- | --- |
+| 管理后台页面 | 全部由 node（4321）产出 | 仅 6 个**静态**管理页可上桶：`admin.html`（后台首页）、`admin/announcements.html`、`admin/articles.html`、`admin/comments.html`、`admin/mail.html`、`admin/settings.html` |
+| SSR 管理页（users / articles/edit / articles/new） | 正常 | `dist/client/` 里**没有**对应 HTML，上不了 CDN——需先把这 3 页改成 `prerender` 或客户端渲染（**待办**），或让这些路径继续回源 node |
+| 文章列表/详情（SSR，公有页） | 正常 | 与管理前端无关，始终回源 node |
+| 工作量 | 零 | 上传链路 + CDN 路径规则 + SSR 管理页改造 |
+| 结论 | **默认路线，保持现状** | 有真实加速需求时再评估 |
+
+另有两点与 AstrNest 这类纯 SPA 不同，核实自本仓构建配置：
+
+- `astro.config.mjs` **未配置 `base`**（默认 `/`）：当前同域根路径部署不需要改；若未来整站挂子路径才需设置 base；
+- `build.format: 'file'` 使产物为 `admin.html` 这类**扁平文件名**（见 `dist/client/`），COS 直挂时 `/admin` 这类「干净 URL」没有对应对象（`admin/index.html` 不存在）——上 CDN 需把 URL 重写为 `admin.html`，或把 format 改为 `directory`（同列**待办**）。
+
+### 路线 B 若要做：架构与要点
+
+```text
+用户浏览器 → 腾讯云 CDN（同域名，按路径分流，挂 HTTPS 证书）
+   ├─ /_astro/*  → 回源 COS（全站带内容 hash 的静态资源，长缓存；前台页面同样受益）
+   ├─ /admin/*   → 回源 COS（仅上表列出的 6 个静态管理页对象）
+   │               例外：/admin/users、/admin/articles/edit、/admin/articles/new 仍须回源 node（SSR），
+   │               待 SSR 管理页改造完成后再并入本规则
+   └─ 其余路径    → 回源源站 nginx → node standalone（4321）+ Spring Boot（8080），同「Nginx 反代样例」
+```
+
+- **分流实现**：与「Nginx 反代样例」同思路——CDN 单一源站指向源站 nginx，nginx 内 `location ^~ /_astro/`、`location ^~ /admin/` `proxy_pass` 到 COS 静态网站端点（并配 `error_page 404` 指向 `404.html`），其余照旧转发 4321/8080；进阶做法是腾讯云 CDN「规则引擎」按路径直连 COS 源站（规则顺序、回源 Host、COS 回源鉴权等要点与通用做法一致，以控制台实际功能为准）。
+- **构建与上传**（预演脚本；SSR 管理页改造完成前，步骤 2 中的对象仅覆盖静态管理页）：
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+BUCKET=luomiblog-admin-1250000000        # 桶名（含 APPID）
+cd luomiblog-frontend
+npm ci && npm run build                  # 静态产物在 dist/client/
+
+# 1) 先传带 hash 的全站静态资源（增量；旧版本留在桶里天然支持回滚）
+coscli sync dist/client/_astro/ cos://$BUCKET/_astro/
+
+# 2) 再传静态管理页 HTML（HTML 后传 = 内容切换；注意 SSR 的 3 页不在产物中）
+coscli sync dist/client/admin/   cos://$BUCKET/admin/
+coscli cp  dist/client/admin.html cos://$BUCKET/admin.html
+
+# 3) 刷新 CDN：控制台「缓存刷新 → 目录刷新」填 https://你的域名/admin/（或调 API：
+#    目录刷新 PurgePathsCache / URL 刷新 PurgeUrlsCache）
+```
+
+- **缓存策略**：`/_astro/*`（文件名带 hash）用 `public, max-age=31536000, immutable`——`dist/client/_headers` 已内置同口径；各 HTML 页（含 `admin.html`）用 `no-cache` 或 `max-age=60`；`/api/*` 不缓存；**每次发版必须刷 CDN**。
+- **回退页**：Astro 是多页应用（MPA），无需 SPA 式 404 回退——把 `404.html` 设为 COS 静态网站错误文档即可。
+- **安全**：桶建议私有读 + CDN 回源鉴权，或公有读 + Referer 防盗链且保持「列举对象」关闭；CDN 加速域名挂 HTTPS 证书并强制跳转；`PUBLIC_API_URL=/api` 同域口径不变、无 CORS；JWT 存 localStorage 的 XSS 窃取面不因部署方式改变，管理端仍需保持严格 CSP。
+
+### 与现有部署章节的关系
+
+「五分钟部署」「Nginx 反代样例」（含其中注释掉的 `/_astro/` nginx 直服优化）仍是推荐路线；路线 B 只是把 `_astro/` 与静态管理页的承载从本机换到 COS + CDN，后端与 `/api` 反代链路完全不变，可随时切回。
 
 ## 安装安全机制
 
