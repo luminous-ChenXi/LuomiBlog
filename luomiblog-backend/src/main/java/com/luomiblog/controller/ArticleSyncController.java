@@ -18,21 +18,21 @@ public class ArticleSyncController {
     private final ArticleSyncService articleSyncService;
 
     @PostMapping("/sync/trigger")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, String>>> triggerSync() {
         new Thread(() -> articleSyncService.syncArticlesFromFiles()).start();
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "文章同步已启动")));
     }
 
     @GetMapping("/sync/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<ArticleSyncService.SyncStatus>> getSyncStatus() {
         ArticleSyncService.SyncStatus status = articleSyncService.getSyncStatus();
         return ResponseEntity.ok(ApiResponse.success(status));
     }
 
     @GetMapping("/sync/conflicts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getConflicts() {
         var conflicts = articleSyncService.detectConflicts();
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -43,7 +43,7 @@ public class ArticleSyncController {
     }
 
     @PostMapping("/sync/resolve/{articleId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, String>>> resolveConflict(
             @PathVariable Long articleId,
             @RequestBody Map<String, String> request) {
@@ -53,7 +53,7 @@ public class ArticleSyncController {
     }
 
     @GetMapping("/sync/check")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkSyncNeeded() {
         boolean needed = articleSyncService.isSyncNeeded();
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -63,21 +63,21 @@ public class ArticleSyncController {
     }
 
     @GetMapping("/sync/check-details")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkSyncDetails() {
         Map<String, Object> details = articleSyncService.getSyncDetails();
         return ResponseEntity.ok(ApiResponse.success(details));
     }
 
     @PostMapping("/sync/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ResponseEntity<ApiResponse<Map<String, String>>> syncAllFiles() {
         articleSyncService.syncArticlesFromFiles();
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "同步完成")));
     }
 
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:create')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> uploadArticle(
             @RequestBody UploadArticleRequest request) {
         Map<String, Object> result = articleSyncService.uploadArticle(request);

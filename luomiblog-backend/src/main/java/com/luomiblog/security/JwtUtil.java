@@ -3,29 +3,22 @@ package com.luomiblog.security;
 import com.luomiblog.config.JwtConfig;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.util.Date;
-import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtUtil {
-
-    /**
-     * JWT 密钥最小长度（字节），低于该长度容易被暴力破解
-     */
-    private static final int MIN_SECRET_BYTES = 32;
 
     /** 辰汐通行证会话标记声明名 */
     private static final String CLAIM_CHENXI_SESSION = "cxs";
@@ -35,56 +28,44 @@ public class JwtUtil {
 
     private final JwtConfig jwtConfig;
 
-    /**
-     * 启动时解析后的最终签名密钥（可能来自配置，也可能是随机生成的临时密钥）
-     */
-    private String resolvedSecret;
-
-    @PostConstruct
-    void initSecret() {
-        String configured = jwtConfig.getSecret();
-        if (!StringUtils.hasText(configured)) {
-            // 未配置 JWT_SECRET：生成随机密钥，保证应用可以启动，但 token 不能跨重启使用
-            resolvedSecret = generateRandomSecret();
-            log.warn("================================================================");
-            log.warn("警告: 未配置 jwt.secret/JWT_SECRET，已生成随机临时密钥。");
-            log.warn("重启后所有已签发的 token 将失效！生产环境请设置环境变量 JWT_SECRET（至少 {} 字节）。", MIN_SECRET_BYTES);
-            log.warn("================================================================");
-        } else {
-            if (configured.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
-                throw new IllegalStateException(
-                        "jwt.secret/JWT_SECRET 长度不足：至少需要 " + MIN_SECRET_BYTES + " 字节（"
-                                + (MIN_SECRET_BYTES * 8) + " 位），当前为 "
-                                + configured.getBytes(StandardCharsets.UTF_8).length + " 字节。请更换更强的密钥。");
-            }
-            resolvedSecret = configured;
-        }
-    }
-
-    /**
-     * 生成 256 位随机密钥（十六进制编码）
-     */
-    private String generateRandomSecret() {
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        return HexFormat.of().formatHex(bytes);
-    }
-
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(resolvedSecret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        return generateToken(userDetails.getUsername());
+    public String generateAccessToken(Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        return generateAccessToken(
+                userPrincipal.getUsername(),
+                userPrincipal.getRoleCode(),
+                userPrincipal.getPermissions().stream().toList()
+        );
     }
 
-    public String generateToken(String username) {
+    public String generateAccessToken(String username, String roleCode, List<String> permissions) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
 
         return Jwts.builder()
                 .subject(username)
+                .claim("role", roleCode)
+                .claim("perms", permissions)
+                .claim("type", "access")
+                .id(UUID.randomUUID().toString())
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public String generateRefreshToken(String username) {
+        Date now = new Date();
+        long refreshExpiration = jwtConfig.getExpiration() * 7;
+        Date expiryDate = new Date(now.getTime() + refreshExpiration);
+
+        return Jwts.builder()
+                .subject(username)
+                .claim("type", "refresh")
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -113,7 +94,7 @@ public class JwtUtil {
      */
     public boolean shouldSlide(String token) {
         try {
-            Claims claims = parseClaims(token);
+            Claims claims = parseToken(token);
             if (!Boolean.TRUE.equals(claims.get(CLAIM_CHENXI_SESSION, Boolean.class))) {
                 return false;
             }
@@ -132,7 +113,7 @@ public class JwtUtil {
      * 滑动续期：以相同主体/声明签发一个完整有效期的新令牌
      */
     public String slideToken(String token) {
-        Claims claims = parseClaims(token);
+        Claims claims = parseToken(token);
         long durationMs = claims.get(CLAIM_DURATION, Long.class);
         Date now = new Date();
         return Jwts.builder()
@@ -145,29 +126,44 @@ public class JwtUtil {
                 .compact();
     }
 
-    private Claims parseClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    public String getUsernameFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.getSubject();
     }
 
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.getSubject();
+    public String getRoleFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("role", String.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> getPermissionsFromToken(String token) {
+        Claims claims = parseToken(token);
+        Object perms = claims.get("perms");
+        if (perms instanceof List) {
+            return (List<String>) perms;
+        }
+        return List.of();
+    }
+
+    public boolean isRefreshToken(String token) {
+        Claims claims = parseToken(token);
+        return "refresh".equals(claims.get("type", String.class));
+    }
+
+    public String getTokenId(String token) {
+        Claims claims = parseToken(token);
+        return claims.getId();
+    }
+
+    public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
+        Claims claims = parseToken(token);
+        return claimsResolver.apply(claims);
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
+            parseToken(token);
             return true;
         } catch (SecurityException | MalformedJwtException e) {
             log.error("Invalid JWT token: {}", e.getMessage());
@@ -179,5 +175,13 @@ public class JwtUtil {
             log.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
+    }
+
+    private Claims parseToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

@@ -1,7 +1,6 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
-import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -25,7 +24,6 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
-    private final ClientIpResolver clientIpResolver;
 
     @GetMapping("/article/{articleId}")
     public ApiResponse<Page<CommentResponse>> getCommentsByArticle(
@@ -51,12 +49,13 @@ public class CommentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_comment:create')")
     public ApiResponse<CommentResponse> createComment(
             @Valid @RequestBody CommentRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
-        String ipAddress = clientIpResolver.resolve(httpRequest);
+        String ipAddress = getClientIpAddress(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
@@ -64,6 +63,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_comment:delete')")
     public ApiResponse<Void> deleteComment(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -72,16 +72,24 @@ public class CommentController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_comment:manage')")
     public ApiResponse<Void> approveComment(@PathVariable Long id) {
         commentService.approveComment(id);
         return ApiResponse.success();
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_comment:manage')")
     public ApiResponse<Void> rejectComment(@PathVariable Long id) {
         commentService.rejectComment(id);
         return ApiResponse.success();
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

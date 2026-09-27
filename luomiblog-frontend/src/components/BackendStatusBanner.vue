@@ -11,9 +11,9 @@
           <CircleClose v-else-if="statusType === 'error'" />
           <InfoFilled v-else />
         </el-icon>
-        
+
         <span class="banner-message">{{ statusMessage }}</span>
-        
+
         <el-button
           v-if="needsInstall"
           type="primary"
@@ -22,7 +22,7 @@
         >
           前往安装
         </el-button>
-        
+
         <el-button
           v-else-if="isUnavailable"
           type="primary"
@@ -32,7 +32,7 @@
         >
           重试连接
         </el-button>
-        
+
         <el-button
           v-if="suggestions.length > 0"
           type="info"
@@ -42,19 +42,18 @@
         >
           {{ showDetails ? '收起' : '详情' }}
         </el-button>
-        
+
         <el-button
           class="close-btn"
           type="info"
           size="small"
           text
-          @click="showBanner = false"
+          @click="dismissBanner"
         >
           <el-icon><Close /></el-icon>
         </el-button>
       </div>
-      
-      <!-- 详细信息 -->
+
       <transition name="fade">
         <div v-if="showDetails && suggestions.length > 0" class="banner-details">
           <div class="details-title">建议操作：</div>
@@ -63,7 +62,7 @@
               {{ suggestion }}
             </li>
           </ul>
-          
+
           <div v-if="backendStatus?.components?.database?.error" class="error-details">
             <div class="error-title">错误详情：</div>
             <code>{{ backendStatus.components.database.error }}</code>
@@ -79,6 +78,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Warning, CircleClose, InfoFilled, Close } from '@element-plus/icons-vue';
 import { useBackendStatus } from '../composables/useBackendStatus';
+import { isBackendAvailable } from '../utils/api';
 
 const {
   backendStatus,
@@ -94,6 +94,7 @@ const {
 const showBanner = ref(true);
 const showDetails = ref(false);
 let checkInterval: number | null = null;
+let wasUnavailable = false;
 
 const bannerClass = computed(() => {
   return `banner-${statusType.value}`;
@@ -111,30 +112,65 @@ const retryCheck = async () => {
   await checkBackendStatus();
   if (backendStatus.value?.status === 'healthy') {
     ElMessage.success('后端服务已恢复正常');
+    if (wasUnavailable) {
+      wasUnavailable = false;
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
   } else {
     ElMessage.warning('后端服务仍不可用');
   }
 };
 
-// 定期检查后端状态
+const dismissBanner = () => {
+  showBanner.value = false;
+  if (checkInterval) {
+    clearInterval(checkInterval);
+    checkInterval = null;
+  }
+  setTimeout(() => {
+    startPeriodicCheck();
+  }, 60000);
+};
+
 const startPeriodicCheck = () => {
-  // 初始检查
   checkBackendStatus(true);
-  
-  // 每30秒检查一次
-  checkInterval = window.setInterval(() => {
-    checkBackendStatus(true);
+  checkInterval = window.setInterval(async () => {
+    const wasDown = isUnavailable.value;
+    await checkBackendStatus(true);
+    if (wasDown && backendStatus.value?.status === 'healthy') {
+      if (!showBanner.value) {
+        showBanner.value = true;
+      }
+      wasUnavailable = true;
+    }
   }, 30000);
 };
 
+const handleBackendStatusChanged = ((event: CustomEvent) => {
+  if (event.detail?.available && wasUnavailable) {
+    ElMessage.success('后端服务已恢复，页面将自动刷新');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  }
+  if (!event.detail?.available) {
+    wasUnavailable = true;
+  }
+}) as EventListener;
+
 onMounted(() => {
+  wasUnavailable = !isBackendAvailable();
   startPeriodicCheck();
+  window.addEventListener('backend-status-changed', handleBackendStatusChanged);
 });
 
 onUnmounted(() => {
   if (checkInterval) {
     clearInterval(checkInterval);
   }
+  window.removeEventListener('backend-status-changed', handleBackendStatusChanged);
 });
 </script>
 
@@ -147,7 +183,7 @@ onUnmounted(() => {
   z-index: 9999;
   padding: 12px 24px;
   backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
+  transition: all 0.3s ease-in-out;
 }
 
 .banner-content {
@@ -206,38 +242,33 @@ onUnmounted(() => {
   opacity: 0.9;
 }
 
-/* 状态样式 - 警告 */
 .banner-warning {
   background: rgba(245, 158, 11, 0.95);
   color: #fff;
   border-bottom: 1px solid rgba(245, 158, 11, 0.5);
 }
 
-/* 状态样式 - 错误 */
 .banner-error {
   background: rgba(239, 68, 68, 0.95);
   color: #fff;
   border-bottom: 1px solid rgba(239, 68, 68, 0.5);
 }
 
-/* 状态样式 - 信息 */
 .banner-info {
   background: rgba(59, 130, 246, 0.95);
   color: #fff;
   border-bottom: 1px solid rgba(59, 130, 246, 0.5);
 }
 
-/* 状态样式 - 成功 */
 .banner-success {
   background: rgba(34, 197, 94, 0.95);
   color: #fff;
   border-bottom: 1px solid rgba(34, 197, 94, 0.5);
 }
 
-/* 动画 */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.3s ease-in-out;
 }
 
 .slide-down-enter-from,
@@ -257,7 +288,6 @@ onUnmounted(() => {
   transform: translateY(-10px);
 }
 
-/* 按钮样式覆盖 */
 :deep(.el-button--primary) {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(255, 255, 255, 0.95);

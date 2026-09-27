@@ -1,22 +1,22 @@
 ---
+import { API_BASE_URL } from '../config/api';
+
 export interface Props {
   title?: string;
 }
 
 const { title = '管理后台' } = Astro.props;
 
-// 获取当前路径
 const currentPath = Astro.url.pathname;
 
-// 侧边栏菜单
 const menuItems = [
-  { href: '/admin', label: '仪表盘', subtitle: 'overview', icon: 'LayoutDashboard' },
-  { href: '/admin/users', label: '用户管理', subtitle: 'members', icon: 'Users' },
-  { href: '/admin/articles', label: '文章管理', subtitle: 'content', icon: 'FileText' },
-  { href: '/admin/announcements', label: '公告管理', subtitle: 'notices', icon: 'Megaphone' },
-  { href: '/admin/comments', label: '评价管理', subtitle: 'reviews', icon: 'MessageSquare' },
-  { href: '/admin/settings', label: '系统设置', subtitle: 'settings', icon: 'Settings' },
-  { href: '/admin/mail', label: '邮箱设置', subtitle: 'messaging', icon: 'Mail' },
+  { href: '/admin', label: '仪表盘', subtitle: 'overview', icon: 'LayoutDashboard', roles: ['admin', 'blogger'] },
+  { href: '/admin/users', label: '用户管理', subtitle: 'members', icon: 'Users', roles: ['admin'] },
+  { href: '/admin/articles', label: '文章管理', subtitle: 'content', icon: 'FileText', roles: ['admin', 'blogger'] },
+  { href: '/admin/announcements', label: '公告管理', subtitle: 'notices', icon: 'Megaphone', roles: ['admin', 'blogger'] },
+  { href: '/admin/comments', label: '评价管理', subtitle: 'reviews', icon: 'MessageSquare', roles: ['admin', 'blogger'] },
+  { href: '/admin/settings', label: '系统设置', subtitle: 'settings', icon: 'Settings', roles: ['admin'] },
+  { href: '/admin/mail', label: '邮箱设置', subtitle: 'messaging', icon: 'Mail', roles: ['admin'] },
 ];
 
 const isActive = (href: string) => {
@@ -60,6 +60,7 @@ const isActive = (href: string) => {
             <a 
               href={item.href} 
               class={`nav-item ${isActive(item.href) ? 'active' : ''}`}
+              data-roles={item.roles.join(',')}
             >
               <span class="nav-icon">
                 {item.icon === 'LayoutDashboard' && (
@@ -189,31 +190,98 @@ const isActive = (href: string) => {
   </a>
 </div>
 
+<!-- 后端不可用提示层 -->
+<div id="backend-down-layer" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a0a0f;
+  z-index: 99997;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px;
+  text-align: center;
+">
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" style="opacity: 0.8;">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+  <div>
+    <h2 style="color: #fff; font-size: 20px; margin: 0 0 8px 0; font-weight: 600;">后端服务不可用</h2>
+    <p style="color: rgba(255, 255, 255, 0.6); font-size: 14px; margin: 0; line-height: 1.6;">
+      管理后台需要后端服务支持<br>
+      请检查后端服务是否已启动，或稍后重试
+    </p>
+  </div>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+    <button id="retry-backend-btn" style="
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      重试连接
+    </button>
+    <a href="/" style="
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    " onmouseover="this.style.borderColor='rgba(255,255,255,0.4)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='rgba(255,255,255,0.6)'">
+      返回前台
+    </a>
+  </div>
+</div>
+
 <style>
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
 </style>
 
-<script>
-  // 主题切换功能
+<script define:vars={{ apiBaseUrl: API_BASE_URL }}>
+  const API_BASE = apiBaseUrl;
+
   (function initTheme() {
     const themeToggle = document.getElementById('theme-toggle');
     const html = document.documentElement;
     
-    // 从 localStorage 读取主题设置
     const savedTheme = localStorage.getItem('admin-theme');
     if (savedTheme === 'dark') {
       html.setAttribute('data-theme', 'dark');
     } else if (savedTheme === 'light') {
       html.setAttribute('data-theme', 'light');
     } else {
-      // 默认使用系统偏好
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     }
     
-    // 绑定切换事件
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
         const currentTheme = html.getAttribute('data-theme');
@@ -224,13 +292,57 @@ const isActive = (href: string) => {
     }
   })();
 
-  // 检查管理员权限
+  const ROLE_ACCESS_MAP = {
+    admin: ['/admin', '/admin/users', '/admin/articles', '/admin/announcements', '/admin/comments', '/admin/settings', '/admin/mail'],
+    blogger: ['/admin', '/admin/articles', '/admin/announcements', '/admin/comments'],
+  };
+
+  const ROLE_REDIRECT_MAP = {
+    blogger: '/admin',
+    member: '/',
+    visitor: '/',
+  };
+
+  function filterMenuByRole(role) {
+    const navItems = document.querySelectorAll('.nav-item[data-roles]');
+    navItems.forEach(item => {
+      const allowedRoles = item.getAttribute('data-roles')?.split(',') || [];
+      if (!allowedRoles.includes(role)) {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  function checkPageAccess(role) {
+    const currentPath = window.location.pathname;
+    const allowedPaths = ROLE_ACCESS_MAP[role];
+    if (!allowedPaths) return false;
+
+    if (allowedPaths.includes(currentPath)) return true;
+
+    for (const allowed of allowedPaths) {
+      if (allowed !== '/admin' && currentPath.startsWith(allowed)) return true;
+    }
+
+    return false;
+  }
+
+  function redirectBasedOnRole(role) {
+    const currentPath = window.location.pathname;
+    const redirectPath = ROLE_REDIRECT_MAP[role];
+    if (redirectPath && redirectPath !== currentPath) {
+      window.location.href = redirectPath;
+      return true;
+    }
+    return false;
+  }
+
   (function checkAdminAuth() {
-    const authLayer = document.getElementById('auth-check-layer') as HTMLElement | null;
-    const noPermissionLayer = document.getElementById('no-permission-layer') as HTMLElement | null;
-    const adminLayout = document.querySelector('.admin-layout') as HTMLElement | null;
+    const authLayer = document.getElementById('auth-check-layer');
+    const noPermissionLayer = document.getElementById('no-permission-layer');
+    const backendDownLayer = document.getElementById('backend-down-layer');
+    const adminLayout = document.querySelector('.admin-layout');
     
-    // 先隐藏管理后台内容
     if (adminLayout) {
       adminLayout.style.visibility = 'hidden';
     }
@@ -238,58 +350,108 @@ const isActive = (href: string) => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     
-    // 未登录
     if (!token || !userStr) {
-      // 显示无权限页面
       if (authLayer) authLayer.style.display = 'none';
       if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
-      
-      // 3秒后自动跳转
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 3000);
+      setTimeout(() => { window.location.href = '/'; }, 3000);
       return;
     }
     
     try {
       const user = JSON.parse(userStr);
-      // 检查角色（支持大小写）
       const role = user.role?.toLowerCase();
       const allowedRoles = ['admin', 'blogger'];
       
       if (!allowedRoles.includes(role)) {
-        // 不是管理员，显示无权限页面
         if (authLayer) authLayer.style.display = 'none';
         if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
-        
-        // 3秒后自动跳转
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 3000);
+        setTimeout(() => { window.location.href = '/'; }, 3000);
+        return;
+      }
+
+      filterMenuByRole(role);
+
+      if (!checkPageAccess(role)) {
+        if (authLayer) authLayer.style.display = 'none';
+        if (!redirectBasedOnRole(role)) {
+          if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
+          setTimeout(() => { window.location.href = '/'; }, 3000);
+        }
         return;
       }
       
-      // 有权限，显示管理后台
-      if (authLayer) authLayer.style.display = 'none';
-      if (adminLayout) {
-        adminLayout.style.visibility = 'visible';
-        adminLayout.style.opacity = '0';
-        // 淡入效果
-        setTimeout(() => {
-          adminLayout.style.transition = 'opacity 0.3s ease';
-          adminLayout.style.opacity = '1';
-        }, 50);
-      }
+      checkBackendAndShow();
     } catch {
-      // 解析失败
       if (authLayer) authLayer.style.display = 'none';
       if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
-      
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 3000);
+      setTimeout(() => { window.location.href = '/'; }, 3000);
     }
   })();
+
+  async function checkBackendAndShow() {
+    const authLayer = document.getElementById('auth-check-layer');
+    const backendDownLayer = document.getElementById('backend-down-layer');
+    const adminLayout = document.querySelector('.admin-layout');
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.code === 200 && result.data?.status === 'healthy') {
+          if (authLayer) authLayer.style.display = 'none';
+          if (backendDownLayer) backendDownLayer.style.display = 'none';
+          showAdminLayout(adminLayout);
+          return;
+        }
+      }
+    } catch {}
+
+    if (authLayer) authLayer.style.display = 'none';
+    if (backendDownLayer) backendDownLayer.style.display = 'flex';
+  }
+
+  function showAdminLayout(adminLayout) {
+    if (adminLayout) {
+      adminLayout.style.visibility = 'visible';
+      adminLayout.style.opacity = '0';
+      setTimeout(() => {
+        adminLayout.style.transition = 'opacity 0.3s ease';
+        adminLayout.style.opacity = '1';
+      }, 50);
+    }
+  }
+
+  const retryBtn = document.getElementById('retry-backend-btn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', async () => {
+      retryBtn.textContent = '连接中...';
+      retryBtn.style.opacity = '0.7';
+      retryBtn.style.pointerEvents = 'none';
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.code === 200 && result.data?.status === 'healthy') {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch {}
+
+      retryBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 重试连接';
+      retryBtn.style.opacity = '1';
+      retryBtn.style.pointerEvents = 'auto';
+    });
+  }
 </script>
 
 <style is:global>

@@ -52,13 +52,13 @@ public class TagController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<TagResponse> createTag(@Valid @RequestBody TagRequest request) {
         return ApiResponse.success(tagService.createTag(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
     public ApiResponse<TagResponse> updateTag(
             @PathVariable Long id,
             @Valid @RequestBody TagRequest request) {
@@ -66,7 +66,7 @@ public class TagController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('PERM_article:manage')")
     public ApiResponse<Void> deleteTag(@PathVariable Long id) {
         tagService.deleteTag(id);
         return ApiResponse.success();

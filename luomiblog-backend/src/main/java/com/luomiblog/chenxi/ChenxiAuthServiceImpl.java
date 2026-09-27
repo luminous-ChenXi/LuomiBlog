@@ -342,7 +342,7 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
      */
     private AuthResponse buildAuthResponse(String token, User user, String roleCode) {
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(token)
                 .tokenType("Bearer")
                 .expiresIn((long) properties.getAccessTokenDays() * 86400L)
                 .user(AuthResponse.UserInfo.builder()

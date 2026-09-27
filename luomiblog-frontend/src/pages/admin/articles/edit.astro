@@ -2,8 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ArticleEditor from '../../../components/ArticleEditor.vue';
 
-// 静态生成空壳页面（编辑 URL 形如 /admin/articles/edit?slug=xxx），
-// 文章数据由 ArticleEditor 客户端通过 API 加载
+export const prerender = false;
 ---
 
 <AdminLayout title="编辑文章">

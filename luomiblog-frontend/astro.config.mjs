@@ -1,16 +1,26 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-
 import vue from '@astrojs/vue';
 import tailwindcss from '@tailwindcss/vite';
 import partytown from '@astrojs/partytown';
+import mdx from '@astrojs/mdx';
+import sitemap from '@astrojs/sitemap';
+import node from '@astrojs/node';
+import remarkMath from 'remark-math';
+import remarkToc from 'remark-toc';
+import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
 
-// https://astro.build/config
 export default defineConfig({
   integrations: [
     vue({
       appEntrypoint: '/src/app.ts'
     }),
+    mdx({
+      remarkPlugins: [remarkGfm, remarkMath, [remarkToc, { tight: true, heading: '目录' }]],
+      rehypePlugins: [rehypeKatex],
+    }),
+    sitemap(),
     partytown({
       config: {
         forward: ['dataLayer.push'],
@@ -26,28 +36,46 @@ export default defineConfig({
     build: {
       chunkSizeWarningLimit: 1000
     },
-    // 开发环境代理：将 /api 请求转发到本地后端
     server: {
       proxy: {
-        '/api': 'http://localhost:8080'
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        }
       }
     }
   },
 
-  // 构建配置
   build: {
     format: 'file'
   },
 
-  // 开发服务器配置
   server: {
     port: 4321,
     host: true
   },
 
-  // 站点配置（部署时通过 PUBLIC_SITE_URL 环境变量修改）
-  site: process.env.PUBLIC_SITE_URL || 'http://localhost:4321',
+  site: 'https://luomiblog.com',
 
-  // 输出模式：静态生成
-  output: 'static'
+  adapter: node({
+    mode: 'standalone'
+  }),
+
+  markdown: {
+    gfm: true,
+    shikiConfig: {
+      theme: 'github-dark',
+      wrap: true,
+    },
+    remarkPlugins: [remarkGfm, remarkMath, [remarkToc, { tight: true, heading: '目录' }]],
+    rehypePlugins: [rehypeKatex],
+  },
+
+  i18n: {
+    defaultLocale: 'zh',
+    locales: ['zh', 'en', 'ja'],
+    routing: {
+      prefixDefaultLocale: false
+    }
+  }
 });

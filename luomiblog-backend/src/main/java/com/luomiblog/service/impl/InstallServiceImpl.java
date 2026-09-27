@@ -1,6 +1,5 @@
 package com.luomiblog.service.impl;
 
-import com.luomiblog.common.UserStatus;
 import com.luomiblog.dto.install.*;
 import com.luomiblog.entity.Role;
 import com.luomiblog.repository.RoleRepository;
@@ -25,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.SecureRandom;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.time.LocalDateTime;
@@ -59,60 +58,6 @@ public class InstallServiceImpl implements InstallService {
 
     /** 重新安装验证限流桶（IP -> 桶） */
     private final Map<String, ReinstallVerifyBucket> reinstallVerifyBuckets = new ConcurrentHashMap<>();
-
-    /** 安装向导中用户填写的数据库配置（用于安装完成后写入本地配置文件） */
-    private DatabaseConfigRequest lastDatabaseConfig;
-
-    /**
-     * 重新安装验证限流桶（容量 5，每分钟恢复）
-     */
-    private static class ReinstallVerifyBucket {
-        private int tokens = REINSTALL_VERIFY_CAPACITY;
-        private long lastRefillTime = System.currentTimeMillis();
-
-        synchronized boolean tryConsume() {
-            refill();
-            if (tokens > 0) {
-                tokens--;
-                return true;
-            }
-            return false;
-        }
-
-        private void refill() {
-            long now = System.currentTimeMillis();
-            long elapsed = now - lastRefillTime;
-            if (elapsed >= REINSTALL_VERIFY_REFILL_INTERVAL_MS) {
-                int tokensToAdd = (int) (elapsed / REINSTALL_VERIFY_REFILL_INTERVAL_MS);
-                tokens = Math.min(REINSTALL_VERIFY_CAPACITY, tokens + tokensToAdd);
-                lastRefillTime = now;
-            }
-        }
-    }
-
-    @Override
-    public boolean tryAcquireReinstallVerifyAttempt(String clientIp) {
-        if (clientIp == null || clientIp.isEmpty()) {
-            return false;
-        }
-        if (reinstallVerifyBuckets.size() >= MAX_RATE_LIMITER_ENTRIES && !reinstallVerifyBuckets.containsKey(clientIp)) {
-            // 简单的容量保护：满了就清空重建（极端情况下才发生）
-            reinstallVerifyBuckets.clear();
-        }
-        return reinstallVerifyBuckets
-                .computeIfAbsent(clientIp, k -> new ReinstallVerifyBucket())
-                .tryConsume();
-    }
-
-    @Override
-    public boolean isReinstallVerifyLocked(String clientIp) {
-        return loginSecurityService.isLocked(REINSTALL_VERIFY_LOCK_PREFIX + clientIp);
-    }
-
-    @Override
-    public void recordReinstallVerifyFailure(String clientIp) {
-        loginSecurityService.recordFailedAttempt(REINSTALL_VERIFY_LOCK_PREFIX + clientIp);
-    }
 
     @Override
     public InstallStatusResponse getInstallStatus() {
@@ -398,9 +343,6 @@ public class InstallServiceImpl implements InstallService {
         log.info("开始执行 SQL 脚本，数据库: {}@{}:{}/{}",
             request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
 
-        // 记录本次安装使用的数据库配置，安装完成后写入本地配置文件
-        this.lastDatabaseConfig = request;
-
         // 使用用户配置的数据源执行 SQL 脚本
         DataSource dataSource = createDataSource(request);
         JdbcTemplate template = new JdbcTemplate(dataSource);
@@ -477,7 +419,7 @@ public class InstallServiceImpl implements InstallService {
                 passwordHash,
                 nickname,
                 adminRoleId,
-                UserStatus.ACTIVE,
+                "active",
                 true
             );
 
@@ -604,13 +546,12 @@ public class InstallServiceImpl implements InstallService {
 
             // 验证逻辑：遍历所有管理员/博主用户，验证密码是否匹配任意一个
             // 这样多个管理员中的任何一个都可以验证通过
-            Integer adminRoleId = adminRole != null ? adminRole.getId() : null;
-            Integer bloggerRoleId = bloggerRole != null ? bloggerRole.getId() : null;
+            Long adminRoleId = adminRole != null ? adminRole.getId() : null;
+            Long bloggerRoleId = bloggerRole != null ? bloggerRole.getId() : null;
 
-            // 获取所有管理员和博主用户
             boolean verified = userRepository.findAll().stream()
                     .filter(user -> {
-                        Integer userRoleId = user.getRoleId();
+                        Long userRoleId = user.getRoleId();
                         return userRoleId != null &&
                                (userRoleId.equals(adminRoleId) || userRoleId.equals(bloggerRoleId));
                     })
@@ -674,11 +615,6 @@ public class InstallServiceImpl implements InstallService {
     public void executeReinstall(ReinstallOption option, DatabaseConfigRequest request) {
         log.info("执行重新安装，选项: {}", option.getName());
 
-        // 记录本次安装使用的数据库配置，安装完成后写入本地配置文件
-        if (request != null) {
-            this.lastDatabaseConfig = request;
-        }
-
         switch (option) {
             case KEEP_DATA:
                 // 保留数据，仅执行 schema.sql（使用 IF NOT EXISTS）
@@ -692,13 +628,10 @@ public class InstallServiceImpl implements InstallService {
                 break;
 
             case FRESH_INSTALL:
+            default:
                 // 全新安装：清空数据并重新执行所有脚本
                 executeFreshInstall(request);
                 break;
-
-            default:
-                // 枚举扩展时必须显式处理，禁止默认执行危险操作
-                throw new IllegalArgumentException("不支持的重新安装选项: " + option);
         }
 
         log.info("重新安装完成，选项: {}", option.getName());
@@ -876,71 +809,120 @@ public class InstallServiceImpl implements InstallService {
     }
 
     private String generateCustomConfig(SiteConfigRequest request) {
-        // 数据库账号密码：优先使用安装向导中用户填写的配置，
-        // 未获取到时回退为环境变量占位符（保持 application.yml 默认行为）
-        String dbUsername = "${DB_USERNAME:}";
-        String dbPassword = "${DB_PASSWORD:}";
-        if (lastDatabaseConfig != null) {
-            if (lastDatabaseConfig.getUsername() != null && !lastDatabaseConfig.getUsername().isEmpty()) {
-                dbUsername = lastDatabaseConfig.getUsername();
-            }
-            if (lastDatabaseConfig.getPassword() != null) {
-                dbPassword = lastDatabaseConfig.getPassword();
-            }
-        }
-
-        // 为本次安装生成随机 JWT 签名密钥，避免使用可预测的默认值
-        String jwtSecret = generateRandomJwtSecret();
-
         return String.format("""
                 # LuomiBlog 自定义配置文件（由安装向导生成）
                 # 生成时间: %s
                 # 警告: 此文件由系统自动生成，手动修改可能被覆盖
-                # 警告: 此文件包含数据库凭据和 JWT 密钥，已被 .gitignore 忽略，请勿提交到代码仓库
 
                 blog:
-                  name: '%s'
-                  description: '%s'
-                  theme: '%s'
-                  language: '%s'
-                  timezone: '%s'
-
-                spring:
-                  datasource:
-                    username: '%s'
-                    password: '%s'
-
-                jwt:
-                  secret: '%s'
-                  """,
+                  name: %s
+                  description: %s
+                  theme: %s
+                  language: %s
+                  timezone: %s
+                """,
                 LocalDateTime.now(),
-                escapeYamlSingleQuoted(request.getSiteName()),
-                escapeYamlSingleQuoted(request.getSiteDescription() != null ? request.getSiteDescription() : ""),
-                escapeYamlSingleQuoted(request.getDefaultTheme() != null ? request.getDefaultTheme() : "auto"),
-                escapeYamlSingleQuoted(request.getDefaultLanguage() != null ? request.getDefaultLanguage() : "zh"),
-                escapeYamlSingleQuoted(request.getTimezone() != null ? request.getTimezone() : "Asia/Shanghai"),
-                escapeYamlSingleQuoted(dbUsername),
-                escapeYamlSingleQuoted(dbPassword),
-                jwtSecret
+                request.getSiteName(),
+                request.getSiteDescription() != null ? request.getSiteDescription() : "",
+                request.getDefaultTheme() != null ? request.getDefaultTheme() : "auto",
+                request.getDefaultLanguage() != null ? request.getDefaultLanguage() : "zh",
+                request.getTimezone() != null ? request.getTimezone() : "Asia/Shanghai"
         );
     }
 
-    /**
-     * 生成 256 位随机 JWT 密钥（十六进制编码）
-     */
-    private String generateRandomJwtSecret() {
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        return java.util.HexFormat.of().formatHex(bytes);
+    @Override
+    public boolean verifyLockIntegrity() {
+        try {
+            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            if (!Files.exists(lockPath)) {
+                return false;
+            }
+            String hash = computeFileHash(lockPath);
+            return hash != null;
+        } catch (Exception e) {
+            log.error("安装锁完整性校验失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public String getLockHash() {
+        try {
+            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            if (!Files.exists(lockPath)) {
+                return null;
+            }
+            return computeFileHash(lockPath);
+        } catch (Exception e) {
+            log.error("获取安装锁哈希失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String computeFileHash(Path path) {
+        try {
+            byte[] fileBytes = Files.readAllBytes(path);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(fileBytes);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("计算文件哈希失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public boolean tryAcquireReinstallVerifyAttempt(String clientIp) {
+        if (clientIp == null || clientIp.isEmpty()) {
+            return false;
+        }
+        if (reinstallVerifyBuckets.size() >= MAX_RATE_LIMITER_ENTRIES && !reinstallVerifyBuckets.containsKey(clientIp)) {
+            // 简单的容量保护：满了就清空重建（极端情况下才发生）
+            reinstallVerifyBuckets.clear();
+        }
+        return reinstallVerifyBuckets
+                .computeIfAbsent(clientIp, k -> new ReinstallVerifyBucket())
+                .tryConsume();
+    }
+
+    @Override
+    public boolean isReinstallVerifyLocked(String clientIp) {
+        return loginSecurityService.isLocked(REINSTALL_VERIFY_LOCK_PREFIX + clientIp);
+    }
+
+    @Override
+    public void recordReinstallVerifyFailure(String clientIp) {
+        loginSecurityService.recordFailedAttempt(REINSTALL_VERIFY_LOCK_PREFIX + clientIp);
     }
 
     /**
-     * 转义 YAML 单引号字符串中的特殊字符（单引号翻倍）
+     * 重新安装验证限流桶（容量 5，每分钟恢复）
      */
-    private String escapeYamlSingleQuoted(String value) {
-        if (value == null) {
-            return "";
+    private static class ReinstallVerifyBucket {
+        private int tokens = REINSTALL_VERIFY_CAPACITY;
+        private long lastRefillTime = System.currentTimeMillis();
+
+        synchronized boolean tryConsume() {
+            refill();
+            if (tokens > 0) {
+                tokens--;
+                return true;
+            }
+            return false;
         }
-        return value.replace("'", "''");
+
+        private void refill() {
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastRefillTime;
+            if (elapsed >= REINSTALL_VERIFY_REFILL_INTERVAL_MS) {
+                int tokensToAdd = (int) (elapsed / REINSTALL_VERIFY_REFILL_INTERVAL_MS);
+                tokens = Math.min(REINSTALL_VERIFY_CAPACITY, tokens + tokensToAdd);
+                lastRefillTime = now;
+            }
+        }
     }
 }

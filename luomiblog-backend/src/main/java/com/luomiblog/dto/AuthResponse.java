@@ -5,12 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthResponse {
-    private String token;
+    private String accessToken;
+    private String refreshToken;
     private String tokenType;
     private Long expiresIn;
     private UserInfo user;
@@ -26,5 +29,7 @@ public class AuthResponse {
         private String nickname;
         private String avatarUrl;
         private String role;
+        private String roleName;
+        private List<String> permissions;
     }
 }

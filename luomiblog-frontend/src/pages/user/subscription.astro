@@ -601,7 +601,49 @@ const history = [
 
 <script>
   import { ElMessage } from 'element-plus';
-  import { post } from '../../utils/api';
+
+  const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '';
+
+  // 获取 Token
+  function getToken(): string | null {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  }
+
+  // 发送 POST 请求
+  async function post<T>(path: string, data: any): Promise<T> {
+    const url = new URL(path, API_BASE_URL);
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    const token = getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(result.message);
+    }
+
+    return result.data;
+  }
 
   // 格式化激活码输入（自动添加横线）
   function formatActivationCode(input: HTMLInputElement) {

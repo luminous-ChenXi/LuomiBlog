@@ -1,5 +1,3 @@
-// API 客户端
-
 import type {
   ApiResponse,
   PageResponse,
@@ -22,17 +20,28 @@ import type {
   SiteConfigRequest,
   SmtpConfigRequest,
   FaviconConfigRequest,
-  HealthCheckResponse
+  HealthCheckResponse,
+  AdminUser,
+  AdminUserUpdateRequest,
+  AdminRoleChangeRequest,
+  AdminStatusChangeRequest,
+  AdminResetPasswordRequest
 } from '../types/api';
-import { API_BASE_URL } from '../config/api';
-import { setToken } from '../stores/user';
 
-// 请求配置
+import { API_BASE_URL, API_CONFIG, API_ERROR_CODES, ApiError } from '../config/api';
+
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
+  timeout?: number;
+  retries?: number;
+  requireBackend?: boolean;
+  silent?: boolean;
 }
 
-// 获取 Token
+const backendAvailable = { value: true };
+let lastBackendCheck = 0;
+const BACKEND_CHECK_COOLDOWN = 10000;
+
 function getToken(): string | null {
   if (typeof localStorage !== 'undefined') {
     return localStorage.getItem('token');
@@ -40,16 +49,28 @@ function getToken(): string | null {
   return null;
 }
 
-// 静默替换本地登录态（滑动续期下发的新令牌）
-function applyRefreshedToken(newToken: string): void {
+function clearAuthState() {
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('token', newToken);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new CustomEvent('auth-state-changed', {
+      detail: { authenticated: false }
+    }));
   }
-  setToken(newToken);
 }
 
-// 构建 URL
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    const url = new URL(path);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
+    }
+    return url.toString();
+  }
   const url = new URL(path, API_BASE_URL);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -61,61 +82,161 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
   return url.toString();
 }
 
-// 发送请求
+function classifyError(error: unknown): ApiError {
+  if (error instanceof ApiError) return error;
+
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return new ApiError('请求超时，请稍后重试', API_ERROR_CODES.TIMEOUT);
+  }
+
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    return new ApiError('网络连接失败，请检查网络', API_ERROR_CODES.NETWORK_ERROR);
+  }
+
+  const message = error instanceof Error ? error.message : '未知错误';
+  return new ApiError(message, API_ERROR_CODES.UNKNOWN);
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function markBackendUnavailable() {
+  const wasAvailable = backendAvailable.value;
+  backendAvailable.value = false;
+  lastBackendCheck = Date.now();
+  if (wasAvailable) {
+    clearAuthState();
+  }
+}
+
+function markBackendAvailable(silent: boolean) {
+  const wasUnavailable = !backendAvailable.value;
+  backendAvailable.value = true;
+  lastBackendCheck = Date.now();
+  if (wasUnavailable && !silent) {
+    console.info('[API] 后端服务已恢复');
+    window.dispatchEvent(new CustomEvent('backend-status-changed', {
+      detail: { available: true }
+    }));
+  }
+}
+
 async function request<T>(path: string, config: RequestConfig = {}): Promise<T> {
-  const { params, ...fetchConfig } = config;
+  const {
+    params,
+    timeout = API_CONFIG.timeout,
+    retries = API_CONFIG.retryCount,
+    requireBackend = true,
+    silent = false,
+    ...fetchConfig
+  } = config;
+
+  if (requireBackend && !backendAvailable.value) {
+    const now = Date.now();
+    if (now - lastBackendCheck < BACKEND_CHECK_COOLDOWN) {
+      throw new ApiError('后端服务不可用，请稍后重试', API_ERROR_CODES.NETWORK_ERROR);
+    }
+  }
+
   const url = buildUrl(path, params);
 
-  // 设置默认 headers
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((fetchConfig.headers as Record<string, string>) || {})
   };
 
-  // 添加认证 Token
   const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...fetchConfig,
-    headers
-  });
+  let lastError: ApiError | null = null;
 
-  // 辰汐会话滑动续期：后端在令牌活跃使用且剩余寿命不足一半时，
-  // 通过 X-New-Token 响应头下发新令牌，这里静默替换本地登录态
-  const newToken = response.headers.get('X-New-Token');
-  if (newToken) {
-    applyRefreshedToken(newToken);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const response = await fetch(url, {
+        ...fetchConfig,
+        headers,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      markBackendAvailable(silent);
+
+      if (response.status === 401) {
+        clearAuthState();
+        throw new ApiError('登录已过期，请重新登录', API_ERROR_CODES.AUTH_ERROR, 401);
+      }
+
+      if (response.status === 404) {
+        throw new ApiError('请求的资源不存在', API_ERROR_CODES.NOT_FOUND, 404);
+      }
+
+      if (response.status === 429) {
+        throw new ApiError('请求过于频繁，请稍后重试', API_ERROR_CODES.RATE_LIMIT, 429);
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new ApiError(
+          error.message || `服务器错误 (${response.status})`,
+          response.status >= 500 ? API_ERROR_CODES.SERVER_ERROR : API_ERROR_CODES.UNKNOWN,
+          response.status
+        );
+      }
+
+      const result: ApiResponse<T> = await response.json();
+
+      if (result.code !== 200) {
+        throw new ApiError(result.message || '请求失败', API_ERROR_CODES.SERVER_ERROR, result.code);
+      }
+
+      return result.data;
+    } catch (error) {
+      lastError = classifyError(error);
+
+      if (lastError.code === API_ERROR_CODES.AUTH_ERROR ||
+          lastError.code === API_ERROR_CODES.NOT_FOUND ||
+          lastError.code === API_ERROR_CODES.RATE_LIMIT) {
+        throw lastError;
+      }
+
+      if (attempt < retries && lastError.isRetryable) {
+        if (!silent) {
+          console.warn(`[API] 请求失败，第 ${attempt + 1} 次重试...`, lastError.message);
+        }
+        await delay(API_CONFIG.retryDelay * (attempt + 1));
+        continue;
+      }
+
+      if (lastError.code === API_ERROR_CODES.NETWORK_ERROR ||
+          lastError.code === API_ERROR_CODES.TIMEOUT ||
+          lastError.code === API_ERROR_CODES.SERVER_ERROR) {
+        markBackendUnavailable();
+      }
+
+      throw lastError;
+    }
   }
 
-  // 处理响应
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
-
-  const result: ApiResponse<T> = await response.json();
-
-  if (result.code !== 200) {
-    throw new Error(result.message);
-  }
-
-  return result.data;
+  throw lastError || new ApiError('请求失败', API_ERROR_CODES.UNKNOWN);
 }
 
-// 通用 POST 请求（用于未封装到 api 对象的接口）
-export function post<T>(path: string, data: unknown): Promise<T> {
-  return request<T>(path, {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
+export const isBackendAvailable = () => backendAvailable.value;
 
-// API 方法
+export const setBackendAvailable = (available: boolean) => {
+  if (available) {
+    backendAvailable.value = true;
+    lastBackendCheck = Date.now();
+  } else {
+    markBackendUnavailable();
+  }
+};
+
 export const api = {
-  // 认证相关
   auth: {
     login: (data: LoginRequest) =>
       request<AuthResponse>('/api/auth/login', {
@@ -136,7 +257,6 @@ export const api = {
       request<User>('/api/auth/me')
   },
 
-  // 辰汐通行证登录（标准 OIDC 授权码 + PKCE 公共客户端）
   chenxi: {
     // 登录配置（公开门牌信息，前端根据 enabled 决定是否展示登录入口）
     config: () =>
@@ -150,7 +270,6 @@ export const api = {
       })
   },
 
-  // 文章相关
   articles: {
     getList: (page = 0, size = 10, categoryId?: number) =>
       request<PageResponse<Article>>('/api/articles', {
@@ -158,7 +277,7 @@ export const api = {
       }),
 
     getBySlug: (slug: string) =>
-      request<Article>(`/api/articles/${slug}`),
+      request<Article>(`/api/articles/${slug}`, { silent: true }),
 
     getById: (id: number) =>
       request<Article>(`/api/articles/id/${id}`),
@@ -168,11 +287,27 @@ export const api = {
         params: { keyword }
       }),
 
-    like: (id: number) =>
-      request<void>(`/api/articles/${id}/like`, { method: 'POST' })
+    like: (id: number, userId?: string | null, visitorId?: string) =>
+      request<{ likeCount: number; action: string }>(`/api/articles/${id}/like`, {
+        method: 'POST',
+        body: JSON.stringify({ userId, visitorId })
+      }),
+
+    favorite: (id: number, token: string) =>
+      request<{ action: string }>(`/api/articles/${id}/favorite`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+
+    view: (id: number, data: { userId?: string | null; visitorId: string; userAgent: string }) =>
+      request<void>(`/api/articles/${id}/view`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        silent: true,
+        requireBackend: false
+      })
   },
 
-  // 分类相关
   categories: {
     getList: () =>
       request<Category[]>('/api/categories'),
@@ -181,7 +316,6 @@ export const api = {
       request<Category[]>('/api/categories/tree')
   },
 
-  // 标签相关
   tags: {
     getList: () =>
       request<Tag[]>('/api/tags'),
@@ -190,7 +324,6 @@ export const api = {
       request<Tag>(`/api/tags/${slug}`)
   },
 
-  // 评论相关
   comments: {
     getByArticle: (articleId: number, page = 0, size = 10) =>
       request<PageResponse<Comment>>('/api/comments', {
@@ -207,7 +340,6 @@ export const api = {
       request<void>(`/api/comments/${id}/like`, { method: 'POST' })
   },
 
-  // AI 相关
   ai: {
     ask: (data: AIAskRequest) =>
       request<AIAskResponse>('/api/ai/ask', {
@@ -222,10 +354,11 @@ export const api = {
       })
   },
 
-  // 安装相关
   install: {
     getStatus: () =>
-      request<InstallStatusResponse>('/api/install/status'),
+      request<InstallStatusResponse>('/api/install/status', {
+        requireBackend: false
+      }),
 
     checkEnvironment: () =>
       request<EnvironmentCheckResponse>('/api/install/check-environment', {
@@ -295,11 +428,10 @@ export const api = {
         method: 'POST'
       }),
 
-    // 需要已认证的 ADMIN token（请求包装器自动附带），confirm 必须为 "REINSTALL"
-    verifyReinstall: (password: string, confirm: string) =>
+    verifyReinstall: (password: string) =>
       request<{ success: boolean; message: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
         method: 'POST',
-        body: JSON.stringify({ password, confirm })
+        body: JSON.stringify({ password })
       }),
 
     getReinstallOptions: () =>
@@ -311,24 +443,31 @@ export const api = {
         method: 'GET'
       }),
 
-    // 需要已认证的 ADMIN token；confirm 为 "REINSTALL"，fresh_install 时必须为 "DROP_ALL_TABLES"
-    executeReinstall: (option: string, confirm: string, database?: DatabaseConfigRequest) =>
+    executeReinstall: (option: string, database?: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string; option: string }>('/api/install/reinstall', {
         method: 'POST',
-        body: JSON.stringify({ option, confirm, database })
+        body: JSON.stringify({ option, database })
       })
   },
 
-  // 健康检查
   health: {
     check: () =>
-      request<HealthCheckResponse>('/api/health'),
+      request<HealthCheckResponse>('/api/health', {
+        timeout: API_CONFIG.healthCheckTimeout,
+        retries: 0,
+        silent: true,
+        requireBackend: false
+      }),
 
     ping: () =>
-      request<string>('/api/health/ping')
+      request<string>('/api/health/ping', {
+        timeout: API_CONFIG.pingTimeout,
+        retries: 0,
+        silent: true,
+        requireBackend: false
+      })
   },
 
-  // 站点配置
   site: {
     getConfig: () =>
       request<{
@@ -342,10 +481,49 @@ export const api = {
         seoTitle: string;
         seoKeywords: string;
         seoDescription: string;
-      }>('/api/site/config'),
+      }>('/api/site/config', { silent: true, requireBackend: false }),
 
     getFavicon: () =>
-      request<string>('/api/site/favicon')
+      request<string>('/api/site/favicon', { silent: true, requireBackend: false })
+  },
+
+  adminUsers: {
+    getList: (page = 0, size = 20, search?: string, role?: string, status?: string) =>
+      request<PageResponse<AdminUser>>('/api/admin/users', {
+        params: { page, size, search, role, status }
+      }),
+
+    getById: (id: number) =>
+      request<AdminUser>(`/api/admin/users/${id}`),
+
+    update: (id: number, data: AdminUserUpdateRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    changeRole: (id: number, data: AdminRoleChangeRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}/role`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    changeStatus: (id: number, data: AdminStatusChangeRequest) =>
+      request<AdminUser>(`/api/admin/users/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    delete: (id: number) =>
+      request<void>(`/api/admin/users/${id}`, {
+        method: 'DELETE'
+      }),
+
+    resetPassword: (id: number, data: AdminResetPasswordRequest) =>
+      request<void>(`/api/admin/users/${id}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
   }
 };
 

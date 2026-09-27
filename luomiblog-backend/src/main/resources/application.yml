@@ -5,15 +5,12 @@ spring:
   application:
     name: luomiblog
 
-  # 安装向导生成的自定义配置（数据库账号、JWT 密钥等），文件不存在时忽略
-  config:
-    import: optional:file:./config/custom-application.yml
-
   datasource:
     url: jdbc:mysql://localhost:3306/luomiblog?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
-    # 通过环境变量注入，请勿在代码仓库中硬编码数据库账号密码
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    # username: ${DB_USERNAME:}
+    # password: ${DB_PASSWORD:}
+    username: luomiblog
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -24,11 +21,12 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
+      # ORM 自动建表
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     open-in-view: false
 
@@ -36,30 +34,30 @@ spring:
     init:
       mode: never
 
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
+
 logging:
   level:
     com.luomiblog: INFO
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"
 
 jwt:
-  # 生产环境必须通过环境变量 JWT_SECRET 注入（至少 32 字节）。
-  # 未配置时应用会在启动时生成随机密钥，重启后已签发的 token 将失效。
-  secret: ${JWT_SECRET:}
+  secret: ${JWT_SECRET:luomiblog-secret-key-change-in-production}
   expiration: 86400000
 
 app:
+  registration-enabled: true
   cors:
-    allowed-origins: http://localhost:4321,http://localhost:3000
-  security:
-    # 是否信任反向代理传递的 X-Forwarded-For 头（直连部署必须保持 false，防止伪造 IP 绕过限流）
-    trust-proxy: false
+    allowed-origins: http://localhost:4321,http://localhost:4322,http://localhost:3000,http://127.0.0.1:4321,http://127.0.0.1:4322,http://127.0.0.1:3000
   pagination:
     default-page-size: 10
     max-page-size: 100
 
-# 辰汐生态集成（与 AstrNest 孪生项目统一规范对齐，所有开关默认关闭）
 chenxi:
   passport:
     # 辰汐通行证登录总开关（标准 OAuth 2.1 / OIDC 授权码 + PKCE 公共客户端，没有任何密钥）

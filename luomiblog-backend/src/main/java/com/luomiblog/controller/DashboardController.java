@@ -18,11 +18,8 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    /**
-     * 获取仪表盘统计数据
-     */
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_system:view')")
     public ApiResponse<DashboardStatsDTO> getDashboardStats() {
         log.info("获取仪表盘统计数据");
         DashboardStatsDTO stats = dashboardService.getDashboardStats();

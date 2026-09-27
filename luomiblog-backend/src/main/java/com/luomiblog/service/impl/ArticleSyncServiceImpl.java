@@ -6,7 +6,6 @@ import com.luomiblog.dto.UploadArticleRequest;
 import com.luomiblog.entity.Article;
 import com.luomiblog.entity.User;
 import com.luomiblog.repository.ArticleRepository;
-import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.service.ArticleSyncService;
 import com.luomiblog.service.MemoryCacheService;
@@ -37,7 +36,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final MemoryCacheService cacheService;
 
     @Value("${article.content.path:../luomiblog-frontend/src/content/blog}")
@@ -403,33 +401,23 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     /**
      * 获取默认作者
-     * 通过角色编码（roles.code）查找，避免硬编码角色ID（角色ID会随种子数据变化）
-     * 优先级：1.管理员(ADMIN) 2.博主(BLOGGER) 3.任意已有用户
+     * 优先级：1.博主(BLOGGER) 2.管理员(ADMIN) 3.第一个用户
      */
     private User getDefaultAuthor() {
-        // 1. 优先查找管理员角色下的用户
-        User admin = findUserByRoleCode("admin");
-        if (admin != null) {
-            return admin;
+        // 1. 优先查找博主角色(roleId=2)
+        List<User> bloggers = userRepository.findByRoleId(2L);
+        if (!bloggers.isEmpty()) {
+            return bloggers.get(0);
         }
 
-        // 2. 查找博主角色下的用户
-        User blogger = findUserByRoleCode("blogger");
-        if (blogger != null) {
-            return blogger;
+        // 2. 查找管理员角色(roleId=1)
+        List<User> admins = userRepository.findByRoleId(1L);
+        if (!admins.isEmpty()) {
+            return admins.get(0);
         }
 
-        // 3. 回退到任意已有用户
+        // 3. 返回第一个用户
         return userRepository.findAll().stream().findFirst().orElse(null);
-    }
-
-    /**
-     * 根据角色编码查找该角色下的第一个未删除用户
-     */
-    private User findUserByRoleCode(String roleCode) {
-        return roleRepository.findByCodeIgnoreCase(roleCode)
-            .flatMap(role -> userRepository.findByRoleId(role.getId()).stream().findFirst())
-            .orElse(null);
     }
 
     private boolean acquireSyncLock() {
@@ -518,8 +506,9 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
     @Override
     @Transactional
+    @SuppressWarnings("null")
     public Map<String, Object> uploadArticle(UploadArticleRequest request) {
-        String filename = sanitizeFilename(request.getFilename());
+        String filename = request.getFilename();
         String content = request.getContent();
         boolean autoPublish = request.getAutoPublish() != null ? request.getAutoPublish() : true;
         boolean skipExisting = request.getSkipExisting() != null ? request.getSkipExisting() : false;
@@ -541,15 +530,11 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
 
         // 保存文件到文件系统
         try {
-            Path blogDir = Paths.get(contentPath).toAbsolutePath().normalize();
+            Path blogDir = Paths.get(contentPath);
             if (!Files.exists(blogDir)) {
                 Files.createDirectories(blogDir);
             }
-            Path filePath = blogDir.resolve(filename).normalize();
-            // 防御性校验：确保最终写入路径仍在博客文章目录内，防止路径穿越
-            if (!filePath.startsWith(blogDir)) {
-                throw new IllegalArgumentException("非法的文件路径: " + filename);
-            }
+            Path filePath = blogDir.resolve(filename);
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("保存文件失败: {}", filename, e);
@@ -559,8 +544,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
         User author = getDefaultAuthor();
 
         if (existing.isPresent()) {
-            // 更新现有文章
-            @SuppressWarnings("null")
             Article article = existing.get();
             updateArticleFromFile(article, fileInfo, author);
             articleRepository.save(article);
@@ -574,8 +557,8 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             return result;
         } else {
             // 创建新文章
-            @SuppressWarnings("null")
-            Article article = createArticleFromFile(fileInfo, author);
+            Article article = Objects.requireNonNull(createArticleFromFile(fileInfo, author),
+                "创建文章返回 null");
             if (!autoPublish) {
                 article.setStatus("draft");
             }
@@ -589,24 +572,6 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
             result.put("slug", article.getSlug());
             return result;
         }
-    }
-
-    /**
-     * 校验并规范化上传的文件名，防止路径穿越攻击
-     * 只接受纯文件名：不允许包含路径分隔符、"..\"、".."、前导分隔符等，且必须以 .md 结尾
-     */
-    private String sanitizeFilename(String filename) {
-        if (filename == null || filename.isBlank()) {
-            throw new IllegalArgumentException("文件名不能为空");
-        }
-        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")
-                || filename.contains(":") || filename.startsWith(".")) {
-            throw new IllegalArgumentException("非法的文件名: " + filename);
-        }
-        if (!filename.toLowerCase().endsWith(".md")) {
-            throw new IllegalArgumentException("仅支持 .md 文件: " + filename);
-        }
-        return filename;
     }
 
     private ArticleFileInfo parseArticleContent(String content, String fileName) {
