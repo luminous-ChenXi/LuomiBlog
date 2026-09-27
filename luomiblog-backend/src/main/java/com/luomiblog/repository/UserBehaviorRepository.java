@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -47,4 +48,9 @@ public interface UserBehaviorRepository extends JpaRepository<UserBehavior, Long
      * 统计某行为类型在某时间范围内的记录数
      */
     long countByBehaviorTypeAndCreatedAtBetween(UserBehavior.BehaviorType behaviorType, java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    /**
+     * 取一批指定时间前的流水（供每日清理任务分批删除，避免大事务锁表）
+     */
+    List<UserBehavior> findTop500ByCreatedAtBeforeOrderByCreatedAtAsc(java.time.LocalDateTime cutoff);
 }

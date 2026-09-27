@@ -1,6 +1,7 @@
 package com.luomiblog.service;
 
 import com.luomiblog.dto.ArticleStatsResult;
+import com.luomiblog.dto.MyFavoritesResponse;
 
 /**
  * 文章统计服务接口
@@ -54,4 +55,14 @@ public interface ArticleStatsService {
      * 获取文章统计信息
      */
     ArticleStatsResult getArticleStats(Long articleId, Long userId, String visitorId);
+
+    /**
+     * 我的收藏列表（含收藏夹清单、分页）
+     *
+     * @param userId 用户ID
+     * @param folder 收藏夹名（null/blank 表示全部）
+     * @param page   页码（0 起）
+     * @param size   每页条数（上限 50）
+     */
+    MyFavoritesResponse getMyFavorites(Long userId, String folder, int page, int size);
 }

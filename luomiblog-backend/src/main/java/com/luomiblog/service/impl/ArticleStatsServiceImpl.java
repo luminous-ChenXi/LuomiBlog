@@ -1,22 +1,36 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.ArticleStatsResult;
+import com.luomiblog.dto.MyFavoritesResponse;
 import com.luomiblog.entity.Article;
 import com.luomiblog.entity.ArticleFavorite;
 import com.luomiblog.entity.ArticleLike;
+import com.luomiblog.entity.Category;
+import com.luomiblog.entity.User;
 import com.luomiblog.entity.UserBehavior;
 import com.luomiblog.repository.ArticleFavoriteRepository;
 import com.luomiblog.repository.ArticleLikeRepository;
 import com.luomiblog.repository.ArticleRepository;
+import com.luomiblog.repository.CategoryRepository;
 import com.luomiblog.repository.UserBehaviorRepository;
+import com.luomiblog.repository.UserRepository;
 import com.luomiblog.service.ArticleStatsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,6 +41,8 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
     private final ArticleLikeRepository articleLikeRepository;
     private final ArticleFavoriteRepository articleFavoriteRepository;
     private final UserBehaviorRepository userBehaviorRepository;
+    private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -234,6 +250,86 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
                 .favoriteCount((int) articleFavoriteRepository.countByArticleId(articleId))
                 .hasLiked(hasLiked(articleId, userId, visitorId))
                 .hasFavorited(hasFavorited(articleId, userId))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MyFavoritesResponse getMyFavorites(Long userId, String folder, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        boolean filterByFolder = folder != null && !folder.isBlank();
+        Page<ArticleFavorite> favoritePage = filterByFolder
+                ? articleFavoriteRepository.findByUserIdAndFolderName(userId, folder, pageable)
+                : articleFavoriteRepository.findByUserId(userId, pageable);
+
+        List<ArticleFavorite> favorites = favoritePage.getContent();
+
+        // 批量取文章 / 分类 / 作者信息，避免 N+1
+        Map<Long, Article> articleMap = articleRepository.findAllById(
+                        favorites.stream().map(ArticleFavorite::getArticleId).toList())
+                .stream()
+                .collect(Collectors.toMap(Article::getId, Function.identity()));
+
+        Map<Long, Category> categoryMap = categoryRepository.findAllById(
+                        articleMap.values().stream()
+                                .map(Article::getCategoryId)
+                                .filter(java.util.Objects::nonNull)
+                                .toList())
+                .stream()
+                .collect(Collectors.toMap(Category::getId, Function.identity()));
+
+        Map<Long, User> authorMap = userRepository.findAllById(
+                        articleMap.values().stream()
+                                .map(Article::getAuthorId)
+                                .filter(java.util.Objects::nonNull)
+                                .toList())
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<MyFavoritesResponse.FavoriteItem> items = favorites.stream()
+                .map(favorite -> {
+                    Article article = articleMap.get(favorite.getArticleId());
+                    MyFavoritesResponse.FavoriteItem.FavoriteItemBuilder builder =
+                            MyFavoritesResponse.FavoriteItem.builder()
+                                    .favoriteId(favorite.getId())
+                                    .articleId(favorite.getArticleId())
+                                    .folderName(favorite.getFolderName())
+                                    .favoritedAt(favorite.getCreatedAt());
+                    if (article != null) {
+                        String authorName = Optional.ofNullable(article.getAuthorId())
+                                .map(authorMap::get)
+                                .map(author -> author.getNickname() != null ? author.getNickname() : author.getUsername())
+                                .orElse(null);
+                        String categoryName = Optional.ofNullable(article.getCategoryId())
+                                .map(categoryMap::get)
+                                .map(Category::getName)
+                                .orElse(null);
+                        builder.title(article.getTitle())
+                                .slug(article.getSlug())
+                                .summary(article.getSummary())
+                                .authorName(authorName)
+                                .categoryName(categoryName)
+                                .viewCount(article.getViewCount())
+                                .likeCount(article.getLikeCount());
+                    }
+                    return builder.build();
+                })
+                .collect(Collectors.toList());
+
+        List<String> folders = articleFavoriteRepository.findFoldersByUserId(userId);
+        if (folders == null) {
+            folders = Collections.emptyList();
+        }
+
+        return MyFavoritesResponse.builder()
+                .folders(folders)
+                .page(favoritePage.getNumber())
+                .size(favoritePage.getSize())
+                .totalElements(favoritePage.getTotalElements())
+                .totalPages(favoritePage.getTotalPages())
+                .items(items)
                 .build();
     }
 }

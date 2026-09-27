@@ -200,7 +200,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public void resetTwoFactor(Long id, String operatorUsername) {
+    public void resetTwoFactor(Long id, Long operatorId) {
         User user = findActiveUserById(id);
 
         user.setTotpSecret(null);
@@ -208,11 +208,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         user.setRecoveryCodes(null);
         userRepository.save(user);
 
-        // JWT 过滤器的 principal 是用户名字符串，这里反查操作者 id（查不到不影响重置）
-        Long operatorId = userRepository.findByUsername(operatorUsername)
-                .map(User::getId).orElse(null);
         logAudit("RESET_2FA", operatorId, id, "重置用户两步验证绑定");
-        log.info("管理员重置用户 2FA 绑定: userId={}, operator={}", id, operatorUsername);
+        log.info("管理员重置用户 2FA 绑定: userId={}, operatorId={}", id, operatorId);
     }
 
     private User findActiveUserById(Long id) {

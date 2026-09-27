@@ -8,16 +8,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -29,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final MemoryCacheService memoryCacheService;
+    private final UserDetailsService userDetailsService;
 
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -50,19 +51,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (!jwtUtil.isRefreshToken(token)) {
                 String username = jwtUtil.getUsernameFromToken(token);
-                String roleCode = jwtUtil.getRoleFromToken(token);
-                List<String> permissions = jwtUtil.getPermissionsFromToken(token);
 
-                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                if (roleCode != null) {
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + roleCode.toUpperCase()));
+                // principal 必须是 UserPrincipal（而非用户名字符串）：
+                // 全项目所有 @AuthenticationPrincipal UserPrincipal 参数都依赖它，
+                // 否则恒为 null（点赞落库 user_id=NULL、收藏 NPE、评论身份丢失等）。
+                // 角色与权限改为按 DB 实时加载：封禁/降权立即生效，优于令牌内快照。
+                UserDetails principal;
+                try {
+                    principal = userDetailsService.loadUserByUsername(username);
+                } catch (UsernameNotFoundException e) {
+                    log.debug("令牌对应用户不存在或已停用: {}", username);
+                    filterChain.doFilter(request, response);
+                    return;
                 }
-                for (String perm : permissions) {
-                    authorities.add(new SimpleGrantedAuthority("PERM_" + perm));
+
+                // 封禁/停用立即生效（与登录侧判定一致），不再等令牌自然过期
+                if (!principal.isEnabled() || !principal.isAccountNonLocked()) {
+                    log.debug("令牌对应用户已封禁或停用: {}", username);
+                    filterChain.doFilter(request, response);
+                    return;
                 }
 
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);

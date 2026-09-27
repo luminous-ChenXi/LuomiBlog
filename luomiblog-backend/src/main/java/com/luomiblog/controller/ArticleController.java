@@ -82,15 +82,7 @@ public class ArticleController {
         return ApiResponse.success();
     }
 
-    @PostMapping("/{id}/view")
-    public ApiResponse<Void> incrementViewCount(@PathVariable Long id) {
-        articleService.incrementViewCount(id);
-        return ApiResponse.success();
-    }
-
-    @PostMapping("/{id}/like")
-    public ApiResponse<Void> incrementLikeCount(@PathVariable Long id) {
-        articleService.incrementLikeCount(id);
-        return ApiResponse.success();
-    }
+    // 注意：浏览量记录（POST /{articleId}/view）与点赞切换（POST /{articleId}/like）
+    // 统一由 ArticleStatsController 提供（支持匿名 visitorId 与登录用户切换语义）。
+    // 此处曾重复定义同名路径导致 Spring ambiguous mapping 500，已删除。
 }

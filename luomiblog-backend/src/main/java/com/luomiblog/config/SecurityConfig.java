@@ -54,6 +54,10 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/articles").hasAnyRole("BLOGGER", "ADMIN")
+                        // 浏览量记录与点赞切换：设计上支持匿名访客（visitorId 维度），
+                        // 登录用户由 JwtAuthenticationFilter 的 principal 注入身份
+                        .requestMatchers(HttpMethod.POST, "/api/articles/*/view").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/articles/*/like").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/articles/**").hasAnyRole("BLOGGER", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/articles/**").hasAnyRole("BLOGGER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/comments").authenticated()

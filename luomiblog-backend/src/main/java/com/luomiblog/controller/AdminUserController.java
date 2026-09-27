@@ -92,9 +92,8 @@ public class AdminUserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> resetTwoFactor(
             @PathVariable Long id,
-            @AuthenticationPrincipal String operatorUsername) {
-        // JwtAuthenticationFilter 的 principal 为用户名字符串
-        adminUserService.resetTwoFactor(id, operatorUsername);
+            @AuthenticationPrincipal UserPrincipal operator) {
+        adminUserService.resetTwoFactor(id, operator.getId());
         return ApiResponse.success();
     }
 }

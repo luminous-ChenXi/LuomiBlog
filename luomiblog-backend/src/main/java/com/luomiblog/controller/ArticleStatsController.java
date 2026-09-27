@@ -2,6 +2,7 @@ package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleStatsResult;
+import com.luomiblog.dto.MyFavoritesResponse;
 import com.luomiblog.security.UserPrincipal;
 import com.luomiblog.service.ArticleStatsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,11 +26,14 @@ public class ArticleStatsController {
     public ApiResponse<ArticleStatsResult> recordView(
             @PathVariable Long articleId,
             @RequestBody ViewRecordRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
         String ipAddress = getClientIpAddress(httpRequest);
         String visitorId = request.getVisitorId();
-        Long userId = request.getUserId();
+        // 身份以 JWT principal 为准：登录用户忽略请求体里的 userId（防冒充），
+        // 匿名访客落 visitorId 维度
+        Long userId = userPrincipal != null ? userPrincipal.getId() : request.getUserId();
 
         if (visitorId == null || visitorId.isEmpty()) {
             visitorId = UUID.randomUUID().toString();
@@ -49,12 +53,16 @@ public class ArticleStatsController {
     public ApiResponse<ArticleStatsResult> toggleLike(
             @PathVariable Long articleId,
             @RequestBody LikeRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
         String ipAddress = getClientIpAddress(httpRequest);
+        // 登录用户身份以 JWT principal 为准（保证 article_likes.user_id 落库正确），
+        // 匿名访客按 visitorId 切换
+        Long userId = userPrincipal != null ? userPrincipal.getId() : request.getUserId();
 
         ArticleStatsResult result = articleStatsService.toggleLike(
-                articleId, request.getUserId(), request.getVisitorId(), ipAddress);
+                articleId, userId, request.getVisitorId(), ipAddress);
 
         return ApiResponse.success(result);
     }
@@ -97,6 +105,23 @@ public class ArticleStatsController {
                 .hasFavorited(articleStatsService.hasFavorited(articleId, userId))
                 .build();
 
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * 我的收藏列表：GET /api/articles/favorites/my?folder=&page=&size=
+     * URL 层因 GET /api/articles/** 放行，方法级 @PreAuthorize 强制登录
+     */
+    @GetMapping("/favorites/my")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<MyFavoritesResponse> myFavorites(
+            @RequestParam(required = false) String folder,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+
+        MyFavoritesResponse result = articleStatsService.getMyFavorites(
+                userPrincipal.getId(), folder, page, size);
         return ApiResponse.success(result);
     }
 
