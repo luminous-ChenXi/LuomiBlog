@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.Map;
 
@@ -31,8 +30,8 @@ public class InstallLockFilter extends OncePerRequestFilter {
 
     private final InstallService installService;
     private final ObjectMapper objectMapper;
+    private final InstallLockLocator installLockLocator;
 
-    private static final String INSTALL_LOCK_FILE = "install.lock";
     private String cachedLockHash = null;
     private volatile boolean lockVerified = false;
 
@@ -76,7 +75,7 @@ public class InstallLockFilter extends OncePerRequestFilter {
 
     private boolean verifyLockIntegrity() {
         try {
-            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            Path lockPath = installLockLocator.resolve();
             if (!Files.exists(lockPath)) {
                 if (lockVerified && cachedLockHash != null) {
                     log.error("安装锁文件已被删除！系统可能遭受攻击");

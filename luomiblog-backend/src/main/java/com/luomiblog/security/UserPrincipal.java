@@ -74,10 +74,11 @@ public class UserPrincipal implements UserDetails {
     }
 
     public boolean isBloggerOrAdmin() {
-        return "blogger".equalsIgnoreCase(roleCode) || "admin".equalsIgnoreCase(roleCode);
+        return com.luomiblog.common.Roles.BLOGGER.equals(roleCode)
+                || com.luomiblog.common.Roles.ADMIN.equals(roleCode);
     }
 
     public boolean isAdmin() {
-        return "admin".equalsIgnoreCase(roleCode);
+        return com.luomiblog.common.Roles.ADMIN.equals(roleCode);
     }
 }
