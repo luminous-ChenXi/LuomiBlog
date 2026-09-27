@@ -311,6 +311,43 @@ export interface AdminSettings {
   smtp: SmtpSettings;
 }
 
+// 文章互动（浏览量上报/点赞切换）返回的统计负载
+export interface ArticleStatsPayload {
+  success: boolean;
+  action: string;
+  viewCount?: number;
+  likeCount?: number;
+  favoriteCount?: number;
+  hasLiked?: boolean;
+  hasFavorited?: boolean;
+  message?: string;
+}
+
+// 我的收藏条目
+export interface FavoriteItem {
+  favoriteId: number;
+  articleId: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  categoryName: string | null;
+  authorName: string | null;
+  viewCount: number | null;
+  likeCount: number | null;
+  folderName: string | null;
+  favoritedAt: string;
+}
+
+// 我的收藏列表响应（含收藏夹清单与分页）
+export interface MyFavoritesResponse {
+  folders: string[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  items: FavoriteItem[];
+}
+
 // 健康检查响应
 export interface HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'needs_reinstall' | 'not_installed';

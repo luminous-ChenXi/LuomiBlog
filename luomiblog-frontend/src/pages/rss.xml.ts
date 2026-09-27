@@ -1,9 +1,32 @@
 import type { APIRoute } from 'astro';
 import { getSiteUrl } from '../config/site';
+import { getFeedItems, escapeXml, escapeCdata } from '../utils/feed';
+
+// 作者邮箱为站主固定值（已确认保留）
+const AUTHOR_EMAIL = 'chenxi@luminouschenxi.net';
+const AUTHOR_NAME = '辰汐';
 
 export const GET: APIRoute = async ({ site }) => {
   const siteUrl = getSiteUrl(site);
-  
+  const items = await getFeedItems(20);
+
+  const itemXml = items.map(item => {
+    const link = `${siteUrl}/article/${item.slug}`;
+    const categoryLines = item.categories.length
+      ? item.categories.map(c => `      <category>${escapeXml(c)}</category>`).join('\n') + '\n'
+      : '';
+    return `    <item>
+      <title>${escapeXml(item.title)}</title>
+      <link>${link}</link>
+      <guid isPermaLink="true">${link}</guid>
+      <pubDate>${item.pubDate.toUTCString()}</pubDate>
+      <author>${AUTHOR_EMAIL} (${AUTHOR_NAME})</author>
+${categoryLines}      <description><![CDATA[${escapeCdata(item.description)}]]></description>
+    </item>`;
+  }).join('\n');
+
+  const lastBuildDate = items[0]?.pubDate ? items[0].pubDate.toUTCString() : new Date().toUTCString();
+
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
@@ -11,43 +34,14 @@ export const GET: APIRoute = async ({ site }) => {
     <link>${siteUrl}</link>
     <description>程序员向AI原生增强型知识库博客，分享技术文章与学习心得</description>
     <language>zh-CN</language>
-    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml"/>
     <image>
       <url>${siteUrl}/favicon.svg</url>
       <title>LuomiBlog</title>
       <link>${siteUrl}</link>
     </image>
-    <item>
-      <title>Spring Boot 3.2 新特性探索</title>
-      <link>${siteUrl}/article/spring-boot-3-2-features</link>
-      <guid isPermaLink="true">${siteUrl}/article/spring-boot-3-2-features</guid>
-      <pubDate>Thu, 28 Feb 2026 00:00:00 GMT</pubDate>
-      <author>chenxi@luminouschenxi.net (辰汐)</author>
-      <category>Spring Boot</category>
-      <category>Java</category>
-      <description><![CDATA[Spring Boot 3.2 带来了许多令人兴奋的新特性，包括虚拟线程支持、RestClient、JdbcClient 等。本文将详细介绍这些新特性并给出实战示例。]]></description>
-    </item>
-    <item>
-      <title>基于 Astro 的静态博客性能优化实践</title>
-      <link>${siteUrl}/article/astro-performance-optimization</link>
-      <guid isPermaLink="true">${siteUrl}/article/astro-performance-optimization</guid>
-      <pubDate>Wed, 05 Mar 2026 00:00:00 GMT</pubDate>
-      <author>chenxi@luminouschenxi.net (辰汐)</author>
-      <category>Astro</category>
-      <category>性能优化</category>
-      <description><![CDATA[Astro 是一个现代化的静态站点生成器，本文将分享在使用 Astro 构建博客时的性能优化经验。]]></description>
-    </item>
-    <item>
-      <title>基于阿里云百炼构建 RAG 知识库系统</title>
-      <link>${siteUrl}/article/aliyun-bailian-rag</link>
-      <guid isPermaLink="true">${siteUrl}/article/aliyun-bailian-rag</guid>
-      <pubDate>Fri, 20 Dec 2025 00:00:00 GMT</pubDate>
-      <author>chenxi@luminouschenxi.net (辰汐)</author>
-      <category>AI</category>
-      <category>RAG</category>
-      <description><![CDATA[本文介绍如何利用阿里云百炼平台快速搭建一个基于 RAG（检索增强生成）的知识库问答系统。]]></description>
-    </item>
+${itemXml}
   </channel>
 </rss>`;
 

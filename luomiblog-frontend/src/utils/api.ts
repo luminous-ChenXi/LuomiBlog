@@ -28,7 +28,9 @@ import type {
   AdminResetPasswordRequest,
   SiteFeatures,
   AdminSettings,
-  SmtpSettings
+  SmtpSettings,
+  MyFavoritesResponse,
+  ArticleStatsPayload
 } from '../types/api';
 
 import { API_BASE_URL, API_CONFIG, API_ERROR_CODES, ApiError } from '../config/api';
@@ -330,10 +332,10 @@ export const api = {
         params: { keyword }
       }),
 
-    like: (id: number, userId?: string | null, visitorId?: string) =>
-      request<{ likeCount: number; action: string }>(`/api/articles/${id}/like`, {
+    like: (id: number, visitorId?: string) =>
+      request<{ likeCount: number; action: string; hasLiked?: boolean }>(`/api/articles/${id}/like`, {
         method: 'POST',
-        body: JSON.stringify({ userId, visitorId })
+        body: JSON.stringify({ visitorId })
       }),
 
     favorite: (id: number, token: string) =>
@@ -342,12 +344,27 @@ export const api = {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
 
-    view: (id: number, data: { userId?: string | null; visitorId: string; userAgent: string }) =>
-      request<void>(`/api/articles/${id}/view`, {
+    // 点赞/收藏状态查询（登录带 Bearer 按身份，游客按 visitorId）
+    checkStatus: (id: number, visitorId: string, token?: string | null) =>
+      request<{ hasLiked: boolean; hasFavorited: boolean }>(`/api/articles/${id}/check`, {
+        params: { visitorId },
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      }),
+
+    // 浏览量上报（匿名 visitorId / 登录 Bearer，服务端以 principal 为准）
+    view: (id: number, data: { visitorId: string; userAgent: string }, token?: string | null) =>
+      request<ArticleStatsPayload>(`/api/articles/${id}/view`, {
         method: 'POST',
         body: JSON.stringify(data),
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         silent: true,
         requireBackend: false
+      }),
+
+    // 我的收藏列表（含收藏夹清单与分页）
+    myFavorites: (folder?: string, page = 0, size = 12) =>
+      request<MyFavoritesResponse>('/api/articles/favorites/my', {
+        params: { folder, page, size }
       })
   },
 

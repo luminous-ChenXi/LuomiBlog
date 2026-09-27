@@ -984,6 +984,79 @@ function escapeHtml(text: string): string {
     element.title = message;
   }
 
+  // 轻量提示条（登录引导等），不依赖组件库
+  function showToast(message: string) {
+    const existing = document.getElementById('lm-article-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'lm-article-toast';
+    toast.textContent = message;
+    Object.assign(toast.style, {
+      position: 'fixed',
+      left: '50%',
+      bottom: '48px',
+      transform: 'translateX(-50%)',
+      zIndex: '9999',
+      padding: '10px 20px',
+      borderRadius: '10px',
+      background: 'rgba(20, 20, 20, 0.85)',
+      color: '#fff',
+      fontSize: '14px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+    } as CSSStyleDeclaration);
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+  }
+
+  // 登录引导：优先唤起站内登录弹窗，组件未加载时退回 ?login=1 自动弹窗
+  function promptLogin(featureName: string) {
+    showToast(`${featureName}需要登录，请先登录`);
+    const w = window as any;
+    if (typeof w.openLoginModal === 'function') {
+      setTimeout(() => w.openLoginModal(), 600);
+    } else {
+      setTimeout(() => {
+        window.location.href = `${window.location.pathname}?login=1`;
+      }, 1200);
+    }
+  }
+
+  function authHeaders(): Record<string, string> {
+    const token = getUserToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  function applyLikeState(hasLiked: boolean) {
+    const likeBtn = document.getElementById('like-btn');
+    if (!likeBtn) return;
+    likeBtn.setAttribute('data-has-liked', String(hasLiked));
+    likeBtn.classList.toggle('liked', hasLiked);
+  }
+
+  function applyFavoriteState(hasFavorited: boolean) {
+    const favoriteBtn = document.getElementById('favorite-btn');
+    if (!favoriteBtn) return;
+    favoriteBtn.setAttribute('data-has-favorited', String(hasFavorited));
+    favoriteBtn.classList.toggle('favorited', hasFavorited);
+    const textEl = favoriteBtn.querySelector('.favorite-text');
+    if (textEl) textEl.textContent = hasFavorited ? '已收藏' : '收藏';
+  }
+
+  // 页面加载时回显点赞/收藏真实状态（登录用户按身份，游客按 visitorId）
+  async function refreshInteractionState(articleId: string) {
+    const visitorId = getVisitorId();
+    const params = new URLSearchParams({ visitorId });
+    const response = await safeFetch(getApiUrl(`/api/articles/${articleId}/check?${params}`), {
+      headers: { ...authHeaders() }
+    });
+    if (!response || !response.ok) return;
+    const result = await response.json();
+    if (result.code === 200 && result.data) {
+      applyLikeState(!!result.data.hasLiked);
+      applyFavoriteState(!!result.data.hasFavorited);
+    }
+  }
+
   async function handleLike() {
     const likeBtn = document.getElementById('like-btn');
     const isSynced = likeBtn?.getAttribute('data-synced') === 'true';
@@ -994,27 +1067,35 @@ function escapeHtml(text: string): string {
       return;
     }
 
-    const visitorId = getVisitorId();
-    const userId = getUserId();
+    // 后端支持匿名点赞，但产品上未登录先引导登录（非静默）
+    const token = getUserToken();
+    if (!token) {
+      promptLogin('点赞');
+      return;
+    }
 
-    const response = await safeFetch(getApiUrl(`/api/articles/${articleId}/like`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, visitorId })
-    });
+    if (likeBtn) (likeBtn as HTMLButtonElement).disabled = true;
+    try {
+      const response = await safeFetch(getApiUrl(`/api/articles/${articleId}/like`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ visitorId: getVisitorId() })
+      });
 
-    if (response && response.ok) {
-      const result = await response.json();
-      if (result.code === 200) {
-        const data = result.data;
-        const countEl = likeBtn?.querySelector('.like-count');
-        if (countEl) countEl.textContent = data.likeCount;
-        if (data.action === 'like') {
-          likeBtn?.classList.add('liked');
-        } else {
-          likeBtn?.classList.remove('liked');
+      if (response && response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          const data = result.data;
+          const countEl = likeBtn?.querySelector('.like-count');
+          if (countEl) countEl.textContent = data.likeCount;
+          const hasLiked = data.action === 'like' || data.hasLiked === true;
+          applyLikeState(hasLiked);
         }
+      } else if (response && (response.status === 401 || response.status === 403)) {
+        promptLogin('登录状态已失效，请重新登录后再点赞');
       }
+    } finally {
+      if (likeBtn) (likeBtn as HTMLButtonElement).disabled = false;
     }
   }
 
@@ -1046,17 +1127,6 @@ function escapeHtml(text: string): string {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
   }
 
-  function getUserId() {
-    const token = getUserToken();
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.userId || payload.sub || null;
-    } catch {
-      return null;
-    }
-  }
-
   async function handleFavorite() {
     const favoriteBtn = document.getElementById('favorite-btn');
     const articleId = favoriteBtn?.getAttribute('data-article-id');
@@ -1067,30 +1137,33 @@ function escapeHtml(text: string): string {
       return;
     }
 
+    // 收藏必须登录：未登录给引导提示而非静默
     const token = getUserToken();
-    if (!token) return;
+    if (!token) {
+      promptLogin('收藏');
+      return;
+    }
 
-    const response = await safeFetch(getApiUrl(`/api/articles/${articleId}/favorite`), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response && response.ok) {
-      const result = await response.json();
-      if (result.code === 200) {
-        const data = result.data;
-        const textEl = favoriteBtn?.querySelector('.favorite-text');
-        if (data.action === 'favorite') {
-          favoriteBtn?.classList.add('favorited');
-          if (textEl) textEl.textContent = '已收藏';
-        } else {
-          favoriteBtn?.classList.remove('favorited');
-          if (textEl) textEl.textContent = '收藏';
+    if (favoriteBtn) (favoriteBtn as HTMLButtonElement).disabled = true;
+    try {
+      const response = await safeFetch(getApiUrl(`/api/articles/${articleId}/favorite`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
+      });
+
+      if (response && response.ok) {
+        const result = await response.json();
+        if (result.code === 200) {
+          applyFavoriteState(result.data.action === 'favorite');
+        }
+      } else if (response && (response.status === 401 || response.status === 403)) {
+        promptLogin('登录状态已失效，请重新登录后再收藏');
       }
+    } finally {
+      if (favoriteBtn) (favoriteBtn as HTMLButtonElement).disabled = false;
     }
   }
 
@@ -1127,12 +1200,15 @@ function escapeHtml(text: string): string {
     }
 
     if (articleId && backendOnline) {
+      // 回显点赞/收藏真实状态
+      refreshInteractionState(articleId);
+
+      // 浏览量：匿名按 visitorId，登录用户由 Bearer 标识（服务端以 principal 为准）
       setTimeout(() => {
         safeFetch(getApiUrl(`/api/articles/${articleId}/view`), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify({
-            userId: getUserId(),
             visitorId: getVisitorId(),
             userAgent: navigator.userAgent
           })
