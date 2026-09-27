@@ -42,7 +42,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers("/api/site/**").permitAll()
-                        .requestMatchers("/api/install/status").permitAll()
+                        // 安装向导全流程放行（首次部署需匿名完成安装）；
+                        // verify-reinstall/reinstall 另有 @PreAuthorize("hasRole('ADMIN')") 方法级控制
+                        .requestMatchers("/api/install/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/license/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/articles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
