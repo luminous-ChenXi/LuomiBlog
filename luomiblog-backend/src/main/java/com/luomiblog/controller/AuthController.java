@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.EmailResendRequest;
 import com.luomiblog.dto.EmailVerifyRequest;
@@ -11,6 +12,7 @@ import com.luomiblog.dto.TwoFactorEnrollRequest;
 import com.luomiblog.dto.TwoFactorVerifyRequest;
 import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
+import com.luomiblog.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +27,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final LoginSecurityService loginSecurityService;
+    private final RateLimitService rateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/register")
-    public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
+                                              HttpServletRequest httpRequest) {
+        // 限流：5 次/小时/IP（阈值见 app.rate-limit.register）
+        rateLimitService.checkRegister(clientIpResolver.resolve(httpRequest));
         return ApiResponse.success(authService.register(request));
     }
 
@@ -45,10 +52,12 @@ public class AuthController {
     }
 
     /**
-     * 重发注册验证邮件
+     * 重发注册验证邮件（限流：60 秒冷却/邮箱 + 10 次/小时/IP）
      */
     @PostMapping("/email/resend")
-    public ApiResponse<Void> resendRegistrationEmail(@Valid @RequestBody EmailResendRequest request) {
+    public ApiResponse<Void> resendRegistrationEmail(@Valid @RequestBody EmailResendRequest request,
+                                                     HttpServletRequest httpRequest) {
+        rateLimitService.checkEmailResend(request.getEmail(), clientIpResolver.resolve(httpRequest));
         authService.resendRegistrationEmail(request.getEmail());
         return ApiResponse.success();
     }
@@ -93,23 +102,11 @@ public class AuthController {
 
     @GetMapping("/login-security")
     public ApiResponse<Map<String, Object>> getLoginSecurityInfo(HttpServletRequest request) {
-        String clientIp = getClientIpAddress(request);
+        String clientIp = clientIpResolver.resolve(request);
         long availableTokens = loginSecurityService.getAvailableTokens(clientIp);
         return ApiResponse.success(Map.of(
                 "availableAttempts", availableTokens,
                 "maxAttempts", 10
         ));
-    }
-
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

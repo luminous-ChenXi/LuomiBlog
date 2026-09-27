@@ -16,6 +16,7 @@ public enum ErrorCode {
     FORBIDDEN(4031, "禁止访问"),
     NOT_FOUND(404, "资源不存在"),
     CONFLICT(409, "资源冲突"),
+    TOO_MANY_REQUESTS(429, "请求过于频繁，请稍后再试"),
 
     USER_NOT_FOUND(4100, "用户不存在"),
     USER_ALREADY_EXISTS(4101, "用户名已存在"),

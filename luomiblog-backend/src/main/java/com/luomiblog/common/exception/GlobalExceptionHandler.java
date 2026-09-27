@@ -105,6 +105,7 @@ public class GlobalExceptionHandler {
         if (code == 403) return HttpStatus.FORBIDDEN;
         if (code == 404) return HttpStatus.NOT_FOUND;
         if (code == 409) return HttpStatus.CONFLICT;
+        if (code == 429) return HttpStatus.TOO_MANY_REQUESTS;
         if (code == 503) return HttpStatus.SERVICE_UNAVAILABLE;
         if (code >= 4000 && code < 4100) return HttpStatus.BAD_REQUEST;
         if (code >= 4100 && code < 4200) return HttpStatus.UNAUTHORIZED;

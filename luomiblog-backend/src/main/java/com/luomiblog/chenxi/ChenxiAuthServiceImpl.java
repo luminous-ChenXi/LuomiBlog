@@ -229,7 +229,7 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
      * - 密码为随机 UUID 的 BCrypt 哈希，设计上即无法用密码登录。
      */
     private User createShadowUser(String sub, Map<String, Object> claims) {
-        Role memberRole = roleRepository.findByCodeIgnoreCase("member")
+        Role memberRole = roleRepository.findByCodeIgnoreCase(com.luomiblog.common.Roles.MEMBER)
                 .orElseThrow(() -> new BusinessException(500, "默认角色不存在"));
 
         String username = allocateUsername(resolveUsername(claims));
@@ -313,11 +313,18 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
         return nickname;
     }
 
-    /** 头像优先级：avatar → picture（通行证自定义字段在前） */
+    /**
+     * 头像优先级：avatar → picture（通行证自定义字段在前）。
+     * 协议白名单：claims 是外部输入，仅放行 http(s) 与站内相对路径，非法值一律置 null。
+     */
     private String extractAvatar(Map<String, Object> claims) {
         String avatar = textValue(claims, "avatar");
         if (!StringUtils.hasText(avatar)) {
             avatar = textValue(claims, "picture");
+        }
+        if (!com.luomiblog.common.SafeUrlValidator.isAllowedMediaUrl(avatar)) {
+            log.warn("通行证返回的头像 URL 未通过协议白名单校验，已忽略: {}", avatar);
+            return null;
         }
         return avatar;
     }

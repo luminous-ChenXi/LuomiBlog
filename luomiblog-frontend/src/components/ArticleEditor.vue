@@ -373,6 +373,7 @@ import { ref, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { API_BASE_URL } from '../config/api';
 import { getUser } from '../stores/user';
+import { sanitizeArticleHtml } from '../utils/sanitizeHtml';
 
 interface Article {
   id?: number;
@@ -459,7 +460,8 @@ const tagsInput = computed({
 });
 
 const renderedContent = computed(() => {
-  return renderMarkdown(article.value.content);
+  // 预览同样是 v-html 注入点：正则渲染器的输出必须经白名单消毒
+  return sanitizeArticleHtml(renderMarkdown(article.value.content));
 });
 
 function renderMarkdown(content: string): string {

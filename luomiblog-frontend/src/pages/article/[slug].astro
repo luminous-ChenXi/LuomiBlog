@@ -6,6 +6,7 @@ import AIAssistant from '../../components/AIAssistant.vue';
 import ArticleTOC from '../../components/ArticleTOC.vue';
 import { getCollection, getEntry, render } from 'astro:content';
 import { API_BASE_URL } from '../../config/api';
+import { sanitizeArticleHtml } from '../../utils/sanitizeHtml';
 
 export const prerender = false;
 
@@ -110,10 +111,11 @@ if (localPost) {
       articleId: data.id,
     };
 
-    contentHtml = data.contentHtml || '';
+    // 后端返回的 contentHtml 属于不可信输入（存储型 XSS 直通点），必须消毒后才能 set:html
+    contentHtml = sanitizeArticleHtml(data.contentHtml || '');
 
     if (!contentHtml && data.content) {
-      contentHtml = renderMarkdownBasic(data.content);
+      contentHtml = sanitizeArticleHtml(renderMarkdownBasic(data.content));
     }
   } catch {
     return Astro.redirect('/404');

@@ -24,6 +24,7 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
+    private final com.luomiblog.service.RateLimitService rateLimitService;
 
     @GetMapping("/article/{articleId}")
     public ApiResponse<Page<CommentResponse>> getCommentsByArticle(
@@ -59,6 +60,9 @@ public class CommentController {
         String userAgent = httpRequest.getHeader("User-Agent");
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
+        // 限流：10 次/分钟/身份（登录用户按 userId，访客按 visitorId，兜底 IP）
+        rateLimitService.checkComment(commentIdentity(userId, visitorId, ipAddress));
+
         return ApiResponse.success(commentService.createComment(request, userId, visitorId, ipAddress, userAgent));
     }
 
@@ -91,5 +95,16 @@ public class CommentController {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    private String commentIdentity(Long userId, String visitorId, String ipAddress) {
+        if (userId != null) {
+            return "u:" + userId;
+        }
+        if (visitorId != null && !visitorId.isBlank()) {
+            return "v:" + visitorId;
+        }
+        return "ip:" + ipAddress;
     }
 }

@@ -52,11 +52,35 @@ jwt:
 
 app:
   registration-enabled: true
+  install:
+    # 安装锁文件位置（默认 config/install.lock；可用环境变量 INSTALL_LOCK_FILE 覆盖；
+    # 旧版落在工作目录的 install.lock 会在首次访问时自动迁移到该路径）
+    lock-file: ${INSTALL_LOCK_FILE:config/install.lock}
   cors:
     allowed-origins: http://localhost:4321,http://localhost:4322,http://localhost:3000,http://127.0.0.1:4321,http://127.0.0.1:4322,http://127.0.0.1:3000
   pagination:
     default-page-size: 10
     max-page-size: 100
+  rate-limit:
+    # 接口限流阈值（超出返回 HTTP 429）
+    enabled: true
+    # 注册：5 次/小时/IP
+    register:
+      max-requests: 5
+      window-seconds: 3600
+    # 注册验证邮件重发：同一邮箱 60 秒冷却 + 10 次/小时/IP
+    email-resend:
+      cooldown-seconds: 60
+      max-requests: 10
+      window-seconds: 3600
+    # 评论发表：10 次/分钟/身份
+    comment:
+      max-requests: 10
+      window-seconds: 60
+    # 点赞/浏览量：60 次/分钟/身份
+    interaction:
+      max-requests: 60
+      window-seconds: 60
 
 chenxi:
   passport:

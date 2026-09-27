@@ -19,6 +19,7 @@ public class LikeController {
 
     private final LikeService likeService;
     private final ClientIpResolver clientIpResolver;
+    private final com.luomiblog.service.RateLimitService rateLimitService;
 
     @PostMapping("/article")
     public ApiResponse<LikeResponse> toggleArticleLike(
@@ -28,6 +29,9 @@ public class LikeController {
             HttpServletRequest httpRequest) {
         String ipAddress = clientIpResolver.resolve(httpRequest);
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+
+        // 限流：60 次/分钟/身份（阈值见 app.rate-limit.interaction）
+        rateLimitService.checkInteraction(interactionIdentity(userId, visitorId, ipAddress));
 
         return ApiResponse.success(likeService.toggleArticleLike(request, userId, visitorId, ipAddress));
     }
@@ -40,6 +44,9 @@ public class LikeController {
             HttpServletRequest httpRequest) {
         String ipAddress = clientIpResolver.resolve(httpRequest);
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+
+        // 限流：60 次/分钟/身份
+        rateLimitService.checkInteraction(interactionIdentity(userId, visitorId, ipAddress));
 
         return ApiResponse.success(likeService.toggleCommentLike(request, userId, visitorId, ipAddress));
     }
@@ -60,5 +67,16 @@ public class LikeController {
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId) {
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
         return ApiResponse.success(likeService.getCommentLikeStatus(commentId, userId, visitorId));
+    }
+
+    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    private String interactionIdentity(Long userId, String visitorId, String ipAddress) {
+        if (userId != null) {
+            return "u:" + userId;
+        }
+        if (visitorId != null && !visitorId.isBlank()) {
+            return "v:" + visitorId;
+        }
+        return "ip:" + ipAddress;
     }
 }

@@ -21,6 +21,7 @@ import java.util.UUID;
 public class ArticleStatsController {
 
     private final ArticleStatsService articleStatsService;
+    private final com.luomiblog.service.RateLimitService rateLimitService;
 
     @PostMapping("/{articleId}/view")
     public ApiResponse<ArticleStatsResult> recordView(
@@ -38,6 +39,11 @@ public class ArticleStatsController {
         if (visitorId == null || visitorId.isEmpty()) {
             visitorId = UUID.randomUUID().toString();
         }
+
+        // 限流：60 次/分钟/身份（登录按 principal userId，匿名按 visitorId/IP；
+        // 不采信请求体 userId，防轮换伪造绕过）
+        rateLimitService.checkInteraction(interactionIdentity(
+                userPrincipal != null ? userPrincipal.getId() : null, visitorId, ipAddress));
 
         boolean recorded = articleStatsService.recordView(
                 articleId, userId, visitorId, ipAddress, request.getUserAgent());
@@ -60,6 +66,10 @@ public class ArticleStatsController {
         // 登录用户身份以 JWT principal 为准（保证 article_likes.user_id 落库正确），
         // 匿名访客按 visitorId 切换
         Long userId = userPrincipal != null ? userPrincipal.getId() : request.getUserId();
+
+        // 限流：60 次/分钟/身份（不采信请求体 userId，防轮换伪造绕过）
+        rateLimitService.checkInteraction(interactionIdentity(
+                userPrincipal != null ? userPrincipal.getId() : null, request.getVisitorId(), ipAddress));
 
         ArticleStatsResult result = articleStatsService.toggleLike(
                 articleId, userId, request.getVisitorId(), ipAddress);
@@ -131,6 +141,17 @@ public class ArticleStatsController {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    private String interactionIdentity(Long userId, String visitorId, String ipAddress) {
+        if (userId != null) {
+            return "u:" + userId;
+        }
+        if (visitorId != null && !visitorId.isBlank()) {
+            return "v:" + visitorId;
+        }
+        return "ip:" + ipAddress;
     }
 
     @lombok.Data

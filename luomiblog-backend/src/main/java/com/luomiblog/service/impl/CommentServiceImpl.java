@@ -62,8 +62,16 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("评论不存在"));
 
-        if (userId != null && !userId.equals(comment.getUserId())) {
-            throw new RuntimeException("无权删除此评论");
+        // 空身份（principal 缺失）不再跳过校验：删除必须携带可核对的用户身份
+        if (userId == null) {
+            throw new com.luomiblog.common.exception.BusinessException(
+                    com.luomiblog.common.exception.ErrorCode.UNAUTHORIZED, "请先登录后再删除评论");
+        }
+
+        // 非本人评论一律拒绝（管理员下线评论走 approve/reject 管理通道）
+        if (!userId.equals(comment.getUserId())) {
+            throw new com.luomiblog.common.exception.BusinessException(
+                    com.luomiblog.common.exception.ErrorCode.ACCESS_DENIED, "无权删除此评论");
         }
 
         comment.setDeletedAt(LocalDateTime.now());

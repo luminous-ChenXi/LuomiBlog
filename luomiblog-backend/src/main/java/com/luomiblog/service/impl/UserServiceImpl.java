@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
             user.setBio(request.getBio());
         }
         if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
+            applyAvatarUrl(user, request.getAvatarUrl());
         }
 
         userRepository.save(user);
@@ -84,8 +84,21 @@ public class UserServiceImpl implements UserService {
     public void uploadAvatar(Long userId, String avatarUrl) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
-        user.setAvatarUrl(avatarUrl);
+        applyAvatarUrl(user, avatarUrl);
         userRepository.save(user);
+    }
+
+    /**
+     * 头像 URL 协议白名单：仅 http(s) 与站内相对路径，
+     * 拒绝 javascript:/data: 等危险协议（存储后被 <img src> 渲染）
+     */
+    private void applyAvatarUrl(User user, String avatarUrl) {
+        if (!com.luomiblog.common.SafeUrlValidator.isAllowedMediaUrl(avatarUrl)) {
+            throw new com.luomiblog.common.exception.BusinessException(
+                    com.luomiblog.common.exception.ErrorCode.BAD_REQUEST,
+                    "头像 URL 仅支持 http(s) 链接或站内相对路径");
+        }
+        user.setAvatarUrl(avatarUrl);
     }
 
     private UserProfileResponse convertToResponse(User user) {
