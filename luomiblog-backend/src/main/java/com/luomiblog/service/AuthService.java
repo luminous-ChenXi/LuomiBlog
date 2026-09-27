@@ -34,4 +34,10 @@ public interface AuthService {
      * 2FA 挑战验证：6 位 TOTP 验证码或 8 位一次性还原码，通过后换发正式 JWT。
      */
     AuthResponse verifyTwoFactor(String challengeToken, String code, String recoveryCode);
+
+    /**
+     * 获取当前登录用户基本信息（依据 Authorization Bearer 令牌解析）。
+     * 未认证或令牌无效时抛 401。
+     */
+    AuthResponse.UserInfo getCurrentUser();
 }

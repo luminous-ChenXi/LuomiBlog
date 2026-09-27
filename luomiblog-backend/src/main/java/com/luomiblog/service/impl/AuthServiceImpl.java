@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -540,6 +541,51 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             return new ArrayList<>();
         }
+    }
+
+    // =====================================================================
+    // 当前登录用户信息
+    // =====================================================================
+
+    @Override
+    public AuthResponse.UserInfo getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        User user;
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof com.luomiblog.security.UserPrincipal userPrincipal) {
+            user = userPrincipal.getUser();
+        } else if (principal instanceof String username && !username.isBlank()) {
+            // JwtAuthenticationFilter 以用户名字符串为 principal
+            user = userRepository.findActiveByUsername(username)
+                    .or(() -> userRepository.findActiveByEmail(username))
+                    .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "登录状态无效，请重新登录"));
+        } else {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "登录状态无效，请重新登录");
+        }
+
+        if (user.isBanned()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
+        }
+
+        Role role = roleRepository.findById(user.getRoleId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
+        Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
+
+        return AuthResponse.UserInfo.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .role(role.getCode())
+                .roleName(role.getName())
+                .permissions(permissions.stream().toList())
+                .build();
     }
 
     // =====================================================================

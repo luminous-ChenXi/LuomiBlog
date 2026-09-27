@@ -46,7 +46,11 @@ public class InstallLockFilter extends OncePerRequestFilter {
         if (requestURI.startsWith("/api/install/")) {
             if (isInstallLocked()) {
                 if (!requestURI.equals("/api/install/status")) {
-                    if (!requestURI.equals("/api/install/verify-reinstall") && !requestURI.equals("/api/install/reinstall-options")) {
+                    // reset-install-state 放行：异常锁死态（lock 存在但无任何管理员账号）的恢复通道，
+                    // 正常已安装系统由 InstallService 前置校验拒绝（403）
+                    if (!requestURI.equals("/api/install/verify-reinstall")
+                            && !requestURI.equals("/api/install/reinstall-options")
+                            && !requestURI.equals("/api/install/reset-install-state")) {
                         sendLockedResponse(response, "系统已安装，无法执行安装操作");
                         return;
                     }

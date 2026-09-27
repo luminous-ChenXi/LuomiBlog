@@ -71,8 +71,9 @@ public class SiteSettingsServiceImpl implements SiteSettingsService {
 
     @Override
     public boolean isSmtpConfigured() {
+        // host + from 已填即视为配置（与 AstrNest 口径一致），无鉴权 SMTP（MailPit/内网中继）不再误报
         String host = getString(KEY_SMTP_HOST, "");
-        String username = getString(KEY_SMTP_USERNAME, "");
-        return !host.isBlank() && !username.isBlank();
+        String from = getString(KEY_SMTP_FROM, "");
+        return !host.isBlank() && !from.isBlank();
     }
 }

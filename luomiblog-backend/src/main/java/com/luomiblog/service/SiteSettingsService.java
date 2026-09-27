@@ -19,6 +19,11 @@ public interface SiteSettingsService {
     String KEY_SMTP_PASSWORD = "smtp.password";
     String KEY_SMTP_SSL = "smtp.ssl";
     String KEY_SMTP_FROM = "smtp.from";
+    String KEY_SITE_NAME = "site.name";
+    String KEY_SITE_DESCRIPTION = "site.description";
+    String KEY_SITE_DEFAULT_THEME = "site.default_theme";
+    String KEY_SITE_DEFAULT_LANGUAGE = "site.default_language";
+    String KEY_SITE_TIMEZONE = "site.timezone";
 
     /** 读取字符串值，键不存在或为空时返回默认值 */
     String getString(String key, String defaultValue);
@@ -35,6 +40,9 @@ public interface SiteSettingsService {
     /** 批量写入设置 */
     void setAll(Map<String, String> values);
 
-    /** SMTP 是否已完成配置（host 与 username 均非空） */
+    /**
+     * SMTP 是否已完成配置：host 与 from 均非空即视为已配置，
+     * 兼容无鉴权 SMTP（MailPit/内网中继）场景
+     */
     boolean isSmtpConfigured();
 }

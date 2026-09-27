@@ -31,6 +31,21 @@ public interface InstallService {
 
     void saveSiteConfig(SiteConfigRequest request);
 
+    /**
+     * 完成安装前置校验：装库已完成（users 表存在）且管理员账号已创建（users 表存在 ADMIN）。
+     *
+     * @return 缺失步骤的描述；null 表示允许完成安装
+     */
+    String checkReadyForCompletion();
+
+    /**
+     * 当前是否允许调用 reset-install-state：
+     * 未锁定（未完成/半安装）时允许；异常锁死态（install.lock 存在但 users 表无任何
+     * ADMIN 账号，无法走 verify-reinstall 恢复）也允许，让正常安装能重来；
+     * 正常已安装系统（锁定且存在管理员）不允许。
+     */
+    boolean canResetInstallState();
+
     void completeInstallation();
 
     boolean verifyReinstallPermission(String verificationPassword);

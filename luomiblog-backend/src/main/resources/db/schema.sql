@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
 -- 2.1 站点设置键值表（WordPress 式，仅 ADMIN 可改）
 --     键：registration.email_verify_required / login.totp_required
 --         smtp.host / smtp.port / smtp.username / smtp.password / smtp.ssl / smtp.from
+--         site.name / site.description / site.default_theme / site.default_language / site.timezone
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS `site_settings` (

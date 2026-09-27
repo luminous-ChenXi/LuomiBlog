@@ -76,6 +76,14 @@ public class AuthController {
         return ApiResponse.success(authService.refreshToken(request.getRefreshToken()));
     }
 
+    /**
+     * 当前登录用户基本信息（前端现成调用；未认证返回 401）
+     */
+    @GetMapping("/me")
+    public ApiResponse<AuthResponse.UserInfo> me() {
+        return ApiResponse.success(authService.getCurrentUser());
+    }
+
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestHeader("Authorization") String token) {
         String accessToken = token.replace("Bearer ", "");

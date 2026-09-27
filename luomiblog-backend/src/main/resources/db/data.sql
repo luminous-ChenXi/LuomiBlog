@@ -145,6 +145,11 @@ INSERT IGNORE INTO `system_config` (
 INSERT IGNORE INTO `site_settings` (`name`, `value`, `updated_at`) VALUES
 ('registration.email_verify_required', 'false', NOW()),
 ('login.totp_required', 'false', NOW()),
+('site.name', '', NOW()),
+('site.description', '', NOW()),
+('site.default_theme', 'auto', NOW()),
+('site.default_language', 'zh', NOW()),
+('site.timezone', 'Asia/Shanghai', NOW()),
 ('smtp.host', '', NOW()),
 ('smtp.port', '587', NOW()),
 ('smtp.username', '', NOW()),

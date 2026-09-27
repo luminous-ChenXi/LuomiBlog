@@ -8,6 +8,7 @@ import com.luomiblog.service.MailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -97,22 +98,24 @@ public class InstallController {
     }
 
     /**
-     * 重置安装状态（仅未完成/半安装状态可调用，自动清理半安装标记）
+     * 重置安装状态：未完成/半安装状态可调用；异常锁死态（install.lock 存在但无任何
+     * 管理员账号，无法走 verify-reinstall 恢复）也放行，让正常安装能重来。
+     * 正常已安装系统仍返回 403。
      */
     @PostMapping("/reset-install-state")
-    public ApiResponse<Map<String, Object>> resetInstallState() {
-        InstallStatusResponse status = installService.getInstallStatus();
-        if (status.isLocked()) {
-            return ApiResponse.error(403, "系统已安装，无法重置安装状态；如需重装请先完成管理员验证");
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resetInstallState() {
+        if (!installService.canResetInstallState()) {
+            return ResponseEntity.status(403).body(ApiResponse.error(403,
+                    "系统已安装，无法重置安装状态；如需重装请先完成管理员验证"));
         }
         try {
             installService.resetInstallState();
-            return ApiResponse.success(Map.of(
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "success", true,
                 "message", "安装状态已重置，请重新从数据库配置开始"
-            ));
+            )));
         } catch (Exception e) {
-            return ApiResponse.error(500, "重置安装状态失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(ApiResponse.error(500, "重置安装状态失败: " + e.getMessage()));
         }
     }
 
@@ -256,21 +259,27 @@ public class InstallController {
         return value == null ? "" : String.valueOf(value);
     }
 
+    /**
+     * 完成安装：前置校验装库已完成（users 表存在）且管理员账号已创建（users 表存在 ADMIN），
+     * 缺任一步返回 409 并指明缺失步骤，绝不落 install.lock（防止空 body 抢先锁死站点）
+     */
     @PostMapping("/complete")
-    public ApiResponse<Map<String, Object>> completeInstallation() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> completeInstallation() {
         // 检查是否已安装
         InstallStatusResponse status = installService.getInstallStatus();
         if (status.isLocked()) {
-            return ApiResponse.error(403, "系统已安装，无法重复安装");
+            return ResponseEntity.status(403).body(ApiResponse.error(403, "系统已安装，无法重复安装"));
         }
         try {
             installService.completeInstallation();
-            return ApiResponse.success(Map.of(
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "success", true,
                 "message", "安装完成"
-            ));
+            )));
+        } catch (com.luomiblog.common.exception.InstallNotReadyException e) {
+            return ResponseEntity.status(409).body(ApiResponse.error(409, e.getMessage()));
         } catch (Exception e) {
-            return ApiResponse.error(500, "安装完成操作失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(ApiResponse.error(500, "安装完成操作失败: " + e.getMessage()));
         }
     }
 

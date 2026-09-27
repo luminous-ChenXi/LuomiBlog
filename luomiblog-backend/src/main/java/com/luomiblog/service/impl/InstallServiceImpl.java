@@ -565,29 +565,82 @@ public class InstallServiceImpl implements InstallService {
     }
 
     @Override
-    public void saveSiteConfig(SiteConfigRequest request) {
+    public String checkReadyForCompletion() {
         try {
-            // 确保 config 目录存在
-            Path configDir = Paths.get("config");
-            if (!Files.exists(configDir)) {
-                Files.createDirectories(configDir);
+            // 前置 1：装库已完成（execute-sql 步骤的产物：users 表存在）
+            Integer tableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
+                Integer.class
+            );
+            if (tableCount == null || tableCount == 0) {
+                return "安装流程未完成：数据库尚未初始化（users 表不存在），请先完成「初始化数据」步骤";
             }
-
-            // 生成自定义配置文件
-            String configContent = generateCustomConfig(request);
-            try (FileWriter writer = new FileWriter(CUSTOM_CONFIG_FILE)) {
-                writer.write(configContent);
+            // 前置 2：管理员账号已创建（users 表存在 admin 角色账号）
+            if (!hasAdminAccount()) {
+                return "安装流程未完成：管理员账号尚未创建，请先完成「创建管理员」步骤";
             }
+            return null;
+        } catch (Exception e) {
+            log.warn("完成安装前置校验失败: {}", e.getMessage());
+            return "安装流程未完成：数据库尚未初始化或无法访问，请先完成「初始化数据」步骤";
+        }
+    }
 
-            log.info("站点配置保存成功");
-        } catch (IOException e) {
+    /**
+     * users 表中是否已存在 admin 角色账号（表不存在/连接失败均视为不存在）
+     */
+    private boolean hasAdminAccount() {
+        try {
+            Integer adminCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.code = 'admin'",
+                Integer.class
+            );
+            return adminCount != null && adminCount > 0;
+        } catch (Exception e) {
+            log.debug("检查管理员账号失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean canResetInstallState() {
+        // 未锁定（未完成/半安装）→ 允许；
+        // 异常锁死态（install.lock 存在但无任何 ADMIN 账号，verify-reinstall 不可达）→ 允许恢复；
+        // 正常已安装（锁定且存在管理员）→ 不允许，必须走 verify-reinstall 流程
+        return !isInstallLocked() || !hasAdminAccount();
+    }
+
+    @Override
+    public void saveSiteConfig(SiteConfigRequest request) {
+        // WordPress 式：站点配置落 site_settings 键值表，/api/site/config 实时读取，立即生效且重启持久
+        Map<String, String> toSave = new java.util.LinkedHashMap<>();
+        toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SITE_NAME, request.getSiteName());
+        toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SITE_DESCRIPTION,
+                request.getSiteDescription() != null ? request.getSiteDescription() : "");
+        toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SITE_DEFAULT_THEME,
+                request.getDefaultTheme() != null ? request.getDefaultTheme() : "auto");
+        toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SITE_DEFAULT_LANGUAGE,
+                request.getDefaultLanguage() != null ? request.getDefaultLanguage() : "zh");
+        toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SITE_TIMEZONE,
+                request.getTimezone() != null ? request.getTimezone() : "Asia/Shanghai");
+        try {
+            siteSettingsService.setAll(toSave);
+            log.info("站点配置保存成功（已落 site_settings）: siteName={}", request.getSiteName());
+        } catch (Exception e) {
             log.error("站点配置保存失败", e);
-            throw new RuntimeException("站点配置保存失败: " + e.getMessage(), e);
+            throw new RuntimeException("站点配置保存失败: " + e.getMessage()
+                    + "（请确认已先完成「初始化数据」步骤）", e);
         }
     }
 
     @Override
     public void completeInstallation() {
+        // 前置状态校验：装库完成 + 管理员已创建，缺一步都不允许锁定系统
+        String missingStep = checkReadyForCompletion();
+        if (missingStep != null) {
+            log.warn("拒绝完成安装: {}", missingStep);
+            throw new com.luomiblog.common.exception.InstallNotReadyException(missingStep);
+        }
         try {
             // 创建安装锁文件并写入提示信息
             File lockFile = new File(INSTALL_LOCK_FILE);
@@ -735,14 +788,21 @@ public class InstallServiceImpl implements InstallService {
 
     @Override
     public void resetInstallState() {
-        // 仅未完成（未锁定）状态可调用；已安装系统必须走 verify-reinstall 流程
-        if (isInstallLocked()) {
+        // 正常已安装（锁定且存在管理员）必须走 verify-reinstall 流程；
+        // 异常锁死态（install.lock 存在但 users 表无任何 ADMIN，向导与 verify-reinstall 均不可达）放行，
+        // 让正常安装能重来（对齐 canResetInstallState）
+        if (!canResetInstallState()) {
             throw new RuntimeException("系统已安装，不允许重置安装状态；如需重装请先完成管理员验证");
         }
+        boolean abnormalLocked = isInstallLocked();
         resetInstallation();
         // 清理半安装标记
         deleteProgressMarker();
-        log.info("半安装状态已重置（对齐 scripts/reset-install.ps1 逻辑）");
+        if (abnormalLocked) {
+            log.warn("检测到异常锁死态（install.lock 存在但无任何管理员账号），已重置安装状态以供恢复");
+        } else {
+            log.info("半安装状态已重置（对齐 scripts/reset-install.ps1 逻辑）");
+        }
     }
 
     @Override
@@ -912,12 +972,11 @@ public class InstallServiceImpl implements InstallService {
     }
 
     /**
-     * SMTP 是否已配置（自检报告项，读取站点设置；表未就绪时视为未配置）
+     * SMTP 是否已配置（自检报告项）：host 与 from 均填写即视为已配置，
+     * 兼容无鉴权 SMTP（MailPit/内网中继）场景
      */
     private boolean smtpConfigured() {
-        String host = siteSettingsService.getString(com.luomiblog.service.SiteSettingsService.KEY_SMTP_HOST, "");
-        String username = siteSettingsService.getString(com.luomiblog.service.SiteSettingsService.KEY_SMTP_USERNAME, "");
-        return !host.isBlank() && !username.isBlank();
+        return siteSettingsService.isSmtpConfigured();
     }
 
     /**
@@ -1025,28 +1084,6 @@ public class InstallServiceImpl implements InstallService {
             log.error("SQL 文件执行失败: {}", resourcePath, e);
             throw new RuntimeException("SQL 脚本执行失败: " + e.getMessage(), e);
         }
-    }
-
-    private String generateCustomConfig(SiteConfigRequest request) {
-        return String.format("""
-                # LuomiBlog 自定义配置文件（由安装向导生成）
-                # 生成时间: %s
-                # 警告: 此文件由系统自动生成，手动修改可能被覆盖
-
-                blog:
-                  name: %s
-                  description: %s
-                  theme: %s
-                  language: %s
-                  timezone: %s
-                """,
-                LocalDateTime.now(),
-                request.getSiteName(),
-                request.getSiteDescription() != null ? request.getSiteDescription() : "",
-                request.getDefaultTheme() != null ? request.getDefaultTheme() : "auto",
-                request.getDefaultLanguage() != null ? request.getDefaultLanguage() : "zh",
-                request.getTimezone() != null ? request.getTimezone() : "Asia/Shanghai"
-        );
     }
 
     @Override
