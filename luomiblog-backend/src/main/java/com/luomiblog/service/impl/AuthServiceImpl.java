@@ -8,8 +8,10 @@ import com.luomiblog.common.exception.ErrorCode;
 import com.luomiblog.dto.AuthResponse;
 import com.luomiblog.dto.LoginRequest;
 import com.luomiblog.dto.RegisterRequest;
+import com.luomiblog.entity.LoginLog;
 import com.luomiblog.entity.Role;
 import com.luomiblog.entity.User;
+import com.luomiblog.repository.LoginLogRepository;
 import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.security.JwtUtil;
@@ -62,7 +64,11 @@ public class AuthServiceImpl implements AuthService {
     private final SiteSettingsService siteSettingsService;
     private final MailService mailService;
     private final TotpUtil totpUtil;
+    private final com.luomiblog.security.TotpReplayGuard totpReplayGuard;
+    private final com.luomiblog.common.ClientIpResolver clientIpResolver;
+    private final com.luomiblog.repository.LoginLogRepository loginLogRepository;
     private final ObjectMapper objectMapper;
+    private final com.luomiblog.config.JwtConfig jwtConfig;
 
     @Value("${app.registration-enabled:true}")
     private boolean registrationEnabled;
@@ -71,7 +77,14 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.base-url:${APP_BASE_URL:http://localhost:4321}}")
     private String baseUrl;
 
-    private static final long ACCESS_TOKEN_EXPIRES_SECONDS = 86400L;
+    /**
+     * 访问令牌有效期（秒）：唯一来源为 application.yml 的 jwt.expiration（毫秒），
+     * 与 JwtUtil 签发口径一致，不再维护代码内常量。
+     */
+    private long accessTokenExpiresSeconds() {
+        return jwtConfig.getExpiration() / 1000L;
+    }
+
     private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
 
     /** 注册邮箱验证：验证令牌缓存前缀（TTL 30 分钟） */
@@ -109,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
                     "需包含大小写字母和数字，至少8位");
         }
 
-        Role memberRole = roleRepository.findByCode("member")
+        Role memberRole = roleRepository.findByCode(com.luomiblog.common.Roles.MEMBER)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND, "默认会员角色不存在"));
 
         boolean emailVerifyRequired = siteSettingsService.getBool(
@@ -371,11 +384,15 @@ public class AuthServiceImpl implements AuthService {
 
             updateUserLoginInfo(user, clientIp);
 
+            recordLoginLog(user.getId(), request.getUsernameOrEmail(),
+                    LoginLog.LoginType.password, true);
+
             log.info("用户登录成功: {} from {}, 角色: {}", request.getUsernameOrEmail(), clientIp, role.getCode());
 
             return buildAuthResponse(accessToken, refreshToken, user, role, permissions);
         } catch (BadCredentialsException e) {
             loginSecurityService.recordFailedAttempt(identifier);
+            recordLoginLog(null, request.getUsernameOrEmail(), LoginLog.LoginType.password, false);
             int remainingAttempts = loginSecurityService.getRemainingAttempts(identifier);
             log.warn("登录失败: {} from {}, 剩余尝试次数: {}", request.getUsernameOrEmail(), clientIp, remainingAttempts);
             if (remainingAttempts <= 2) {
@@ -387,6 +404,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (LockedException e) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         } catch (DisabledException e) {
+            recordLoginLog(null, request.getUsernameOrEmail(), LoginLog.LoginType.password, false);
             throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         } catch (AuthenticationException e) {
             throw e;
@@ -394,6 +412,7 @@ public class AuthServiceImpl implements AuthService {
             throw e;
         } catch (Exception e) {
             loginSecurityService.recordFailedAttempt(identifier);
+            recordLoginLog(null, request.getUsernameOrEmail(), LoginLog.LoginType.password, false);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, e.getMessage());
         }
     }
@@ -413,8 +432,9 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(challenge.userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!totpUtil.verifyCode(challenge.secret, code)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码不正确，请输入认证器当前 6 位码");
+        if (!verifyTotpNotReplayed(user, challenge.secret, code,
+                "验证码不正确，请输入认证器当前 6 位码")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码已被使用，请等待下一个 6 位码刷新后再试");
         }
 
         // 绑定落库 + 生成 10 个 8 位还原码（BCrypt 存库，明文仅此一次返回）
@@ -434,6 +454,7 @@ public class AuthServiceImpl implements AuthService {
 
         AuthResponse response = buildAuthResponse(accessToken, refreshToken, user, role, permissions);
         response.setRecoveryCodes(recoveryCodes);
+        recordLoginLog(user.getId(), user.getUsername(), LoginLog.LoginType.totp, true);
         log.info("用户 {} 完成 2FA 绑定", user.getUsername());
         return response;
     }
@@ -453,9 +474,8 @@ public class AuthServiceImpl implements AuthService {
         List<String> remainingRecoveryCodes = null;
 
         if (code != null && !code.isBlank()) {
-            verified = totpUtil.verifyCode(user.getTotpSecret(), code.trim());
-            if (!verified) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "两步验证码不正确");
+            if (!verifyTotpNotReplayed(user, user.getTotpSecret(), code.trim(), "两步验证码不正确")) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "两步验证码已被使用，请等待刷新后重试");
             }
         } else if (recoveryCode != null && !recoveryCode.isBlank()) {
             String normalized = recoveryCode.trim();
@@ -494,8 +514,26 @@ public class AuthServiceImpl implements AuthService {
         if (remainingRecoveryCodes != null) {
             log.info("用户 {} 使用还原码登录，剩余还原码 {} 个", user.getUsername(), remainingRecoveryCodes.size());
         }
+        // 6 位码与还原码同属 TOTP 第二因子通道，统一记为 TOTP
+        recordLoginLog(user.getId(), user.getUsername(), LoginLog.LoginType.totp, true);
         log.info("用户 {} 2FA 验证通过，登录成功", user.getUsername());
         return buildAuthResponse(accessToken, refreshToken, user, role, permissions);
+    }
+
+    /**
+     * TOTP 校验 + 防重放：
+     * 1. 码本身不匹配 → 返回 false 并抛 invalidMessage；
+     * 2. 码匹配但计数器不严格递增（同码重放）→ 返回 false（调用方抛“已被使用”）；
+     * 3. 匹配且计数器递增 → 记录并返回 true（存量用户无记录首验放行，由守卫落记录）。
+     *
+     * @return true=校验通过且放行；false=拒绝（具体文案已通过异常给出）
+     */
+    private boolean verifyTotpNotReplayed(User user, String secret, String code, String invalidMessage) {
+        long matched = totpUtil.matchCounterAt(secret, code, System.currentTimeMillis() / 1000L);
+        if (matched < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, invalidMessage);
+        }
+        return totpReplayGuard.checkAndRecord(user.getId(), matched);
     }
 
     private TwoFactorChallenge loadChallenge(String challengeToken) {
@@ -620,7 +658,7 @@ public class AuthServiceImpl implements AuthService {
 
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
 
-        blacklistToken(tokenId, 86400L);
+        blacklistToken(tokenId, accessTokenExpiresSeconds());
 
         String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList());
         String newRefreshToken = jwtUtil.generateRefreshToken(username);
@@ -634,7 +672,7 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String accessToken) {
         if (jwtUtil.validateToken(accessToken)) {
             String tokenId = jwtUtil.getTokenId(accessToken);
-            long ttl = ACCESS_TOKEN_EXPIRES_SECONDS;
+            long ttl = accessTokenExpiresSeconds();
             blacklistToken(tokenId, ttl);
             log.info("用户登出成功, tokenId: {}", tokenId);
         }
@@ -650,20 +688,48 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private String getClientIp() {
+    /**
+     * 写入登录日志（安全审计，login_logs 表）。
+     * 任何写日志失败都不影响登录主流程。
+     */
+    private void recordLoginLog(Long userId, String username, LoginLog.LoginType loginType, boolean success) {
+        try {
+            loginLogRepository.save(LoginLog.builder()
+                    .userId(userId)
+                    .username(username)
+                    .loginType(loginType)
+                    .success(success)
+                    .ipAddress(getClientIp())
+                    .userAgent(getCurrentUserAgent())
+                    .build());
+        } catch (Exception e) {
+            log.warn("写入登录日志失败: {}", e.getMessage());
+        }
+    }
+
+    private String getCurrentUserAgent() {
         try {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
-                HttpServletRequest request = attributes.getRequest();
-                String xForwardedFor = request.getHeader("X-Forwarded-For");
-                if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-                    return xForwardedFor.split(",")[0].trim();
+                String ua = attributes.getRequest().getHeader("User-Agent");
+                if (ua != null && ua.length() > 500) {
+                    return ua.substring(0, 500);
                 }
-                String xRealIp = request.getHeader("X-Real-IP");
-                if (xRealIp != null && !xRealIp.isEmpty()) {
-                    return xRealIp.trim();
-                }
-                return request.getRemoteAddr();
+                return ua;
+            }
+        } catch (Exception e) {
+            log.debug("获取 User-Agent 失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String getClientIp() {
+        // 统一走 ClientIpResolver：受 app.security.trust-proxy 控制，
+        // 直连部署下忽略可伪造的 X-Forwarded-For，防止绕过登录限流/锁定
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                return clientIpResolver.resolve(attributes.getRequest());
             }
         } catch (Exception e) {
             log.warn("获取客户端IP失败", e);
@@ -676,7 +742,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
-                .expiresIn(ACCESS_TOKEN_EXPIRES_SECONDS)
+                .expiresIn(accessTokenExpiresSeconds())
                 .user(AuthResponse.UserInfo.builder()
                         .id(user.getId())
                         .username(user.getUsername())

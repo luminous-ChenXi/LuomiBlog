@@ -1,6 +1,6 @@
 -- =============================================
 -- LuomiBlog 数据库初始化脚本
--- 版本: V1.2
+-- 版本: V1.3
 -- 适用: MySQL 8.0+
 -- 字符集 utf8mb4
 -- =============================================
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `permissions` (
   `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序权重',
   `description` VARCHAR(255) DEFAULT NULL COMMENT '权限描述',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_permissions_code` (`code`),
   KEY `idx_permissions_parent` (`parent_id`),
@@ -239,8 +240,9 @@ CREATE TABLE IF NOT EXISTS `article` (
   KEY `idx_article_published` (`status`, `published_at`),
   KEY `idx_article_top_published` (`is_top`, `published_at`),
   KEY `idx_article_deleted` (`deleted_at`),
-  FULLTEXT KEY `ft_article_title` (`title`),
-  FULLTEXT KEY `ft_article_content` (`content`, `ai_summary`),
+  -- 全文索引使用 ngram 分词器（中文检索必需，默认分词器对中文无效）
+  FULLTEXT KEY `ft_article_title` (`title`) WITH PARSER ngram,
+  FULLTEXT KEY `ft_article_content` (`content`, `ai_summary`) WITH PARSER ngram,
   CONSTRAINT `fk_article_users` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_article_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章主表';
@@ -253,7 +255,9 @@ CREATE TABLE IF NOT EXISTS `article_tags` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_article_tag` (`article_id`, `tag_id`),
   KEY `idx_article_tags_tag` (`tag_id`),
-  KEY `idx_article_tags_article` (`article_id`)
+  -- idx_article_tags_article 已删除：uk_article_tag 最左前缀已覆盖 article_id 查询
+  CONSTRAINT `fk_article_tags_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_article_tags_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章标签关联表';
 
 CREATE TABLE IF NOT EXISTS `attachments` (
@@ -273,11 +277,13 @@ CREATE TABLE IF NOT EXISTS `attachments` (
   `storage_provider` VARCHAR(32) DEFAULT 'local' COMMENT '存储提供商',
   `deleted_at` DATETIME DEFAULT NULL COMMENT '软删除时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_attachments_biz` (`biz_type`, `biz_id`),
   KEY `idx_attachments_uploader` (`uploader_id`),
   KEY `idx_attachments_type` (`file_type`),
-  KEY `idx_attachments_deleted` (`deleted_at`)
+  KEY `idx_attachments_deleted` (`deleted_at`),
+  KEY `idx_attachments_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='附件表';
 
 -- =============================================
@@ -326,7 +332,8 @@ CREATE TABLE IF NOT EXISTS `comment_likes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_comment_likes_user` (`comment_id`, `user_id`),
   UNIQUE KEY `uk_comment_likes_visitor` (`comment_id`, `visitor_id`),
-  KEY `idx_comment_likes_comment` (`comment_id`),
+  -- idx_comment_likes_comment 已删除：唯一键最左前缀已覆盖 comment_id 查询
+  KEY `idx_comment_likes_user_created` (`user_id`, `created_at`),
   CONSTRAINT `fk_comment_likes_comment` FOREIGN KEY (`comment_id`) REFERENCES `article_comments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comment_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评论点赞数';
@@ -341,7 +348,8 @@ CREATE TABLE IF NOT EXISTS `article_likes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_article_likes_user` (`article_id`, `user_id`),
   UNIQUE KEY `uk_article_likes_visitor` (`article_id`, `visitor_id`),
-  KEY `idx_article_likes_article` (`article_id`),
+  -- idx_article_likes_article 已删除：唯一键最左前缀已覆盖 article_id 查询
+  KEY `idx_article_likes_user_created` (`user_id`, `created_at`),
   KEY `idx_article_likes_created` (`created_at`),
   CONSTRAINT `fk_article_likes_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_article_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -368,7 +376,7 @@ CREATE TABLE IF NOT EXISTS `article_versions` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_versions_article_version` (`article_id`, `version`),
-  KEY `idx_versions_article` (`article_id`),
+  -- idx_versions_article 已删除：uk_versions_article_version 最左前缀已覆盖 article_id 查询
   KEY `idx_versions_editor` (`editor_id`),
   KEY `idx_versions_created` (`created_at`),
   CONSTRAINT `fk_versions_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE,
@@ -628,8 +636,8 @@ CREATE TABLE IF NOT EXISTS `daily_stats` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_stats_date` (`stat_date`),
-  KEY `idx_stats_date_range` (`stat_date`, `pv`, `uv`)
+  UNIQUE KEY `uk_stats_date` (`stat_date`)
+  -- idx_stats_date_range 已删除：uk_stats_date 唯一键前缀（stat_date）已覆盖日期范围查询
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日统计表';
 
 -- =============================================
@@ -725,6 +733,7 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
   `show_email` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否显示邮箱',
   `show_wechat` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否显示微信',
   `show_qq` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否显示QQ',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_profile_user` (`user_id`),
@@ -743,6 +752,7 @@ CREATE TABLE IF NOT EXISTS `article_rewards` (
   `is_default` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否默认',
   `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_rewards_article` (`article_id`),
   CONSTRAINT `fk_rewards_article` FOREIGN KEY (`article_id`) REFERENCES `article` (`id`) ON DELETE CASCADE
@@ -774,6 +784,7 @@ CREATE TABLE IF NOT EXISTS `comment_mentions` (
   `is_read` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已读',
   `read_at` DATETIME DEFAULT NULL COMMENT '阅读时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_mentions_comment_user` (`comment_id`, `mentioned_user_id`),
   KEY `idx_mentions_user` (`mentioned_user_id`),
@@ -803,6 +814,40 @@ CREATE TABLE IF NOT EXISTS `coin_reward_records` (
   CONSTRAINT `fk_coin_rewards_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_coin_rewards_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='芙贝币打赏记录表';
+
+-- =============================================
+-- 15. 安全审计日志表
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS `login_logs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` BIGINT DEFAULT NULL COMMENT '用户ID（未定位到账号时为 NULL）',
+  `username` VARCHAR(64) DEFAULT NULL COMMENT '尝试登录的用户名/邮箱',
+  `login_type` ENUM('password','chenxi_sso','totp') NOT NULL DEFAULT 'password' COMMENT '登录方式',
+  `success` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否成功',
+  `ip_address` VARCHAR(64) DEFAULT NULL COMMENT '客户端IP',
+  `user_agent` VARCHAR(500) DEFAULT NULL COMMENT 'User-Agent',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_login_logs_user` (`user_id`, `created_at`),
+  KEY `idx_login_logs_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录日志表';
+
+CREATE TABLE IF NOT EXISTS `admin_operation_logs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `operator_id` BIGINT DEFAULT NULL COMMENT '操作人用户ID',
+  `operator_name` VARCHAR(64) DEFAULT NULL COMMENT '操作人用户名（冗余，防用户删除）',
+  `module` VARCHAR(64) NOT NULL COMMENT '业务模块（article/user/comment/system...）',
+  `action` VARCHAR(64) NOT NULL COMMENT '操作动作（create/update/delete/...）',
+  `target_type` VARCHAR(64) DEFAULT NULL COMMENT '目标对象类型',
+  `target_id` VARCHAR(64) DEFAULT NULL COMMENT '目标对象ID',
+  `detail` JSON DEFAULT NULL COMMENT '操作详情',
+  `ip_address` VARCHAR(64) DEFAULT NULL COMMENT '操作IP',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_admin_op_logs_operator` (`operator_id`, `created_at`),
+  KEY `idx_admin_op_logs_module` (`module`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理操作日志表（写入点下个工作包接入）';
 
 
 
