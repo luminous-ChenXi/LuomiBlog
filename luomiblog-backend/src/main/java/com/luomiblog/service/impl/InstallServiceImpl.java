@@ -45,8 +45,8 @@ public class InstallServiceImpl implements InstallService {
     private final JdbcTemplate jdbcTemplate;
     private final LoginSecurityService loginSecurityService;
     private final com.luomiblog.service.SiteSettingsService siteSettingsService;
+    private final com.luomiblog.security.InstallLockLocator installLockLocator;
 
-    private static final String INSTALL_LOCK_FILE = "install.lock";
     private static final String CUSTOM_CONFIG_FILE = "config/custom-application.yml";
     /** 半安装过程标记（装库开始写入、完成安装/重置时清理） */
     private static final String INSTALL_PROGRESS_MARKER = "config/install-in-progress.flag";
@@ -642,18 +642,20 @@ public class InstallServiceImpl implements InstallService {
             throw new com.luomiblog.common.exception.InstallNotReadyException(missingStep);
         }
         try {
-            // 创建安装锁文件并写入提示信息
-            File lockFile = new File(INSTALL_LOCK_FILE);
-            if (!lockFile.exists()) {
-                lockFile.createNewFile();
+            // 创建安装锁文件（路径由 app.install.lock-file 配置，默认 config/install.lock）
+            Path lockPath = installLockLocator.resolve();
+            if (!Files.exists(lockPath)) {
+                if (lockPath.getParent() != null) {
+                    Files.createDirectories(lockPath.getParent());
+                }
 
                 // 写入提示性文字（英文+中文）
                 String lockContent = generateInstallLockContent();
-                try (FileWriter writer = new FileWriter(lockFile, StandardCharsets.UTF_8)) {
+                try (FileWriter writer = new FileWriter(lockPath.toFile(), StandardCharsets.UTF_8)) {
                     writer.write(lockContent);
                 }
             }
-            log.info("安装完成，已创建安装锁文件: {}", lockFile.getAbsolutePath());
+            log.info("安装完成，已创建安装锁文件: {}", lockPath.toAbsolutePath());
 
             // 安装完成，清理半安装标记
             deleteProgressMarker();
@@ -724,8 +726,8 @@ public class InstallServiceImpl implements InstallService {
 
         try {
             // 获取管理员和博主角色
-            Role adminRole = roleRepository.findByCode("admin").orElse(null);
-            Role bloggerRole = roleRepository.findByCode("blogger").orElse(null);
+            Role adminRole = roleRepository.findByCode(com.luomiblog.common.Roles.ADMIN).orElse(null);
+            Role bloggerRole = roleRepository.findByCode(com.luomiblog.common.Roles.BLOGGER).orElse(null);
 
             if (adminRole == null && bloggerRole == null) {
                 log.warn("系统中未找到管理员或博主角色");
@@ -765,12 +767,9 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public void resetInstallation() {
         try {
-            // 删除安装锁文件
-            File lockFile = new File(INSTALL_LOCK_FILE);
-            if (lockFile.exists()) {
-                lockFile.delete();
-                log.info("已删除安装锁文件");
-            }
+            // 删除安装锁文件（路径解析含旧版位置兼容）
+            installLockLocator.deleteIfExists();
+            log.info("已删除安装锁文件（如存在）");
 
             // 删除自定义配置文件
             File configFile = new File(CUSTOM_CONFIG_FILE);
@@ -937,7 +936,7 @@ public class InstallServiceImpl implements InstallService {
     }
 
     private boolean isInstallLocked() {
-        return new File(INSTALL_LOCK_FILE).exists();
+        return installLockLocator.exists();
     }
 
     /**
@@ -1089,7 +1088,7 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public boolean verifyLockIntegrity() {
         try {
-            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            Path lockPath = installLockLocator.resolve();
             if (!Files.exists(lockPath)) {
                 return false;
             }
@@ -1104,7 +1103,7 @@ public class InstallServiceImpl implements InstallService {
     @Override
     public String getLockHash() {
         try {
-            Path lockPath = Paths.get(INSTALL_LOCK_FILE);
+            Path lockPath = installLockLocator.resolve();
             if (!Files.exists(lockPath)) {
                 return null;
             }

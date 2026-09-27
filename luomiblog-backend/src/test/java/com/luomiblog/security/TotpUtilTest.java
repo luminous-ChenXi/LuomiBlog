@@ -115,4 +115,35 @@ class TotpUtilTest {
         assertTrue(uri.contains("issuer=LuomiBlog"));
         assertTrue(uri.contains("%3A"), "标签应包含 URL 编码的冒号");
     }
+
+    @Test
+    @DisplayName("otpauth URI：显式携带 algorithm=SHA1&digits=6&period=30（部分验证器依赖）")
+    void otpauthUriExplicitParams() {
+        String uri = totpUtil.buildOtpauthUri("LuomiBlog", "admin", "JBSWY3DPEHPK3PXP");
+        assertTrue(uri.contains("algorithm=SHA1"), "应显式声明 SHA1 算法: " + uri);
+        assertTrue(uri.contains("digits=6"), "应显式声明 6 位码: " + uri);
+        assertTrue(uri.contains("period=30"), "应显式声明 30 秒步长: " + uri);
+    }
+
+    @Test
+    @DisplayName("matchCounterAt：命中返回计数器，窗口外/非法输入返回 -1")
+    void matchCounterReturnsCounter() {
+        String base32Secret = base32RfcKey();
+        long now = 1000L; // counter = 33
+
+        // 当前窗口命中 → 计数器 33
+        assertEquals(33L, totpUtil.matchCounterAt(base32Secret, totpUtil.generateCode(base32Secret, now), now));
+        // 前一窗口的码命中 → 计数器 32
+        assertEquals(32L, totpUtil.matchCounterAt(
+                base32Secret, totpUtil.generateCode(base32Secret, now - 30L), now));
+        // 后一窗口的码命中 → 计数器 34
+        assertEquals(34L, totpUtil.matchCounterAt(
+                base32Secret, totpUtil.generateCode(base32Secret, now + 30L), now));
+        // ±2 窗口外 → -1
+        assertEquals(-1L, totpUtil.matchCounterAt(
+                base32Secret, totpUtil.generateCode(base32Secret, now + 60L), now));
+        // 非法输入 → -1
+        assertEquals(-1L, totpUtil.matchCounterAt(base32Secret, null, now));
+        assertEquals(-1L, totpUtil.matchCounterAt(base32Secret, "abcdef", now));
+    }
 }

@@ -10,7 +10,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
-import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -28,11 +27,10 @@ public class HealthServiceImpl implements HealthService {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
+    private final com.luomiblog.security.InstallLockLocator installLockLocator;
 
     @Value("${app.version:unknown}")
     private String version;
-
-    private static final String INSTALL_LOCK_FILE = "install.lock";
 
     @Override
     public HealthCheckResponse checkHealth() {
@@ -140,10 +138,10 @@ public class HealthServiceImpl implements HealthService {
     }
 
     /**
-     * 检查 install.lock 文件是否存在
+     * 检查 install.lock 文件是否存在（路径由 InstallLockLocator 统一解析）
      */
     private boolean isInstallLocked() {
-        return new File(INSTALL_LOCK_FILE).exists();
+        return installLockLocator.exists();
     }
 
     /**

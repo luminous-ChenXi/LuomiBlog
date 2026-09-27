@@ -226,7 +226,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             return false;
         }
         return roleRepository.findById(user.getRoleId())
-                .map(role -> "admin".equalsIgnoreCase(role.getCode()))
+                .map(role -> com.luomiblog.common.Roles.ADMIN.equals(role.getCode()))
                 .orElse(false);
     }
 

@@ -56,9 +56,9 @@ public class PermissionServiceImpl implements PermissionService {
                 new MenuPermissionItem("system-roles", "角色权限", "shield", "/admin/system/roles", null)
         ));
 
-        if ("admin".equalsIgnoreCase(roleCode)) {
+        if (com.luomiblog.common.Roles.ADMIN.equals(roleCode)) {
             return List.of(dashboard, articleMenu, commentMenu, userMenu, systemMenu);
-        } else if ("blogger".equalsIgnoreCase(roleCode)) {
+        } else if (com.luomiblog.common.Roles.BLOGGER.equals(roleCode)) {
             return List.of(dashboard, articleMenu, commentMenu);
         }
 

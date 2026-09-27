@@ -44,6 +44,10 @@ public class TotpUtil {
     /**
      * 构造 otpauth:// URI（Google Authenticator 兼容格式）。
      *
+     * <p>显式携带 algorithm/digits/period 参数：本实现为 TOTP-SHA1、6 位、30 秒步长，
+     * 部分验证器 App（如 Microsoft Authenticator、Aegis 等）在缺省这些参数时
+     * 会按各自默认值处理，显式声明可避免扫码后码不匹配。</p>
+     *
      * @param siteName 站点名称（issuer 标签的一部分）
      * @param username 用户名
      * @param secret   Base32 密钥
@@ -54,7 +58,9 @@ public class TotpUtil {
                 (siteName == null || siteName.isBlank() ? issuer : siteName) + ":" + username,
                 StandardCharsets.UTF_8);
         String issuerParam = URLEncoder.encode(issuer, StandardCharsets.UTF_8);
-        return String.format("otpauth://totp/%s?secret=%s&issuer=%s", label, secret, issuerParam);
+        return String.format(
+                "otpauth://totp/%s?secret=%s&issuer=%s&algorithm=SHA1&digits=%d&period=%d",
+                label, secret, issuerParam, CODE_DIGITS, TIME_STEP_SECONDS);
     }
 
     /**
@@ -75,6 +81,26 @@ public class TotpUtil {
      */
     public boolean verifyCode(String base32Secret, String code) {
         return verifyCodeAt(base32Secret, code, System.currentTimeMillis() / 1000L);
+    }
+
+    /**
+     * 校验验证码并返回命中的计数器（时间步编号），供防重放记录使用。
+     *
+     * @return 命中的计数器（currentStep-W .. currentStep+W）；不匹配返回 -1
+     */
+    public long matchCounterAt(String base32Secret, String code, long unixSeconds) {
+        if (base32Secret == null || base32Secret.isBlank()
+                || code == null || !code.matches("\\d{" + CODE_DIGITS + "}")) {
+            return -1;
+        }
+        long currentStep = unixSeconds / TIME_STEP_SECONDS;
+        for (int i = -WINDOW; i <= WINDOW; i++) {
+            String candidate = generateCodeForCounter(base32Secret, currentStep + i);
+            if (constantTimeEquals(candidate, code)) {
+                return currentStep + i;
+            }
+        }
+        return -1;
     }
 
     /**
