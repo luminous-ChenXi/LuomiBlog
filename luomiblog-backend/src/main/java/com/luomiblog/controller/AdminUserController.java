@@ -84,4 +84,17 @@ public class AdminUserController {
         adminUserService.resetPassword(id, request, operator.getId());
         return ApiResponse.success();
     }
+
+    /**
+     * 重置指定用户的 2FA 绑定（用户下次登录将重新进入强制绑定流程）
+     */
+    @PostMapping("/{id}/reset-2fa")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> resetTwoFactor(
+            @PathVariable Long id,
+            @AuthenticationPrincipal String operatorUsername) {
+        // JwtAuthenticationFilter 的 principal 为用户名字符串
+        adminUserService.resetTwoFactor(id, operatorUsername);
+        return ApiResponse.success();
+    }
 }

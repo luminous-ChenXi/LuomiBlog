@@ -2,9 +2,13 @@ package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.AuthResponse;
+import com.luomiblog.dto.EmailResendRequest;
+import com.luomiblog.dto.EmailVerifyRequest;
 import com.luomiblog.dto.LoginRequest;
 import com.luomiblog.dto.RefreshTokenRequest;
 import com.luomiblog.dto.RegisterRequest;
+import com.luomiblog.dto.TwoFactorEnrollRequest;
+import com.luomiblog.dto.TwoFactorVerifyRequest;
 import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,6 +34,41 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));
+    }
+
+    /**
+     * 注册邮箱验证：输码或点激活链接（token+code）→ 激活账号并自动登录
+     */
+    @PostMapping("/email/verify")
+    public ApiResponse<AuthResponse> verifyRegistrationEmail(@Valid @RequestBody EmailVerifyRequest request) {
+        return ApiResponse.success(authService.verifyRegistrationEmail(request.getToken(), request.getCode()));
+    }
+
+    /**
+     * 重发注册验证邮件
+     */
+    @PostMapping("/email/resend")
+    public ApiResponse<Void> resendRegistrationEmail(@Valid @RequestBody EmailResendRequest request) {
+        authService.resendRegistrationEmail(request.getEmail());
+        return ApiResponse.success();
+    }
+
+    /**
+     * 2FA 强制绑定确认：输入认证器当前 6 位码完成绑定，
+     * 返回正式 JWT + 一次性展示的 10 个还原码
+     */
+    @PostMapping("/2fa/enroll")
+    public ApiResponse<AuthResponse> enrollTwoFactor(@Valid @RequestBody TwoFactorEnrollRequest request) {
+        return ApiResponse.success(authService.enrollTwoFactor(request.getChallengeToken(), request.getCode()));
+    }
+
+    /**
+     * 2FA 挑战验证：6 位验证码或 8 位一次性还原码 → 换发正式 JWT
+     */
+    @PostMapping("/2fa/verify")
+    public ApiResponse<AuthResponse> verifyTwoFactor(@Valid @RequestBody TwoFactorVerifyRequest request) {
+        return ApiResponse.success(authService.verifyTwoFactor(
+                request.getChallengeToken(), request.getCode(), request.getRecoveryCode()));
     }
 
     @PostMapping("/refresh")

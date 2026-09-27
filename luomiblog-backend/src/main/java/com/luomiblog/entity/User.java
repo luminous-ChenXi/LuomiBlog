@@ -60,6 +60,19 @@ public class User {
     @Builder.Default
     private Boolean emailVerified = false;
 
+    /** TOTP 两步验证密钥（Base32），未绑定时为 NULL */
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    /** 是否已绑定 TOTP 两步验证 */
+    @Column(name = "totp_enabled", nullable = false)
+    @Builder.Default
+    private Boolean totpEnabled = false;
+
+    /** 2FA 还原码（BCrypt 哈希 JSON 数组），一次性使用 */
+    @Column(name = "recovery_codes", columnDefinition = "TEXT")
+    private String recoveryCodes;
+
     @Column(name = "settings", columnDefinition = "JSON")
     private String settings;
 

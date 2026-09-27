@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import QRCode from 'qrcode';
 import { api } from '../utils/api';
 import { setAuth } from '../stores/user';
 import { startChenxiLogin } from '../utils/chenxi';
 import { useBackendStatus } from '../composables/useBackendStatus';
+import type { AuthResponse } from '../types/api';
 
 const isVisible = ref(false);
 const loginError = ref('');
@@ -27,6 +29,133 @@ const errors = ref({
   password: ''
 });
 
+// ============ 登录 2FA（TOTP）状态机 ============
+// ''：普通登录表单；'enroll'：强制绑定（扫码+输码确认）；
+// 'challenge'：已绑定用户输入 6 位码/还原码；'recovery'：绑定成功后一次性展示还原码
+const twoFactorStage = ref<'' | 'enroll' | 'challenge' | 'recovery'>('');
+const twoFactorChallenge = ref<AuthResponse | null>(null);
+const twoFactorCode = ref('');
+const useRecoveryMode = ref(false);
+const recoveryCodeInput = ref('');
+const twoFactorError = ref('');
+const twoFactorSubmitting = ref(false);
+const recoveryCodes = ref<string[]>([]);
+const qrDataUrl = ref('');
+
+const buildQrCode = async (uri: string) => {
+  try {
+    qrDataUrl.value = await QRCode.toDataURL(uri, { width: 200, margin: 1 });
+  } catch {
+    qrDataUrl.value = '';
+  }
+};
+
+const enterTwoFactorStage = async (response: AuthResponse) => {
+  twoFactorChallenge.value = response;
+  twoFactorError.value = '';
+  twoFactorCode.value = '';
+  recoveryCodeInput.value = '';
+  useRecoveryMode.value = false;
+  if (response.enrollment && response.otpauthUri) {
+    twoFactorStage.value = 'enroll';
+    await buildQrCode(response.otpauthUri);
+  } else {
+    twoFactorStage.value = 'challenge';
+  }
+};
+
+const resetTwoFactorState = () => {
+  twoFactorStage.value = '';
+  twoFactorChallenge.value = null;
+  twoFactorCode.value = '';
+  recoveryCodeInput.value = '';
+  useRecoveryMode.value = false;
+  twoFactorError.value = '';
+  recoveryCodes.value = [];
+  qrDataUrl.value = '';
+};
+
+const handleTwoFactorSubmit = async () => {
+  const challenge = twoFactorChallenge.value;
+  if (!challenge?.challengeToken) return;
+
+  twoFactorError.value = '';
+
+  if (twoFactorStage.value === 'enroll') {
+    if (!/^\d{6}$/.test(twoFactorCode.value)) {
+      twoFactorError.value = '请输入认证器上的 6 位验证码';
+      return;
+    }
+    twoFactorSubmitting.value = true;
+    try {
+      const result = await api.auth.twoFactorEnroll({
+        challengeToken: challenge.challengeToken,
+        code: twoFactorCode.value
+      });
+      pendingAuthResult.value = result;
+      recoveryCodes.value = result.recoveryCodes || [];
+      twoFactorStage.value = 'recovery';
+    } catch (error: any) {
+      twoFactorError.value = error.message || '绑定失败，请重试';
+    } finally {
+      twoFactorSubmitting.value = false;
+    }
+    return;
+  }
+
+  // challenge 阶段：6 位验证码或 8 位还原码
+  if (useRecoveryMode.value) {
+    if (!/^\d{8}$/.test(recoveryCodeInput.value)) {
+      twoFactorError.value = '还原码是 8 位数字';
+      return;
+    }
+  } else if (!/^\d{6}$/.test(twoFactorCode.value)) {
+    twoFactorError.value = '请输入 6 位验证码';
+    return;
+  }
+
+  twoFactorSubmitting.value = true;
+  try {
+    const result = await api.auth.twoFactorVerify({
+      challengeToken: challenge.challengeToken,
+      code: useRecoveryMode.value ? undefined : twoFactorCode.value,
+      recoveryCode: useRecoveryMode.value ? recoveryCodeInput.value : undefined
+    });
+    finishLogin(result);
+  } catch (error: any) {
+    twoFactorError.value = error.message || '验证失败，请重试';
+  } finally {
+    twoFactorSubmitting.value = false;
+  }
+};
+
+// 完成登录：保存认证信息并按角色跳转
+const finishLogin = (result: AuthResponse) => {
+  if (!result.token) {
+    twoFactorError.value = '未获取到登录令牌，请重试';
+    return;
+  }
+  setAuth(result);
+  resetTwoFactorState();
+  pendingAuthResult.value = null;
+  ElMessage.success('登录成功！欢迎回来');
+  handleClose();
+  const role = result.user?.role?.toLowerCase();
+  if (role === 'admin' || role === 'blogger') {
+    window.location.href = '/admin';
+  } else {
+    window.location.href = '/user';
+  }
+};
+
+// enroll 成功后（还原码展示完，用户确认已保存）→ 用缓存的最终会话完成登录
+const confirmRecoverySaved = () => {
+  if (pendingAuthResult.value) {
+    finishLogin(pendingAuthResult.value);
+  }
+};
+const pendingAuthResult = ref<AuthResponse | null>(null);
+
 const handleClose = () => {
   isVisible.value = false;
   // 重置表单
@@ -34,6 +163,8 @@ const handleClose = () => {
   errors.value = { username: '', password: '' };
   loginError.value = '';
   backendError.value = '';
+  resetTwoFactorState();
+  pendingAuthResult.value = null;
 };
 
 const handleOpen = async () => {
@@ -102,6 +233,12 @@ const handleSubmit = async () => {
         usernameOrEmail: form.value.username.trim(),
         password: form.value.password
       });
+
+    // 2FA：密码已通过，进入挑战/绑定流程（此时尚未登录）
+    if (response.twoFactorRequired) {
+      await enterTwoFactorStage(response);
+      return;
+    }
 
     // 保存认证信息
     setAuth(response);
@@ -221,6 +358,98 @@ onUnmounted(() => {
 
             <!-- 右侧：登录表单 -->
             <div class="modal-form">
+              <!-- ============ 2FA 绑定/挑战视图 ============ -->
+              <template v-if="twoFactorStage">
+                <header class="form-header">
+                  <p class="form-eyebrow">两步验证</p>
+                  <h1 class="form-title" v-if="twoFactorStage === 'enroll'">绑定认证器</h1>
+                  <h1 class="form-title" v-else-if="twoFactorStage === 'challenge'">输入验证码</h1>
+                  <h1 class="form-title" v-else>保存还原码</h1>
+                </header>
+
+                <!-- 绑定：二维码 + 密钥 + 确认码 -->
+                <div v-if="twoFactorStage === 'enroll'" class="tfa-panel">
+                  <p class="tfa-desc">
+                    站点已开启两步验证。请使用 Google Authenticator 等认证器 App 扫描下方二维码，或手动输入密钥，然后输入认证器显示的 6 位验证码完成绑定。
+                  </p>
+                  <div class="tfa-qr-wrap">
+                    <img v-if="qrDataUrl" :src="qrDataUrl" alt="TOTP 二维码" class="tfa-qr" />
+                    <p v-else class="tfa-secret">认证器无法扫码？手动输入密钥：<code>{{ twoFactorChallenge?.secret }}</code></p>
+                  </div>
+                  <p v-if="qrDataUrl" class="tfa-secret-line">无法扫码？手动输入密钥：<code>{{ twoFactorChallenge?.secret }}</code></p>
+                </div>
+
+                <!-- 挑战：验证码 / 还原码 -->
+                <p v-if="twoFactorStage === 'challenge'" class="tfa-desc">
+                  请输入认证器 App 上的 6 位验证码{{ useRecoveryMode ? '，或改用还原码登录' : '' }}。
+                </p>
+
+                <!-- 还原码一次性展示 -->
+                <div v-if="twoFactorStage === 'recovery'" class="tfa-panel">
+                  <p class="tfa-desc tfa-recovery-warn">
+                    请立即保存以下 10 个 8 位还原码：<b>仅此一次展示</b>，关闭后无法再次查看。每个还原码只能使用一次，用于无法获取验证码时登录。
+                  </p>
+                  <div class="tfa-codes">
+                    <code v-for="code in recoveryCodes" :key="code" class="tfa-code">{{ code }}</code>
+                  </div>
+                </div>
+
+                <div v-if="twoFactorError" class="login-error">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span>{{ twoFactorError }}</span>
+                </div>
+
+                <form v-if="twoFactorStage === 'enroll' || twoFactorStage === 'challenge'" class="login-form" @submit.prevent="handleTwoFactorSubmit">
+                  <div class="form-item" v-if="!useRecoveryMode">
+                    <label class="form-label">6 位验证码</label>
+                    <input
+                      v-model="twoFactorCode"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="6"
+                      placeholder="请输入 6 位验证码"
+                      class="form-input tfa-code-input"
+                      autocomplete="one-time-code"
+                    />
+                  </div>
+
+                  <div class="form-item" v-else>
+                    <label class="form-label">8 位还原码</label>
+                    <input
+                      v-model="recoveryCodeInput"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="8"
+                      placeholder="请输入 8 位还原码"
+                      class="form-input tfa-code-input"
+                    />
+                  </div>
+
+                  <div class="form-options" v-if="twoFactorStage === 'challenge'">
+                    <a href="#" class="forgot-link" @click.prevent="useRecoveryMode = !useRecoveryMode">
+                      {{ useRecoveryMode ? '使用 6 位验证码' : '无法获取验证码？使用还原码' }}
+                    </a>
+                  </div>
+
+                  <button type="submit" class="btn-login" :disabled="twoFactorSubmitting">
+                    <span v-if="!twoFactorSubmitting">{{ twoFactorStage === 'enroll' ? '确认绑定' : '验证并登录' }}</span>
+                    <span v-else class="loading-spinner"></span>
+                  </button>
+                </form>
+
+                <div v-if="twoFactorStage === 'recovery'" class="login-form">
+                  <button type="button" class="btn-login" @click="confirmRecoverySaved">
+                    我已保存还原码，进入站点
+                  </button>
+                </div>
+              </template>
+
+              <!-- ============ 普通登录表单 ============ -->
+              <template v-else>
               <header class="form-header">
                 <p class="form-eyebrow">欢迎回来</p>
                 <h1 class="form-title">登录账号</h1>
@@ -320,6 +549,7 @@ onUnmounted(() => {
                   <a href="#" class="register-link" @click.prevent>立即注册</a>
                 </div>
               </form>
+              </template>
             </div>
           </div>
         </div>
@@ -753,6 +983,104 @@ onUnmounted(() => {
 .form-footer {
   text-align: center;
   margin-top: 0.5rem;
+}
+
+/* ============ 2FA 面板 ============ */
+.tfa-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.tfa-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.tfa-recovery-warn {
+  color: #b45309;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffaf5 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.tfa-qr-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.tfa-qr {
+  width: 180px;
+  height: 180px;
+}
+
+.tfa-secret-line {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  word-break: break-all;
+}
+
+.tfa-secret {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  word-break: break-all;
+  text-align: center;
+}
+
+.tfa-secret code,
+.tfa-secret-line code {
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.tfa-code-input {
+  letter-spacing: 6px;
+  font-size: 1.125rem;
+  text-align: center;
+}
+
+.tfa-codes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.tfa-code {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.9375rem;
+  letter-spacing: 1px;
+  text-align: center;
+  user-select: all;
+}
+
+[data-theme="dark"] .tfa-qr-wrap {
+  background: white;
+}
+
+[data-theme="dark"] .tfa-code {
+  background: #252538;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .tfa-secret code,
+[data-theme="dark"] .tfa-secret-line code {
+  background: #252538;
+  color: #e0e0e0;
 }
 
 .footer-text {

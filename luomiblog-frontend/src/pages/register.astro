@@ -763,6 +763,102 @@ import { API_BASE_URL } from '../config/api';
     border-left: 4px solid #3b82f6;
   }
 
+  /* 注册邮箱验证面板 */
+  #verify-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+  }
+
+  .verify-panel {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .verify-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    text-align: center;
+  }
+
+  .verify-desc {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.6;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .verify-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1.125rem;
+    letter-spacing: 6px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .verify-input:focus {
+    border-color: #F9A8C8;
+    box-shadow: 0 0 0 3px rgba(249, 168, 200, 0.15);
+  }
+
+  .verify-msg {
+    min-height: 1.25rem;
+    margin: 0.75rem 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .verify-btns {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .verify-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .verify-btn-primary {
+    background: linear-gradient(135deg, #F9A8C8 0%, #E87A9F 100%);
+    color: white;
+  }
+
+  .verify-btn-secondary {
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .verify-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   .notification-content {
     display: flex;
     align-items: center;
@@ -982,7 +1078,19 @@ import { API_BASE_URL } from '../config/api';
       const result = await response.json();
 
       if (result.code === 200 && result.data) {
-        localStorage.setItem('token', result.data.token);
+        // 邮箱验证开启时：注册成功但需验证邮箱后才能登录
+        if (result.data.pendingEmailVerification) {
+          const pendingEmail = result.data.user?.email || email;
+          showNotification('注册成功！验证邮件已发送至 ' + pendingEmail + '，请查收验证码', 'info');
+          sessionStorage.setItem('pendingVerifyEmail', pendingEmail);
+          sessionStorage.setItem('pendingVerifyToken', result.data.challengeToken || '');
+          setTimeout(() => {
+            window.location.href = '/register?verify=1';
+          }, 1200);
+          return;
+        }
+
+        localStorage.setItem('token', result.data.accessToken || result.data.token);
         localStorage.setItem('user', JSON.stringify(result.data.user));
 
         showNotification('注册成功！欢迎加入', 'success');
@@ -1065,4 +1173,80 @@ import { API_BASE_URL } from '../config/api';
       window.dispatchEvent(new CustomEvent('open-login-modal'));
     }
   });
+
+  // ============ 注册邮箱验证面板（?verify=1 且有待验证令牌时展示） ============
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('verify') === '1' && sessionStorage.getItem('pendingVerifyToken')) {
+    showVerifyPanel();
+  }
+
+  function showVerifyPanel() {
+    const email = sessionStorage.getItem('pendingVerifyEmail') || '';
+    const overlay = document.createElement('div');
+    overlay.id = 'verify-overlay';
+    overlay.innerHTML = `
+      <div class="verify-panel">
+        <h2 class="verify-title">验证邮箱</h2>
+        <p class="verify-desc">验证邮件已发送至 <b>${email}</b>，请输入邮件中的 6 位验证码（30 分钟内有效）。</p>
+        <input type="text" id="verify-code" class="verify-input" inputmode="numeric" maxlength="6" placeholder="请输入 6 位验证码" />
+        <p id="verify-msg" class="verify-msg"></p>
+        <div class="verify-btns">
+          <button type="button" id="btn-resend" class="verify-btn verify-btn-secondary">重发邮件</button>
+          <button type="button" id="btn-verify" class="verify-btn verify-btn-primary">验证并激活</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const codeInput = overlay.querySelector('#verify-code');
+    const msg = overlay.querySelector('#verify-msg');
+    codeInput?.focus();
+
+    const post = async (path, body) => {
+      const resp = await fetch(API_BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      return resp.json();
+    };
+
+    overlay.querySelector('#btn-verify')?.addEventListener('click', async () => {
+      const code = codeInput.value.trim();
+      if (!/^\d{6}$/.test(code)) {
+        msg.textContent = '请输入 6 位验证码';
+        return;
+      }
+      msg.textContent = '验证中…';
+      try {
+        const result = await post('/api/auth/email/verify', {
+          token: sessionStorage.getItem('pendingVerifyToken') || '',
+          code: code,
+          email: email
+        });
+        if (result.code === 200 && result.data) {
+          localStorage.setItem('token', result.data.accessToken || result.data.token);
+          localStorage.setItem('user', JSON.stringify(result.data.user));
+          sessionStorage.removeItem('pendingVerifyToken');
+          sessionStorage.removeItem('pendingVerifyEmail');
+          msg.textContent = '验证成功，正在进入站点…';
+          setTimeout(() => { window.location.href = '/user'; }, 800);
+        } else {
+          msg.textContent = result.message || '验证失败，请检查验证码';
+        }
+      } catch (err) {
+        msg.textContent = '网络错误，请稍后重试';
+      }
+    });
+
+    overlay.querySelector('#btn-resend')?.addEventListener('click', async () => {
+      msg.textContent = '重发中…';
+      try {
+        const result = await post('/api/auth/email/resend', { email: email });
+        msg.textContent = result.code === 200 ? '验证邮件已重发，请查收' : (result.message || '重发失败');
+      } catch (err) {
+        msg.textContent = '网络错误，请稍后重试';
+      }
+    });
+  }
 </script>

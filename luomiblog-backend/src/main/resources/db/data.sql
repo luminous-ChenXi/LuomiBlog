@@ -139,6 +139,20 @@ INSERT IGNORE INTO `system_config` (
 );
 
 -- =============================================
+-- 5.1 初始化站点设置默认值（均默认关闭/为空，仅 ADMIN 可改）
+-- =============================================
+
+INSERT IGNORE INTO `site_settings` (`name`, `value`, `updated_at`) VALUES
+('registration.email_verify_required', 'false', NOW()),
+('login.totp_required', 'false', NOW()),
+('smtp.host', '', NOW()),
+('smtp.port', '587', NOW()),
+('smtp.username', '', NOW()),
+('smtp.password', '', NOW()),
+('smtp.ssl', 'true', NOW()),
+('smtp.from', '', NOW());
+
+-- =============================================
 -- 6. 初始化默认分类
 -- =============================================
 

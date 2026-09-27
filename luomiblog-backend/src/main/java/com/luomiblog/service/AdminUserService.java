@@ -19,4 +19,11 @@ public interface AdminUserService {
     void deleteUser(Long id, Long operatorId);
 
     void resetPassword(Long id, AdminResetPasswordRequest request, Long operatorId);
+
+    /**
+     * 重置指定用户的 2FA 绑定（用户下次登录将重新进入强制绑定流程）
+     *
+     * @param operatorUsername 操作者用户名（JWT 认证过滤器以用户名作为 principal）
+     */
+    void resetTwoFactor(Long id, String operatorUsername);
 }

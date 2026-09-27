@@ -82,6 +82,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` VARCHAR(180) DEFAULT NULL COMMENT '邮箱地址',
   `chenxi_sub` VARCHAR(64) DEFAULT NULL COMMENT '辰汐通行证sub（影子账号锚点）',
   `email_verified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '邮箱是否验证',
+  `totp_secret` VARCHAR(64) DEFAULT NULL COMMENT 'TOTP 两步验证密钥（Base32）',
+  `totp_enabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已绑定 TOTP 两步验证',
+  `recovery_codes` TEXT DEFAULT NULL COMMENT '2FA 还原码（BCrypt 哈希 JSON 数组）',
   `avatar_url` VARCHAR(512) DEFAULT NULL COMMENT '头像URL',
   `website` VARCHAR(255) DEFAULT NULL COMMENT '个人网站',
   `signature` VARCHAR(255) DEFAULT NULL COMMENT '个性签名',
@@ -114,6 +117,19 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
   CONSTRAINT `fk_user_roles_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_user_roles_roles` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
+
+-- =============================================
+-- 2.1 站点设置键值表（WordPress 式，仅 ADMIN 可改）
+--     键：registration.email_verify_required / login.totp_required
+--         smtp.host / smtp.port / smtp.username / smtp.password / smtp.ssl / smtp.from
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS `site_settings` (
+  `name` VARCHAR(191) NOT NULL COMMENT '设置键',
+  `value` TEXT DEFAULT NULL COMMENT '设置值',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站点设置键值表';
 
 CREATE TABLE IF NOT EXISTS `visitors` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',

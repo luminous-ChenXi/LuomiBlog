@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import { api } from '../utils/api';
 import { setAuth } from '../stores/user';
 
@@ -7,6 +8,14 @@ const isVisible = ref(false);
 const isLoading = ref(false);
 const currentStep = ref(1);
 const registerError = ref('');
+
+// 邮箱验证状态（站点开关开启时：注册成功后需输入验证码激活账号）
+const pendingVerify = ref(false);
+const pendingEmail = ref('');
+const pendingToken = ref('');
+const verifyCode = ref('');
+const verifying = ref(false);
+const verifyMessage = ref('');
 
 const formData = ref({
   username: '',
@@ -38,6 +47,11 @@ const resetForm = () => {
     agreeTerms: false
   };
   errors.value = {};
+  pendingVerify.value = false;
+  pendingEmail.value = '';
+  pendingToken.value = '';
+  verifyCode.value = '';
+  verifyMessage.value = '';
   registerError.value = '';
   currentStep.value = 1;
 };
@@ -113,6 +127,16 @@ const handleSubmit = async () => {
       nickname: formData.value.username.trim()
     });
 
+    // 邮箱验证开启时：注册成功但未激活，进入验证码输入阶段
+    if (response.pendingEmailVerification) {
+      pendingVerify.value = true;
+      pendingEmail.value = response.user?.email || formData.value.email.trim();
+      pendingToken.value = response.challengeToken || '';
+      registerError.value = '';
+      isLoading.value = false;
+      return;
+    }
+
     // 保存认证信息（自动登录）
     setAuth(response);
 
@@ -127,6 +151,46 @@ const handleSubmit = async () => {
   } catch (error: any) {
     registerError.value = error.message || '注册失败，请检查输入信息';
     isLoading.value = false;
+  }
+};
+
+// 提交邮箱验证码激活账号（成功后自动登录）
+const handleVerify = async () => {
+  if (!/^\d{6}$/.test(verifyCode.value)) {
+    verifyMessage.value = '请输入 6 位验证码';
+    return;
+  }
+  verifying.value = true;
+  verifyMessage.value = '';
+  try {
+    const result = await api.auth.verifyEmail({
+      token: pendingToken.value,
+      code: verifyCode.value,
+      email: pendingEmail.value
+    });
+    setAuth(result);
+    ElMessage.success('邮箱验证成功，账号已激活');
+    handleClose();
+    window.dispatchEvent(new CustomEvent('register-success'));
+    window.location.href = '/user';
+  } catch (error: any) {
+    verifyMessage.value = error.message || '验证失败，请检查验证码';
+  } finally {
+    verifying.value = false;
+  }
+};
+
+// 重发验证邮件
+const handleResend = async () => {
+  verifying.value = true;
+  verifyMessage.value = '';
+  try {
+    await api.auth.resendEmail(pendingEmail.value);
+    verifyMessage.value = '验证邮件已重发，请查收';
+  } catch (error: any) {
+    verifyMessage.value = error.message || '重发失败，请稍后再试';
+  } finally {
+    verifying.value = false;
   }
 };
 
@@ -197,6 +261,38 @@ onUnmounted(() => {
 
           <!-- 右侧表单 -->
           <div class="modal-form">
+            <!-- 邮箱验证阶段 -->
+            <div v-if="pendingVerify" class="form-step">
+              <div class="form-header">
+                <h2 class="form-title">验证邮箱</h2>
+                <p class="form-subtitle">验证邮件已发送至 <b>{{ pendingEmail }}</b>，请输入邮件中的 6 位验证码（30 分钟内有效）</p>
+              </div>
+
+              <div v-if="verifyMessage" class="verify-message">{{ verifyMessage }}</div>
+
+              <div class="form-group">
+                <label class="form-label">验证码</label>
+                <input
+                  v-model="verifyCode"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  class="form-input verify-code-input"
+                  placeholder="请输入 6 位验证码"
+                  @keyup.enter="handleVerify"
+                />
+              </div>
+
+              <div class="form-actions verify-actions">
+                <button type="button" class="btn btn-secondary" :disabled="verifying" @click="handleResend">重发邮件</button>
+                <button type="button" class="btn btn-primary" :disabled="verifying" @click="handleVerify">
+                  <span v-if="verifying" class="loading-spinner"></span>
+                  <span v-else>验证并激活</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-else>
             <div class="form-header">
               <h2 class="form-title">注册账号</h2>
               <p class="form-subtitle">已有账号？<a href="#" @click.prevent="handleClose(); openLogin()">立即登录</a></p>
@@ -321,6 +417,7 @@ onUnmounted(() => {
                 </div>
               </div>
             </form>
+            </div>
 
             <!-- 社交注册 -->
             <div class="social-login">
@@ -672,6 +769,27 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   margin-top: 8px;
+}
+
+/* 邮箱验证 */
+.verify-message {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdf2f7;
+  color: #be185d;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.verify-code-input {
+  letter-spacing: 6px;
+  font-size: 1.125rem;
+  text-align: center;
+}
+
+.verify-actions {
+  justify-content: space-between;
 }
 
 /* 加载动画 */

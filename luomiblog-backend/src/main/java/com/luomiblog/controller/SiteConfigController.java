@@ -3,11 +3,15 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.site.SiteConfigDTO;
 import com.luomiblog.service.SiteConfigService;
+import com.luomiblog.service.SiteSettingsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * 站点配置控制器
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SiteConfigController {
 
     private final SiteConfigService siteConfigService;
+    private final SiteSettingsService siteSettingsService;
 
     /**
      * 获取站点公开配置
@@ -54,5 +59,19 @@ public class SiteConfigController {
             log.warn("获取 favicon 失败: {}", e.getMessage());
             return ApiResponse.success(null);
         }
+    }
+
+    /**
+     * 获取站长功能开关状态（公开：注册页/登录页需要据此展示验证码与 2FA 流程）
+     */
+    @GetMapping("/features")
+    public ApiResponse<Map<String, Object>> getFeatures() {
+        Map<String, Object> features = new LinkedHashMap<>();
+        features.put("registrationEmailVerifyRequired",
+                siteSettingsService.getBool(SiteSettingsService.KEY_EMAIL_VERIFY_REQUIRED, false));
+        features.put("loginTotpRequired",
+                siteSettingsService.getBool(SiteSettingsService.KEY_TOTP_REQUIRED, false));
+        features.put("smtpConfigured", siteSettingsService.isSmtpConfigured());
+        return ApiResponse.success(features);
     }
 }

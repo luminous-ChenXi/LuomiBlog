@@ -204,6 +204,12 @@
             <version>3.1.8</version>
         </dependency>
 
+        <!-- Mail（注册邮箱验证 / SMTP 测试发送，jakarta.mail 实现） -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-mail</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
