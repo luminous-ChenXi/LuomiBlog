@@ -44,9 +44,12 @@ public class InstallServiceImpl implements InstallService {
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
     private final LoginSecurityService loginSecurityService;
+    private final com.luomiblog.service.SiteSettingsService siteSettingsService;
 
     private static final String INSTALL_LOCK_FILE = "install.lock";
     private static final String CUSTOM_CONFIG_FILE = "config/custom-application.yml";
+    /** 半安装过程标记（装库开始写入、完成安装/重置时清理） */
+    private static final String INSTALL_PROGRESS_MARKER = "config/install-in-progress.flag";
 
     /** 重新安装验证限流：容量 5，每分钟恢复 */
     private static final int REINSTALL_VERIFY_CAPACITY = 5;
@@ -82,6 +85,7 @@ public class InstallServiceImpl implements InstallService {
                     .installed(true)
                     .locked(true)
                     .hasData(true)
+                    .inProgress(false)
                     .message("系统已安装完成")
                     .build();
         }
@@ -91,6 +95,7 @@ public class InstallServiceImpl implements InstallService {
                     .installed(false)
                     .locked(false)
                     .hasData(true)
+                    .inProgress(isInProgress())
                     .message("系统已有数据，需要验证才能重新安装")
                     .build();
         }
@@ -99,6 +104,7 @@ public class InstallServiceImpl implements InstallService {
                 .installed(false)
                 .locked(false)
                 .hasData(false)
+                .inProgress(isInProgress())
                 .message("系统未安装")
                 .build();
     }
@@ -186,6 +192,45 @@ public class InstallServiceImpl implements InstallService {
                 .build());
         allPassed &= mysqlDriverOk;
 
+        // 检查应用磁盘可写（上传目录）
+        logs.add("[INFO] 正在检查应用磁盘可写性（上传目录）...");
+        boolean diskWritableOk = checkUploadDirectoryWritable();
+        List<String> diskDetails = new ArrayList<>();
+        diskDetails.add("上传目录: uploads/");
+        diskDetails.add("可写状态: " + (diskWritableOk ? "可写" : "不可写"));
+        if (diskWritableOk) {
+            logs.add("[INFO] ✓ 上传目录可写");
+        } else {
+            logs.add("[ERROR] ✗ 上传目录不可写");
+        }
+        checks.add(EnvironmentCheckResponse.CheckItem.builder()
+                .name("磁盘可写")
+                .passed(diskWritableOk)
+                .message(diskWritableOk ? "应用磁盘可写（上传目录读写正常）" : "应用磁盘不可写，文件上传功能将不可用")
+                .suggestion(diskWritableOk ? null : "请检查应用工作目录的文件系统权限")
+                .details(diskDetails)
+                .build());
+        allPassed &= diskWritableOk;
+
+        // SMTP 配置检测（只展示，不阻塞安装）
+        logs.add("[INFO] 正在检查 SMTP 配置...");
+        boolean smtpConfigured = smtpConfigured();
+        List<String> smtpDetails = new ArrayList<>();
+        smtpDetails.add(smtpConfigured ? "SMTP 已配置，可发送邮箱验证/通知邮件" : "SMTP 未配置，安装后可在后台系统设置中配置");
+        checks.add(EnvironmentCheckResponse.CheckItem.builder()
+                .name("SMTP 配置")
+                .passed(true)
+                .blocking(false)
+                .message(smtpConfigured ? "已配置" : "未配置（不阻塞安装，可稍后在管理后台配置）")
+                .suggestion(smtpConfigured ? null : "如需注册邮箱验证/邮件通知，请在管理后台配置 SMTP")
+                .details(smtpDetails)
+                .build());
+        if (smtpConfigured) {
+            logs.add("[INFO] ✓ SMTP 已配置");
+        } else {
+            logs.add("[WARN] SMTP 未配置（不阻塞安装）");
+        }
+
         // 检查安装状态
         logs.add("[INFO] 正在检查安装状态...");
         InstallStatusResponse status = getInstallStatus();
@@ -209,23 +254,107 @@ public class InstallServiceImpl implements InstallService {
 
     @Override
     public boolean testDatabaseConnection(DatabaseConfigRequest request) {
+        return testDatabaseDetailed(request).isSuccess();
+    }
+
+    @Override
+    public DatabaseTestResponse testDatabaseDetailed(DatabaseConfigRequest request) {
         try (Connection connection = createDataSource(request).getConnection()) {
-            // 检查 MySQL 版本
             DatabaseMetaData metaData = connection.getMetaData();
             String version = metaData.getDatabaseProductVersion();
             int majorVersion = metaData.getDatabaseMajorVersion();
 
-            // MySQL 8.0 或更高版本
             if (majorVersion < 8) {
                 log.error("MySQL 版本过低: {}，需要 8.0 或更高版本", version);
-                return false;
+                return DatabaseTestResponse.builder()
+                        .success(false)
+                        .message("MySQL 版本过低（" + version + "），需要 8.0 或更高版本")
+                        .mysqlVersion(version)
+                        .errorType("VERSION_TOO_LOW")
+                        .build();
             }
 
-            log.info("数据库连接成功，MySQL 版本: {}", version);
-            return true;
+            // 读取服务器字符集（读取失败不影响连接成功判定）
+            String charset = null;
+            try (var stmt = connection.createStatement();
+                 var rs = stmt.executeQuery("SHOW VARIABLES LIKE 'character_set_server'")) {
+                if (rs.next()) {
+                    charset = rs.getString(2);
+                }
+            } catch (Exception ignore) {
+                log.debug("读取服务器字符集失败: {}", ignore.getMessage());
+            }
+
+            log.info("数据库连接成功，MySQL 版本: {}, 字符集: {}", version, charset);
+            return DatabaseTestResponse.builder()
+                    .success(true)
+                    .message("数据库连接成功")
+                    .mysqlVersion(version)
+                    .characterSet(charset)
+                    .build();
         } catch (Exception e) {
             log.error("数据库连接测试失败", e);
-            return false;
+            return classifyDatabaseError(e, request);
+        }
+    }
+
+    /**
+     * 将连接异常翻译为具体原因分类（连接拒绝 / 认证失败 / 库不存在 / 其他）
+     */
+    private DatabaseTestResponse classifyDatabaseError(Exception e, DatabaseConfigRequest request) {
+        String msg = e.getMessage() == null ? "" : e.getMessage();
+        String lower = msg.toLowerCase();
+        String cause = e.getCause() != null && e.getCause().getMessage() != null
+                ? e.getCause().getMessage().toLowerCase() : "";
+
+        if (lower.contains("access denied") || cause.contains("access denied")) {
+            return DatabaseTestResponse.builder()
+                    .success(false)
+                    .errorType("AUTH_FAILED")
+                    .message("认证失败：用户名或密码错误（或该用户无权从当前主机访问）")
+                    .build();
+        }
+        if (lower.contains("unknown database") || cause.contains("unknown database")) {
+            return DatabaseTestResponse.builder()
+                    .success(false)
+                    .errorType("DATABASE_NOT_EXISTS")
+                    .databaseMissing(true)
+                    .message("数据库 " + request.getDatabase() + " 不存在，可尝试使用\"创建数据库\"功能（需要建库权限）")
+                    .build();
+        }
+        if (lower.contains("communications link failure") || lower.contains("connection refused")
+                || lower.contains("connect timed out") || lower.contains("connection timed out")
+                || lower.contains("unknownhostexception") || cause.contains("connection refused")
+                || cause.contains("unknownhost")) {
+            return DatabaseTestResponse.builder()
+                    .success(false)
+                    .errorType("CONNECTION_REFUSED")
+                    .message("连接被拒绝：无法连接到 " + request.getHost() + ":" + request.getPort()
+                            + "，请确认数据库地址/端口正确、服务已启动且防火墙放行")
+                    .build();
+        }
+        return DatabaseTestResponse.builder()
+                .success(false)
+                .errorType("UNKNOWN")
+                .message("数据库连接失败: " + msg)
+                .build();
+    }
+
+    @Override
+    public String createDatabase(DatabaseConfigRequest request) {
+        log.info("尝试创建数据库: {}@{}:{}/{}", request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
+        try (Connection connection = createServerDataSource(request).getConnection();
+             var stmt = connection.createStatement()) {
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + request.getDatabase()
+                    + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            log.info("数据库创建成功（或已存在）: {}", request.getDatabase());
+            return "数据库 " + request.getDatabase() + " 已创建（或已存在），请重新测试连接";
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            if (msg.toLowerCase().contains("access denied")) {
+                throw new RuntimeException("创建数据库失败：当前账号没有建库权限（需要 CREATE 权限），请使用管理员账号或手动建库");
+            }
+            throw new RuntimeException("创建数据库失败: " + msg, e);
         }
     }
 
@@ -343,6 +472,9 @@ public class InstallServiceImpl implements InstallService {
         log.info("开始执行 SQL 脚本，数据库: {}@{}:{}/{}",
             request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
 
+        // 写入半安装标记（完成安装/重置安装状态时清理）
+        writeProgressMarker();
+
         // 使用用户配置的数据源执行 SQL 脚本
         DataSource dataSource = createDataSource(request);
         JdbcTemplate template = new JdbcTemplate(dataSource);
@@ -408,8 +540,8 @@ public class InstallServiceImpl implements InstallService {
                 throw new RuntimeException("admin 角色不存在，请先执行 SQL 脚本");
             }
 
-            // 使用 JDBC 直接插入管理员账号
-            String sql = "INSERT INTO users (username, email, password, nickname, role_id, status, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+            // 使用 JDBC 直接插入管理员账号（totp_enabled 显式给默认值，兼容 Hibernate 建表无列默认值的情况）
+            String sql = "INSERT INTO users (username, email, password, nickname, role_id, status, email_verified, totp_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, false, NOW(), NOW())";
             String passwordHash = passwordEncoder.encode(request.getPassword());
             String nickname = request.getNickname() != null ? request.getNickname() : request.getUsername();
 
@@ -469,6 +601,9 @@ public class InstallServiceImpl implements InstallService {
                 }
             }
             log.info("安装完成，已创建安装锁文件: {}", lockFile.getAbsolutePath());
+
+            // 安装完成，清理半安装标记
+            deleteProgressMarker();
         } catch (IOException e) {
             log.error("创建安装锁失败", e);
             throw new RuntimeException("安装完成操作失败: " + e.getMessage(), e);
@@ -596,6 +731,18 @@ public class InstallServiceImpl implements InstallService {
             log.error("重置安装状态失败", e);
             throw new RuntimeException("重置安装状态失败: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void resetInstallState() {
+        // 仅未完成（未锁定）状态可调用；已安装系统必须走 verify-reinstall 流程
+        if (isInstallLocked()) {
+            throw new RuntimeException("系统已安装，不允许重置安装状态；如需重装请先完成管理员验证");
+        }
+        resetInstallation();
+        // 清理半安装标记
+        deleteProgressMarker();
+        log.info("半安装状态已重置（对齐 scripts/reset-install.ps1 逻辑）");
     }
 
     @Override
@@ -733,6 +880,65 @@ public class InstallServiceImpl implements InstallService {
         return new File(INSTALL_LOCK_FILE).exists();
     }
 
+    /**
+     * 半安装标记：装库开始时写入，完成安装/重置安装状态时清理
+     */
+    private boolean isInProgress() {
+        return new File(INSTALL_PROGRESS_MARKER).exists();
+    }
+
+    private void writeProgressMarker() {
+        try {
+            Path marker = Paths.get(INSTALL_PROGRESS_MARKER);
+            if (marker.getParent() != null && !Files.exists(marker.getParent())) {
+                Files.createDirectories(marker.getParent());
+            }
+            Files.writeString(marker, "started=" + LocalDateTime.now(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("写入半安装标记失败: {}", e.getMessage());
+        }
+    }
+
+    private void deleteProgressMarker() {
+        try {
+            File marker = new File(INSTALL_PROGRESS_MARKER);
+            if (marker.exists()) {
+                marker.delete();
+                log.info("已清理半安装标记");
+            }
+        } catch (Exception e) {
+            log.warn("清理半安装标记失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * SMTP 是否已配置（自检报告项，读取站点设置；表未就绪时视为未配置）
+     */
+    private boolean smtpConfigured() {
+        String host = siteSettingsService.getString(com.luomiblog.service.SiteSettingsService.KEY_SMTP_HOST, "");
+        String username = siteSettingsService.getString(com.luomiblog.service.SiteSettingsService.KEY_SMTP_USERNAME, "");
+        return !host.isBlank() && !username.isBlank();
+    }
+
+    /**
+     * 上传目录可写检测：尝试在 uploads/ 写入并删除临时文件
+     */
+    private boolean checkUploadDirectoryWritable() {
+        try {
+            Path uploadDir = Paths.get("uploads");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            Path probe = uploadDir.resolve(".write-probe-" + System.currentTimeMillis());
+            Files.writeString(probe, "probe", StandardCharsets.UTF_8);
+            Files.deleteIfExists(probe);
+            return true;
+        } catch (Exception e) {
+            log.warn("上传目录可写检测失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
     private int parseJavaVersion(String version) {
         try {
             // 处理版本号格式如 "21.0.1" 或 "17.0.8"
@@ -771,8 +977,21 @@ public class InstallServiceImpl implements InstallService {
     private DataSource createDataSource(DatabaseConfigRequest request) {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true",
+        dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull",
                 request.getHost(), request.getPort(), request.getDatabase()));
+        dataSource.setUsername(request.getUsername());
+        dataSource.setPassword(request.getPassword());
+        return dataSource;
+    }
+
+    /**
+     * 服务器级数据源（不带库名），用于 CREATE DATABASE
+     */
+    private DataSource createServerDataSource(DatabaseConfigRequest request) {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setUrl(String.format("jdbc:mysql://%s:%d/?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull",
+                request.getHost(), request.getPort()));
         dataSource.setUsername(request.getUsername());
         dataSource.setPassword(request.getPassword());
         return dataSource;

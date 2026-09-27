@@ -10,6 +10,19 @@ public interface InstallService {
 
     boolean testDatabaseConnection(DatabaseConfigRequest request);
 
+    /**
+     * 富信息测试连接：成功返回 MySQL 版本与字符集，失败返回具体原因分类
+     * （连接拒绝 / 认证失败 / 库不存在 / 版本过低）
+     */
+    DatabaseTestResponse testDatabaseDetailed(DatabaseConfigRequest request);
+
+    /**
+     * 库不存在时尝试创建数据库（需要建库权限，CREATE DATABASE IF NOT EXISTS）。
+     *
+     * @return 创建结果信息
+     */
+    String createDatabase(DatabaseConfigRequest request);
+
     DatabaseCheckResponse checkDatabase(DatabaseConfigRequest request);
 
     void executeSqlScripts(DatabaseConfigRequest request);
@@ -23,6 +36,12 @@ public interface InstallService {
     boolean verifyReinstallPermission(String verificationPassword);
 
     void resetInstallation();
+
+    /**
+     * 重置安装状态（仅未完成/半安装状态可调用）：
+     * 对齐 scripts/reset-install.ps1 的逻辑，删除安装锁残留、自定义配置与半安装标记。
+     */
+    void resetInstallState();
 
     void executeReinstall(ReinstallOption option, DatabaseConfigRequest request);
 

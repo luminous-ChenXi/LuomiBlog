@@ -127,6 +127,19 @@ export interface AuthResponse {
   token: string;
   type: string;
   user: User;
+
+  /* 注册邮箱验证：true 表示注册成功但需先验证邮箱（无 token，不可登录） */
+  pendingEmailVerification?: boolean;
+  challengeToken?: string;
+
+  /* 登录 2FA 挑战态：true 表示密码已通过、需要 2FA（无 token） */
+  twoFactorRequired?: boolean;
+  /** true：首次登录强制绑定 TOTP */
+  enrollment?: boolean;
+  otpauthUri?: string;
+  secret?: string;
+  /** 绑定成功时一次性展示的还原码 */
+  recoveryCodes?: string[];
 }
 
 // 辰汐通行证登录配置（公开"门牌"信息，公共客户端没有任何密钥）
@@ -271,6 +284,31 @@ export interface AdminStatusChangeRequest {
 // 管理员重置密码请求
 export interface AdminResetPasswordRequest {
   newPassword: string;
+}
+
+// 站长功能开关状态（公开接口，注册/登录页据此决定流程）
+export interface SiteFeatures {
+  registrationEmailVerifyRequired: boolean;
+  loginTotpRequired: boolean;
+  smtpConfigured: boolean;
+}
+
+// SMTP 设置（管理后台视图，password 永不回传，仅 passwordSet 标记）
+export interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string;
+  ssl: boolean;
+  from: string;
+  passwordSet: boolean;
+}
+
+// 管理端站点设置
+export interface AdminSettings {
+  registrationEmailVerifyRequired: boolean;
+  loginTotpRequired: boolean;
+  smtpConfigured: boolean;
+  smtp: SmtpSettings;
 }
 
 // 健康检查响应

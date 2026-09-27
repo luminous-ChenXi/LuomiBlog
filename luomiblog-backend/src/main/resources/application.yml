@@ -6,7 +6,8 @@ spring:
     name: luomiblog
 
   datasource:
-    url: jdbc:mysql://localhost:3306/luomiblog?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
+    # zeroDateTimeBehavior=convertToNull：兼容安装向导 INSERT IGNORE 产生的零值日期（旧库遗留）
+    url: jdbc:mysql://localhost:3306/luomiblog?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull
     username: ${DB_USERNAME:}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver

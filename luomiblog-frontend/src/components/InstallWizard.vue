@@ -9,6 +9,7 @@ const loading = ref(false);
 const installStatus = ref<{ installed: boolean; locked: boolean; hasData: boolean; message: string } | null>(null);
 const dbTestPassed = ref(false);
 const sqlExecuted = ref(false); // 标记SQL脚本是否已执行
+const sqlFailed = ref(false); // 标记装库失败（提供"重置安装状态"入口）
 
 // 表单数据
 const envForm = reactive({
@@ -16,6 +17,9 @@ const envForm = reactive({
   portAvailable: false,
   mysqlDriver: false
 });
+
+// 环境自检报告（后端返回的完整检查项：Java/后端服务/MySQL 驱动/磁盘可写/SMTP 配置）
+const envChecks = ref<Array<{ name: string; passed: boolean; message: string; suggestion?: string; blocking?: boolean }>>([]);
 
 // 环境检测日志
 const envLogs = ref<string[]>([]);
@@ -29,9 +33,30 @@ const dbForm = reactive({
   password: ''
 });
 
+// 数据库位置：本机（自动预填 localhost:3306）/ 远程（host+端口表单）
+const dbLocation = ref<'local' | 'remote'>('local');
+watch(dbLocation, (loc) => {
+  if (loc === 'local') {
+    dbForm.host = 'localhost';
+    dbForm.port = 3306;
+  }
+});
+
+// 测试连接结果（富信息：版本/字符集/失败原因分类）
+const dbTestResult = ref<{
+  success: boolean;
+  message: string;
+  mysqlVersion?: string;
+  characterSet?: string;
+  errorType?: string;
+  databaseMissing?: boolean;
+} | null>(null);
+const creatingDb = ref(false);
+
 // 监听数据库配置变化，重置测试状态
 watch(() => [dbForm.host, dbForm.port, dbForm.database, dbForm.username, dbForm.password], () => {
   dbTestPassed.value = false;
+  dbTestResult.value = null;
 }, { deep: true });
 
 // 监听步骤变化，防止跳过SQL初始化步骤
@@ -528,8 +553,9 @@ const checkEnvironment = async () => {
   try {
     const response = await api.install.checkEnvironment();
 
-    // 保存日志
+    // 保存日志与完整检查项（含磁盘可写/SMTP 配置等非阻塞项）
     envLogs.value = response.logs || [];
+    envChecks.value = response.checks || [];
 
     const javaCheck = response.checks.find(c => c.name === 'Java 版本');
     const backendCheck = response.checks.find(c => c.name === '后端服务');
@@ -546,7 +572,7 @@ const checkEnvironment = async () => {
       }, 500);
     } else {
       const failedChecks = response.checks.filter(c => !c.passed);
-      const messages = failedChecks.map(c => `${c.name}: ${c.suggestion}`).join('\n');
+      const messages = failedChecks.map(c => `${c.name}: ${c.suggestion || c.message}`).join('\n');
       ElMessageBox.alert(messages, '环境检测未通过', {
         confirmButtonText: '我知道了'
       });
@@ -572,7 +598,7 @@ const checkEnvironment = async () => {
 const dbCheckLogs = ref<string[]>([]);
 const showDbCheckLogs = ref(false);
 
-// 测试数据库连接
+// 测试数据库连接（富信息：成功显示版本与字符集，失败给出具体原因）
 const testDatabase = async () => {
   if (!dbForm.host || !dbForm.database || !dbForm.username) {
     ElMessage.warning('请填写完整的数据库配置');
@@ -581,26 +607,29 @@ const testDatabase = async () => {
 
   loading.value = true;
   dbCheckLogs.value = [];
-  showDbCheckLogs.value = true;
+  dbTestResult.value = null;
   try {
-    const response = await api.install.checkDatabase(dbForm);
+    const response = await api.install.testDatabase(dbForm);
+    dbTestResult.value = response;
 
-    // 保存日志
-    dbCheckLogs.value = response.logs || [];
-
-    if (response.connected) {
-      ElMessage.success(`数据库连接成功，MySQL ${response.mysqlVersion}`);
+    if (response.success) {
+      ElMessage.success(`连接成功${response.mysqlVersion ? '，MySQL ' + response.mysqlVersion : ''}`);
       dbTestPassed.value = true;
 
-      // 如果检测到已有数据，显示重新安装选项
-      if (response.needsReinstallOptions) {
-        ElMessage.warning(response.existingDataMessage || '检测到数据库已有数据');
-        // 加载重新安装选项
-        await loadReinstallOptions();
+      // 连接成功后静默检查已有数据（决定是否需要重新安装选项）
+      try {
+        const checkResp = await api.install.checkDatabase(dbForm);
+        dbCheckLogs.value = checkResp.logs || [];
+        if (checkResp.needsReinstallOptions) {
+          ElMessage.warning(checkResp.existingDataMessage || '检测到数据库已有数据');
+          await loadReinstallOptions();
+        }
+      } catch {
+        // 已有数据检查失败不影响连接结果
       }
     } else {
-      ElMessage.error(response.message || '数据库连接失败');
       dbTestPassed.value = false;
+      ElMessage.error(response.message || '数据库连接失败');
     }
   } catch (error: any) {
     dbTestPassed.value = false;
@@ -620,6 +649,51 @@ const testDatabase = async () => {
   }
 };
 
+// 尝试创建数据库（库不存在时；执行前提示需要建库权限）
+const createDatabase = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '将尝试执行 CREATE DATABASE 创建该数据库。此操作需要当前数据库账号拥有建库（CREATE）权限；若账号为受限账号，请联系管理员手动建库。',
+      '尝试创建数据库',
+      {
+        confirmButtonText: '创建数据库',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+  } catch {
+    return;
+  }
+
+  creatingDb.value = true;
+  try {
+    const response = await api.install.createDatabase(dbForm);
+    ElMessage.success(response.message || '数据库已创建，正在重新测试连接');
+    await testDatabase();
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建数据库失败');
+  } finally {
+    creatingDb.value = false;
+  }
+};
+
+// 重置安装状态（装库失败/半安装时；后端仅未完成状态放行）
+const resetInstallState = async () => {
+  loading.value = true;
+  try {
+    const response = await api.install.resetInstallState();
+    ElMessage.success(response.message || '安装状态已重置');
+    sqlFailed.value = false;
+    sqlExecuted.value = false;
+    dbTestPassed.value = false;
+    currentStep.value = 1; // 回到数据库配置步骤
+  } catch (error: any) {
+    ElMessage.error(error.message || '重置安装状态失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
 // 下一步（数据库配置步骤）
 const nextStepFromDb = async () => {
   if (!dbTestPassed.value) {
@@ -629,7 +703,7 @@ const nextStepFromDb = async () => {
   currentStep.value++;
 };
 
-// 执行 SQL 脚本
+// 执行 SQL 脚本（失败时展示"重置安装状态"入口）
 const executeSql = async () => {
   loading.value = true;
   try {
@@ -637,11 +711,14 @@ const executeSql = async () => {
     if (response.success) {
       ElMessage.success('数据库初始化成功');
       sqlExecuted.value = true; // 标记SQL已执行
+      sqlFailed.value = false;
       currentStep.value++;
     } else {
+      sqlFailed.value = true;
       ElMessage.error(response.message);
     }
   } catch (error: any) {
+    sqlFailed.value = true;
     ElMessage.error(error.message || 'SQL 执行失败');
   } finally {
     loading.value = false;
@@ -776,6 +853,21 @@ const saveSmtpConfig = async () => {
     loading.value = false;
   }
 };
+
+// 完成汇总页：站点地址 + 邮箱验证/2FA 开关状态
+const siteFeatures = ref<{ registrationEmailVerifyRequired: boolean; loginTotpRequired: boolean; smtpConfigured: boolean } | null>(null);
+const siteOrigin = computed(() => {
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+});
+
+watch(currentStep, (step) => {
+  if (step === 7 && !siteFeatures.value) {
+    api.site.getFeatures()
+      .then((features) => { siteFeatures.value = features; })
+      .catch(() => { siteFeatures.value = null; });
+  }
+});
 
 // 完成安装
 const completeInstall = async () => {
@@ -946,36 +1038,28 @@ onMounted(() => {
         </div>
         
         <div class="env-checks">
-          <div class="check-item" :class="{ passed: envForm.javaVersion }">
+          <div
+            v-for="check in envChecks"
+            :key="check.name"
+            class="check-item"
+            :class="{ passed: check.passed, 'non-blocking': check.blocking === false && !check.passed }"
+          >
             <div class="check-icon">
-              <svg v-if="envForm.javaVersion" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+              <svg v-if="check.passed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <div class="check-info">
-              <div class="check-name">Java 版本</div>
-              <div class="check-status">{{ envForm.javaVersion || '待检测' }}</div>
+              <div class="check-name">
+                {{ check.name }}
+                <span v-if="check.blocking === false" class="check-optional-tag">不阻塞</span>
+              </div>
+              <div class="check-status">{{ check.message }}</div>
+              <div v-if="!check.passed && check.suggestion" class="check-suggestion">{{ check.suggestion }}</div>
             </div>
           </div>
-          
-          <div class="check-item" :class="{ passed: envForm.portAvailable }">
-            <div class="check-icon">
-              <svg v-if="envForm.portAvailable" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
-            </div>
+          <div v-if="envChecks.length === 0" class="check-item">
             <div class="check-info">
-              <div class="check-name">后端服务</div>
-              <div class="check-status">{{ envForm.portAvailable ? '运行正常' : '未启动或待检测' }}</div>
-            </div>
-          </div>
-          
-          <div class="check-item" :class="{ passed: envForm.mysqlDriver }">
-            <div class="check-icon">
-              <svg v-if="envForm.mysqlDriver" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
-            </div>
-            <div class="check-info">
-              <div class="check-name">MySQL 驱动</div>
-              <div class="check-status">{{ envForm.mysqlDriver ? '已加载' : '待检测' }}</div>
+              <div class="check-status">点击"开始检测"进行环境自检（Java 版本、MySQL 驱动、磁盘可写、SMTP 配置等）</div>
             </div>
           </div>
         </div>
@@ -1029,31 +1113,73 @@ onMounted(() => {
         </div>
         
         <div class="install-form">
+          <!-- 数据库位置 -->
+          <div class="form-group">
+            <label class="form-label">数据库位置</label>
+            <div class="db-location-tabs">
+              <button
+                type="button"
+                class="location-tab"
+                :class="{ active: dbLocation === 'local' }"
+                @click="dbLocation = 'local'"
+              >本机数据库</button>
+              <button
+                type="button"
+                class="location-tab"
+                :class="{ active: dbLocation === 'remote' }"
+                @click="dbLocation = 'remote'"
+              >远程数据库</button>
+            </div>
+            <p class="form-hint">{{ dbLocation === 'local' ? '已自动预填本机地址 localhost:3306' : '请填写远程数据库的地址、端口与凭据' }}</p>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">数据库主机</label>
-              <input v-model="dbForm.host" type="text" class="form-input" placeholder="localhost" />
+              <input v-model="dbForm.host" type="text" class="form-input" placeholder="localhost" :disabled="dbLocation === 'local'" />
             </div>
             <div class="form-group">
               <label class="form-label">数据库端口</label>
-              <input v-model.number="dbForm.port" type="number" class="form-input" placeholder="3306" />
+              <input v-model.number="dbForm.port" type="number" class="form-input" placeholder="3306" :disabled="dbLocation === 'local'" />
             </div>
           </div>
-          
+
           <div class="form-group">
             <label class="form-label">数据库名称</label>
             <input v-model="dbForm.database" type="text" class="form-input" placeholder="luomiblog" />
           </div>
-          
+
           <div class="form-group">
             <label class="form-label">数据库用户名</label>
             <input v-model="dbForm.username" type="text" class="form-input" placeholder="root" />
           </div>
-          
+
           <div class="form-group">
             <label class="form-label">数据库密码</label>
             <input v-model="dbForm.password" type="password" class="form-input" placeholder="请输入数据库密码" />
           </div>
+        </div>
+
+        <!-- 测试连接结果 -->
+        <div v-if="dbTestResult" class="db-test-result" :class="dbTestResult.success ? 'result-success' : 'result-error'">
+          <template v-if="dbTestResult.success">
+            <p class="result-title">连接成功</p>
+            <p class="result-line">MySQL 版本：{{ dbTestResult.mysqlVersion || '未知' }}</p>
+            <p class="result-line">服务器字符集：{{ dbTestResult.characterSet || '未知' }}</p>
+          </template>
+          <template v-else>
+            <p class="result-title">连接失败</p>
+            <p class="result-line">{{ dbTestResult.message }}</p>
+            <button
+              v-if="dbTestResult.databaseMissing"
+              class="btn-secondary btn-create-db"
+              :disabled="creatingDb"
+              @click="createDatabase"
+            >
+              <span v-if="creatingDb" class="btn-loading"></span>
+              <span v-else>尝试创建数据库</span>
+            </button>
+          </template>
         </div>
 
         <!-- 数据库检查日志 -->
@@ -1129,7 +1255,30 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="step-actions">
+        <!-- 执行进度反馈 -->
+        <div v-if="loading" class="sql-progress">
+          <p class="sql-progress-title">正在初始化数据库，请勿关闭页面…</p>
+          <ul class="sql-progress-list">
+            <li class="done">执行 schema.sql（创建表结构）</li>
+            <li class="done">执行 data.sql（初始化角色/权限/系统配置）</li>
+            <li class="running">验证核心表创建结果</li>
+          </ul>
+        </div>
+
+        <!-- 装库失败处理 -->
+        <div v-if="sqlFailed" class="sql-failed-box">
+          <p class="sql-failed-title">数据库初始化失败</p>
+          <p class="sql-failed-desc">可先回到上一步检查数据库配置；若数据库已残留半安装数据，可重置安装状态后重新开始（仅清理安装过程标记，不会删除业务数据表）。</p>
+          <div class="step-actions sql-failed-actions">
+            <button class="btn-secondary" @click="prevStep">返回检查数据库配置</button>
+            <button class="btn-primary" :disabled="loading" @click="resetInstallState">
+              <span v-if="loading" class="btn-loading"></span>
+              <span v-else>重置安装状态</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="!sqlFailed" class="step-actions">
           <button class="btn-secondary" @click="prevStep">上一步</button>
           <button class="btn-primary" :disabled="loading" @click="executeSql">
             <span v-if="loading" class="btn-loading"></span>
@@ -1410,16 +1559,27 @@ onMounted(() => {
           <h3 class="card-title">创建管理员账号</h3>
           <p class="card-desc">设置管理员账号信息</p>
         </div>
-        
+
+        <!-- 最高权限警示 -->
+        <div class="admin-warning-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <p>这是<b>最高权限管理员</b>账号，拥有站点的全部控制权。生成的强密码明文<b>仅此一次展示</b>，请务必妥善保存；关闭提示后将无法再次查看。</p>
+        </div>
+
         <div class="install-form">
           <div class="form-group">
-            <label class="form-label">管理员用户名</label>
+            <label class="form-label">管理员用户名 <span class="required-mark">*</span></label>
             <input v-model="adminForm.username" type="text" class="form-input" placeholder="请输入用户名（3-50位字母数字下划线）" />
           </div>
-          
+
           <div class="form-group">
-            <label class="form-label">管理员邮箱</label>
-            <input v-model="adminForm.email" type="email" class="form-input" placeholder="请输入邮箱地址" />
+            <label class="form-label">管理员邮箱 <span class="required-mark">*</span></label>
+            <input v-model="adminForm.email" type="email" class="form-input" placeholder="请输入邮箱地址（必填）" />
+            <p class="form-hint">用于账号找回与重要通知，请确保可正常收信</p>
           </div>
           
           <div class="form-group">
@@ -1467,8 +1627,12 @@ onMounted(() => {
         
         <h3 class="complete-title">安装成功</h3>
         <p class="complete-subtitle">恭喜！LuomiBlog 已成功安装完成</p>
-        
+
         <div class="complete-info">
+          <div class="info-item">
+            <span class="info-label">站点地址</span>
+            <span class="info-value"><a :href="siteOrigin" class="complete-link">{{ siteOrigin }}</a></span>
+          </div>
           <div class="info-item">
             <span class="info-label">网站名称</span>
             <span class="info-value">{{ siteForm.siteName }}</span>
@@ -1478,10 +1642,34 @@ onMounted(() => {
             <span class="info-value">{{ adminForm.username }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">登录方式</span>
-            <span class="info-value">完成安装后将自动跳转登录页（出于安全考虑，密码不再展示）</span>
+            <span class="info-label">管理员邮箱</span>
+            <span class="info-value">{{ adminForm.email || '未填写' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">登录入口</span>
+            <span class="info-value"><a href="/?login=1" class="complete-link">打开登录框</a>（密码不回显，请使用已保存的凭据）</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">注册邮箱验证</span>
+            <span class="info-value" :class="siteFeatures?.registrationEmailVerifyRequired ? 'feature-on' : 'feature-off'">
+              {{ siteFeatures === null ? '读取中…' : (siteFeatures.registrationEmailVerifyRequired ? '已开启' : '关闭') }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">登录两步验证（2FA）</span>
+            <span class="info-value" :class="siteFeatures?.loginTotpRequired ? 'feature-on' : 'feature-off'">
+              {{ siteFeatures === null ? '读取中…' : (siteFeatures.loginTotpRequired ? '已开启' : '关闭') }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">SMTP 邮件服务</span>
+            <span class="info-value" :class="siteFeatures?.smtpConfigured ? 'feature-on' : 'feature-off'">
+              {{ siteFeatures === null ? '读取中…' : (siteFeatures.smtpConfigured ? '已配置' : '未配置（可在后台系统设置中配置）') }}
+            </span>
           </div>
         </div>
+
+        <p class="complete-hint">以上开关均可在"管理后台 → 系统设置"中随时调整。</p>
 
         <div class="step-actions">
           <button class="btn-primary btn-large" :disabled="loading" @click="completeInstall">
@@ -1636,6 +1824,229 @@ onMounted(() => {
   gap: 1rem;
   margin: 1.5rem 0;
 }
+
+/* 自检项：未通过的不阻塞项（如 SMTP 未配置）用中性色而非红色 */
+.check-item.non-blocking {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.check-item.non-blocking .check-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.check-optional-tag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.check-suggestion {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+/* 数据库位置选择 */
+.db-location-tabs,
+.favicon-type-tabs {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.location-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.location-tab:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+}
+
+.location-tab.active {
+  background: linear-gradient(135deg, #ff6b9d 0%, #e87a9f 100%);
+  border-color: transparent;
+  color: white;
+}
+
+.form-input:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* 测试连接结果面板 */
+.db-test-result {
+  margin: 1.25rem 0 0;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.db-test-result.result-success {
+  border-color: rgba(78, 205, 196, 0.5);
+  background: rgba(78, 205, 196, 0.08);
+}
+
+.db-test-result.result-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.db-test-result .result-title {
+  font-weight: 600;
+  margin: 0 0 0.375rem;
+}
+
+.db-test-result.result-success .result-title { color: #0d9488; }
+.db-test-result.result-error .result-title { color: #ef4444; }
+
+.db-test-result .result-line {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.btn-create-db {
+  margin-top: 0.75rem;
+}
+
+/* 装库失败处理 */
+.sql-failed-box {
+  margin: 1.5rem 0 0;
+  padding: 1.25rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: var(--radius-md);
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sql-failed-title {
+  margin: 0 0 0.375rem;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.sql-failed-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.sql-failed-actions {
+  border-top: none;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+/* 初始化执行进度反馈 */
+.sql-progress {
+  max-width: 560px;
+  margin: 1.5rem auto 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(135, 206, 235, 0.4);
+  background: rgba(135, 206, 235, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.sql-progress-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.sql-progress-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.sql-progress-list li {
+  margin: 0.25rem 0;
+}
+
+.sql-progress-list li.running::marker {
+  color: var(--color-brand-primary);
+}
+
+/* 创建管理员最高权限警示 */
+.admin-warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(255, 107, 157, 0.06) 100%);
+  border-radius: var(--radius-md);
+}
+
+.admin-warning-box svg {
+  width: 20px;
+  height: 20px;
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.admin-warning-box p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.required-mark {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* 完成汇总 */
+.complete-link {
+  color: var(--color-brand-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.complete-link:hover {
+  text-decoration: underline;
+}
+
+.feature-on { color: #0d9488; font-weight: 600; }
+.feature-off { color: var(--color-text-secondary); }
+
+.complete-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin: -1rem 0 0;
+}
+
 
 .check-item {
   display: flex;
@@ -2325,6 +2736,10 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
+  .db-location-tabs {
+    flex-direction: column;
+  }
+
   .favicon-type-tabs {
     flex-direction: column;
   }

@@ -25,7 +25,10 @@ import type {
   AdminUserUpdateRequest,
   AdminRoleChangeRequest,
   AdminStatusChangeRequest,
-  AdminResetPasswordRequest
+  AdminResetPasswordRequest,
+  SiteFeatures,
+  AdminSettings,
+  SmtpSettings
 } from '../types/api';
 
 import { API_BASE_URL, API_CONFIG, API_ERROR_CODES, ApiError } from '../config/api';
@@ -227,6 +230,18 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
 
 export const isBackendAvailable = () => backendAvailable.value;
 
+/**
+ * 后端认证响应归一化：后端字段为 accessToken/refreshToken，
+ * 前端存储约定为 token —— 在 API 边界统一转换，保证 setAuth 存到有效令牌。
+ */
+function normalizeAuth(data: any): AuthResponse {
+  return {
+    ...data,
+    token: data?.accessToken ?? data?.token,
+    type: data?.tokenType ?? data?.type ?? 'Bearer'
+  };
+}
+
 export const setBackendAvailable = (available: boolean) => {
   if (available) {
     backendAvailable.value = true;
@@ -242,19 +257,47 @@ export const api = {
       request<AuthResponse>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(data)
-      }),
+      }).then(normalizeAuth),
 
     register: (data: RegisterRequest) =>
       request<AuthResponse>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data)
-      }),
+      }).then(normalizeAuth),
 
     logout: () =>
       request<void>('/api/auth/logout', { method: 'POST' }),
 
     me: () =>
-      request<User>('/api/auth/me')
+      request<User>('/api/auth/me'),
+
+    // 注册邮箱验证：验证码/激活链接换正式会话
+    verifyEmail: (data: { token: string; code?: string; email?: string }) =>
+      request<AuthResponse>('/api/auth/email/verify', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }).then(normalizeAuth),
+
+    // 重发注册验证邮件
+    resendEmail: (email: string) =>
+      request<void>('/api/auth/email/resend', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+      }),
+
+    // 2FA 强制绑定确认（返回正式会话 + 一次性还原码）
+    twoFactorEnroll: (data: { challengeToken: string; code: string }) =>
+      request<AuthResponse>('/api/auth/2fa/enroll', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }).then(normalizeAuth),
+
+    // 2FA 挑战验证（code 或 recoveryCode 二选一）
+    twoFactorVerify: (data: { challengeToken: string; code?: string; recoveryCode?: string }) =>
+      request<AuthResponse>('/api/auth/2fa/verify', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }).then(normalizeAuth)
   },
 
   chenxi: {
@@ -267,7 +310,7 @@ export const api = {
       request<AuthResponse>('/api/auth/chenxi/exchange', {
         method: 'POST',
         body: JSON.stringify(data)
-      })
+      }).then(normalizeAuth)
   },
 
   articles: {
@@ -366,9 +409,27 @@ export const api = {
       }),
 
     testDatabase: (data: DatabaseConfigRequest) =>
-      request<{ success: boolean; message: string }>('/api/install/test-database', {
+      request<{
+        success: boolean;
+        message: string;
+        mysqlVersion?: string;
+        characterSet?: string;
+        errorType?: string;
+        databaseMissing?: boolean;
+      }>('/api/install/test-database', {
         method: 'POST',
         body: JSON.stringify(data)
+      }),
+
+    createDatabase: (data: DatabaseConfigRequest) =>
+      request<{ success: boolean; message: string }>('/api/install/create-database', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    resetInstallState: () =>
+      request<{ success: boolean; message: string }>('/api/install/reset-install-state', {
+        method: 'POST'
       }),
 
     checkDatabase: (data: DatabaseConfigRequest) =>
@@ -428,10 +489,10 @@ export const api = {
         method: 'POST'
       }),
 
-    verifyReinstall: (password: string) =>
+    verifyReinstall: (password: string, confirm: string) =>
       request<{ success: boolean; message: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
         method: 'POST',
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password, confirm })
       }),
 
     getReinstallOptions: () =>
@@ -443,10 +504,10 @@ export const api = {
         method: 'GET'
       }),
 
-    executeReinstall: (option: string, database?: DatabaseConfigRequest) =>
+    executeReinstall: (option: string, confirm: string, database?: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string; option: string }>('/api/install/reinstall', {
         method: 'POST',
-        body: JSON.stringify({ option, database })
+        body: JSON.stringify({ option, confirm, database })
       })
   },
 
@@ -484,7 +545,41 @@ export const api = {
       }>('/api/site/config', { silent: true, requireBackend: false }),
 
     getFavicon: () =>
-      request<string>('/api/site/favicon', { silent: true, requireBackend: false })
+      request<string>('/api/site/favicon', { silent: true, requireBackend: false }),
+
+    // 站长功能开关状态（公开，注册/登录页据此展示验证码与 2FA 流程）
+    getFeatures: () =>
+      request<SiteFeatures>('/api/site/features', { silent: true })
+  },
+
+  adminSettings: {
+    get: () =>
+      request<AdminSettings>('/api/admin/settings'),
+
+    updateSwitches: (data: { registrationEmailVerifyRequired?: boolean; loginTotpRequired?: boolean }) =>
+      request<AdminSettings & { warning?: string | null }>('/api/admin/settings/switches', {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    updateSmtp: (data: {
+      host: string;
+      port: number;
+      username: string;
+      password?: string;
+      ssl: boolean;
+      from: string;
+    }) =>
+      request<{ smtp: SmtpSettings; smtpConfigured: boolean }>('/api/admin/settings/smtp', {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    testSmtp: (to: string) =>
+      request<{ success: boolean; message: string }>('/api/admin/settings/smtp/test', {
+        method: 'POST',
+        body: JSON.stringify({ to })
+      })
   },
 
   adminUsers: {
@@ -523,6 +618,12 @@ export const api = {
       request<void>(`/api/admin/users/${id}/reset-password`, {
         method: 'POST',
         body: JSON.stringify(data)
+      }),
+
+    // 重置指定用户的 2FA 绑定（用户下次登录重新绑定）
+    reset2fa: (id: number) =>
+      request<void>(`/api/admin/users/${id}/reset-2fa`, {
+        method: 'POST'
       })
   }
 };

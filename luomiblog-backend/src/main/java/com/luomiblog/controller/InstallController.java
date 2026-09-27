@@ -4,6 +4,7 @@ import com.luomiblog.common.ApiResponse;
 import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.install.*;
 import com.luomiblog.service.InstallService;
+import com.luomiblog.service.MailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,8 @@ public class InstallController {
 
     private final InstallService installService;
     private final ClientIpResolver clientIpResolver;
+    private final com.luomiblog.service.SiteSettingsService siteSettingsService;
+    private final com.luomiblog.service.MailService mailService;
 
     @GetMapping("/status")
     public ApiResponse<InstallStatusResponse> getInstallStatus() {
@@ -65,11 +68,52 @@ public class InstallController {
         if (status.isLocked()) {
             return ApiResponse.error(403, "系统已安装，无法重复安装");
         }
-        boolean success = installService.testDatabaseConnection(request);
-        return ApiResponse.success(Map.of(
-            "success", success,
-            "message", success ? "数据库连接成功" : "数据库连接失败，请检查配置"
-        ));
+        com.luomiblog.dto.install.DatabaseTestResponse result = installService.testDatabaseDetailed(request);
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("success", result.isSuccess());
+        data.put("message", result.getMessage());
+        data.put("mysqlVersion", result.getMysqlVersion());
+        data.put("characterSet", result.getCharacterSet());
+        data.put("errorType", result.getErrorType());
+        data.put("databaseMissing", result.isDatabaseMissing());
+        return ApiResponse.success(data);
+    }
+
+    /**
+     * 库不存在时尝试创建数据库（需要建库权限；仅未锁定时可调用）
+     */
+    @PostMapping("/create-database")
+    public ApiResponse<Map<String, Object>> createDatabase(@Valid @RequestBody DatabaseConfigRequest request) {
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
+        try {
+            String message = installService.createDatabase(request);
+            return ApiResponse.success(Map.of("success", true, "message", message));
+        } catch (Exception e) {
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+
+    /**
+     * 重置安装状态（仅未完成/半安装状态可调用，自动清理半安装标记）
+     */
+    @PostMapping("/reset-install-state")
+    public ApiResponse<Map<String, Object>> resetInstallState() {
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重置安装状态；如需重装请先完成管理员验证");
+        }
+        try {
+            installService.resetInstallState();
+            return ApiResponse.success(Map.of(
+                "success", true,
+                "message", "安装状态已重置，请重新从数据库配置开始"
+            ));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "重置安装状态失败: " + e.getMessage());
+        }
     }
 
     @PostMapping("/check-database")
@@ -153,6 +197,63 @@ public class InstallController {
         } catch (Exception e) {
             return ApiResponse.error(500, "图标配置保存失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 安装向导 SMTP 配置保存（写入站点设置键值表；需先完成数据库初始化）
+     */
+    @PostMapping("/smtp-config")
+    public ApiResponse<Map<String, Object>> saveSmtpConfig(@RequestBody Map<String, Object> request) {
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
+        try {
+            Map<String, String> toSave = new java.util.LinkedHashMap<>();
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_HOST, str(request.get("host")));
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_PORT,
+                    request.get("port") == null ? "587" : str(request.get("port")));
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_USERNAME, str(request.get("username")));
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_PASSWORD, str(request.get("password")));
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_SSL,
+                    request.get("useSsl") == null ? "true" : str(request.get("useSsl")));
+            toSave.put(com.luomiblog.service.SiteSettingsService.KEY_SMTP_FROM,
+                    request.get("fromEmail") == null ? str(request.get("username")) : str(request.get("fromEmail")));
+            siteSettingsService.setAll(toSave);
+            return ApiResponse.success(Map.of("success", true, "message", "SMTP配置保存成功"));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "SMTP配置保存失败: " + e.getMessage() + "（请确认已先完成数据库初始化）");
+        }
+    }
+
+    /**
+     * 安装向导 SMTP 测试发送（使用表单中尚未保存的配置直接发送）
+     */
+    @PostMapping("/test-smtp")
+    public ApiResponse<Map<String, Object>> testSmtp(@RequestBody Map<String, Object> request) {
+        InstallStatusResponse status = installService.getInstallStatus();
+        if (status.isLocked()) {
+            return ApiResponse.error(403, "系统已安装，无法重复安装");
+        }
+        try {
+            MailService.SmtpConfig config = new MailService.SmtpConfig(
+                    str(request.get("host")),
+                    request.get("port") == null ? 587 : Integer.parseInt(str(request.get("port"))),
+                    str(request.get("username")),
+                    str(request.get("password")),
+                    request.get("useSsl") == null || Boolean.parseBoolean(str(request.get("useSsl"))),
+                    str(request.get("fromEmail")));
+            String to = config.from().isBlank() ? config.username() : config.from();
+            mailService.sendMailWithConfig(to, "LuomiBlog 安装向导 SMTP 测试邮件",
+                    "<p>这是一封来自 LuomiBlog 安装向导的 SMTP 测试邮件，收到即说明邮件服务配置成功。</p>", config);
+            return ApiResponse.success(Map.of("success", true, "message", "测试邮件已发送至 " + to + "，请查收"));
+        } catch (Exception e) {
+            return ApiResponse.error(500, "测试邮件发送失败: " + e.getMessage());
+        }
+    }
+
+    private String str(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 
     @PostMapping("/complete")
