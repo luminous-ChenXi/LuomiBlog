@@ -69,13 +69,14 @@ public class LikeController {
         return ApiResponse.success(likeService.getCommentLikeStatus(commentId, userId, visitorId));
     }
 
-    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    /** 限流身份键：登录用户按 userId；访客按 visitorId+IP 绑定（防轮换 X-Visitor-Id 刷新桶）；兜底 IP */
     private String interactionIdentity(Long userId, String visitorId, String ipAddress) {
         if (userId != null) {
             return "u:" + userId;
         }
         if (visitorId != null && !visitorId.isBlank()) {
-            return "v:" + visitorId;
+            // 访客身份绑定 IP：X-Visitor-Id 由客户端自带、可随意轮换，仅凭它会拿到全新限流桶
+            return "v:" + visitorId + "|" + ipAddress;
         }
         return "ip:" + ipAddress;
     }

@@ -103,6 +103,7 @@ chenxi_sub VARCHAR(64) NULL，UNIQUE KEY uk_users_chenxi_sub (chenxi_sub)
 ### 安全说明
 
 - **影子账号机制**：通行证用户首次登录时自动创建本站账号（角色 `member`），`users.chenxi_sub` 作为唯一锚点；用户名与本站已有用户冲突时自动追加 `_cx` 后缀；通行证邮箱与本站已有邮箱冲突时，邮箱列留空（该列有唯一约束）；密码为随机 UUID 的 BCrypt 哈希，**设计上即无法用密码登录**。
+- **两步验证（2FA）的范围**：本站的 2FA 强制开关是站点设置 `login.totp_required`，该开关仅约束本站密码登录；辰汐通行证 SSO 登录的安全性由通行证侧（passport）自身的 2FA/会话策略保障，本站影子账号默认 member 角色且密码不可登录。
 - **仓库中没有任何密钥**：公共客户端只有公开的 `client_id`，不存在需要保密的配置。
 - **吊销/封禁**：本站侧将影子账号 `status` 置为非 `active`（如 `disabled`）即可拒绝其登录；通行证侧吊销授权则直接无法完成 OAuth 流程。
 - **防 CSRF / 重放**：`state` 一次性校验 + 10 分钟 TTL；`nonce` 按协议传入授权请求。

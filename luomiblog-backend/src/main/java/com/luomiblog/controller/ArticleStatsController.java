@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.ArticleStatsResult;
 import com.luomiblog.dto.MyFavoritesResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class ArticleStatsController {
 
     private final ArticleStatsService articleStatsService;
+    private final ClientIpResolver clientIpResolver;
     private final com.luomiblog.service.RateLimitService rateLimitService;
 
     @PostMapping("/{articleId}/view")
@@ -30,7 +32,9 @@ public class ArticleStatsController {
             HttpServletRequest httpRequest,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
-        String ipAddress = getClientIpAddress(httpRequest);
+        // 统一走 ClientIpResolver：受 app.security.trust-proxy 控制，
+        // 直连部署下忽略可伪造的 X-Forwarded-For，防止伪造来源落库/绕过限流
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         String visitorId = request.getVisitorId();
         // 身份以 JWT principal 为准：登录用户忽略请求体里的 userId（防冒充），
         // 匿名访客落 visitorId 维度
@@ -62,7 +66,8 @@ public class ArticleStatsController {
             HttpServletRequest httpRequest,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
-        String ipAddress = getClientIpAddress(httpRequest);
+        // 统一走 ClientIpResolver：受 app.security.trust-proxy 控制（同 recordView）
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         // 登录用户身份以 JWT principal 为准（保证 article_likes.user_id 落库正确），
         // 匿名访客按 visitorId 切换
         Long userId = userPrincipal != null ? userPrincipal.getId() : request.getUserId();
@@ -135,21 +140,14 @@ public class ArticleStatsController {
         return ApiResponse.success(result);
     }
 
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    /** 限流身份键：登录用户按 userId；访客按 visitorId+IP 绑定（防轮换 X-Visitor-Id 刷新桶）；兜底 IP */
     private String interactionIdentity(Long userId, String visitorId, String ipAddress) {
         if (userId != null) {
             return "u:" + userId;
         }
         if (visitorId != null && !visitorId.isBlank()) {
-            return "v:" + visitorId;
+            // 访客身份绑定 IP：X-Visitor-Id 由客户端自带、可随意轮换，仅凭它会拿到全新限流桶
+            return "v:" + visitorId + "|" + ipAddress;
         }
         return "ip:" + ipAddress;
     }

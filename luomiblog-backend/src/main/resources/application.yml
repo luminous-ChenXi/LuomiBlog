@@ -81,6 +81,13 @@ app:
     interaction:
       max-requests: 60
       window-seconds: 60
+  security:
+    # 登录日志（login_logs 安全审计表）保留天数：每日定时任务清理超期记录，防止表无限增长
+    login-log-retention-days: ${LOGIN_LOG_RETENTION_DAYS:180}
+    # 两步验证（2FA）范围说明：本站 2FA 强制开关是站点设置 login.totp_required
+    # （存于 site_settings 表，种子数据见 db/data.sql，后台可改）。
+    # 该开关仅约束本站密码登录；辰汐通行证 SSO 登录的安全性由通行证侧（passport）
+    # 自身的 2FA/会话策略保障，本站影子账号默认 member 角色且密码不可登录。
 
 chenxi:
   passport:

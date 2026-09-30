@@ -396,10 +396,10 @@ public class AuthServiceImpl implements AuthService {
             int remainingAttempts = loginSecurityService.getRemainingAttempts(identifier);
             log.warn("登录失败: {} from {}, 剩余尝试次数: {}", request.getUsernameOrEmail(), clientIp, remainingAttempts);
             if (remainingAttempts <= 2) {
-                throw new AuthenticationException(ErrorCode.USER_NOT_FOUND,
+                throw new AuthenticationException(ErrorCode.BAD_CREDENTIALS,
                         "还剩 " + remainingAttempts + " 次机会，之后将锁定账户");
             }
-            throw new AuthenticationException(ErrorCode.USER_NOT_FOUND,
+            throw new AuthenticationException(ErrorCode.BAD_CREDENTIALS,
                     "还剩 " + remainingAttempts + " 次机会");
         } catch (LockedException e) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);

@@ -1,10 +1,13 @@
 package com.luomiblog.chenxi;
 
 import com.luomiblog.common.BusinessException;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.common.UserStatus;
 import com.luomiblog.dto.AuthResponse;
+import com.luomiblog.entity.LoginLog;
 import com.luomiblog.entity.Role;
 import com.luomiblog.entity.User;
+import com.luomiblog.repository.LoginLogRepository;
 import com.luomiblog.repository.RoleRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.security.JwtUtil;
@@ -23,6 +26,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Map;
 import java.util.UUID;
@@ -55,6 +60,8 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RestClient.Builder restClientBuilder;
+    private final LoginLogRepository loginLogRepository;
+    private final ClientIpResolver clientIpResolver;
 
     private RestClient restClient;
 
@@ -81,30 +88,45 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
             throw new BusinessException(404, "辰汐通行证登录未启用");
         }
 
-        Map<String, Object> tokenResponse = requestToken(code, codeVerifier);
-        String accessToken = textValue(tokenResponse, "access_token");
-        if (!StringUtils.hasText(accessToken)) {
-            throw new BusinessException(502, "辰汐通行证登录失败：通行证未返回访问令牌");
+        // resolvedUser 供失败审计使用：账号级失败（如影子账号被禁用）时记录已解析出的用户
+        User resolvedUser = null;
+        try {
+            Map<String, Object> tokenResponse = requestToken(code, codeVerifier);
+            String accessToken = textValue(tokenResponse, "access_token");
+            if (!StringUtils.hasText(accessToken)) {
+                throw new BusinessException(502, "辰汐通行证登录失败：通行证未返回访问令牌");
+            }
+
+            Map<String, Object> claims = requestUserInfo(accessToken);
+            // sub 是跨生态唯一的用户标识（数字串），是影子账号的锚点，必须存在
+            String sub = textValue(claims, "sub");
+            if (!StringUtils.hasText(sub)) {
+                throw new BusinessException(502, "辰汐通行证登录失败：用户信息不完整");
+            }
+
+            User user = findOrCreateShadowUser(sub, claims);
+            resolvedUser = user;
+
+            Role role = roleRepository.findById(user.getRoleId())
+                    .orElseThrow(() -> new BusinessException(500, "角色不存在"));
+
+            // 本站会话 JWT：有效期 access-token-days，带 cxs 标记以支持滑动续期
+            long durationMs = properties.getAccessTokenDays() * 86400000L;
+            String token = jwtUtil.generateChenxiSessionToken(user.getUsername(), durationMs);
+            log.info("辰汐通行证登录成功: sub={} username={}", sub, user.getUsername());
+
+            // 成功审计：影子账号已解析，返回令牌前落 login_logs（与密码登录同表同口径）
+            recordLoginLog(user.getId(), user.getUsername(), LoginLog.LoginType.chenxi_sso, true);
+
+            return buildAuthResponse(token, user, role.getCode());
+        } catch (BusinessException e) {
+            // 失败审计：invalid_grant / 上游不可用 / 账号被禁用等一律留痕；
+            // 影子账号尚未解析时仅记失败类型（用户名/ID 置空）。写日志失败不影响主流程
+            recordLoginLog(resolvedUser != null ? resolvedUser.getId() : null,
+                    resolvedUser != null ? resolvedUser.getUsername() : null,
+                    LoginLog.LoginType.chenxi_sso, false);
+            throw e;
         }
-
-        Map<String, Object> claims = requestUserInfo(accessToken);
-        // sub 是跨生态唯一的用户标识（数字串），是影子账号的锚点，必须存在
-        String sub = textValue(claims, "sub");
-        if (!StringUtils.hasText(sub)) {
-            throw new BusinessException(502, "辰汐通行证登录失败：用户信息不完整");
-        }
-
-        User user = findOrCreateShadowUser(sub, claims);
-
-        Role role = roleRepository.findById(user.getRoleId())
-                .orElseThrow(() -> new BusinessException(500, "角色不存在"));
-
-        // 本站会话 JWT：有效期 access-token-days，带 cxs 标记以支持滑动续期
-        long durationMs = properties.getAccessTokenDays() * 86400000L;
-        String token = jwtUtil.generateChenxiSessionToken(user.getUsername(), durationMs);
-        log.info("辰汐通行证登录成功: sub={} username={}", sub, user.getUsername());
-
-        return buildAuthResponse(token, user, role.getCode());
     }
 
     /**
@@ -361,5 +383,53 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
                         .role(roleCode)
                         .build())
                 .build();
+    }
+
+    /**
+     * 写入登录日志（安全审计，login_logs 表，与 AuthServiceImpl 密码登录同表同口径）。
+     * 任何写日志失败都不影响登录主流程。
+     */
+    private void recordLoginLog(Long userId, String username, LoginLog.LoginType loginType, boolean success) {
+        try {
+            loginLogRepository.save(LoginLog.builder()
+                    .userId(userId)
+                    .username(username)
+                    .loginType(loginType)
+                    .success(success)
+                    .ipAddress(getClientIp())
+                    .userAgent(getCurrentUserAgent())
+                    .build());
+        } catch (Exception e) {
+            log.warn("写入登录日志失败: {}", e.getMessage());
+        }
+    }
+
+    private String getCurrentUserAgent() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                String ua = attributes.getRequest().getHeader("User-Agent");
+                if (ua != null && ua.length() > 500) {
+                    return ua.substring(0, 500);
+                }
+                return ua;
+            }
+        } catch (Exception e) {
+            log.debug("获取 User-Agent 失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String getClientIp() {
+        // 统一走 ClientIpResolver：受 app.security.trust-proxy 控制，与密码登录口径一致
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                return clientIpResolver.resolve(attributes.getRequest());
+            }
+        } catch (Exception e) {
+            log.warn("获取客户端IP失败", e);
+        }
+        return "unknown";
     }
 }

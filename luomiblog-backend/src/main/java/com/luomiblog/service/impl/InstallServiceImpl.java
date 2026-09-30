@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -580,6 +581,10 @@ public class InstallServiceImpl implements InstallService {
                 return "安装流程未完成：管理员账号尚未创建，请先完成「创建管理员」步骤";
             }
             return null;
+        } catch (com.luomiblog.common.exception.BusinessException e) {
+            // 数据库暂不可用（hasAdminAccount fail closed）：原样上抛保留 503 语义，
+            // 绝不能被下面的兜底 catch 吞成"未完成安装"
+            throw e;
         } catch (Exception e) {
             log.warn("完成安装前置校验失败: {}", e.getMessage());
             return "安装流程未完成：数据库尚未初始化或无法访问，请先完成「初始化数据」步骤";
@@ -587,26 +592,33 @@ public class InstallServiceImpl implements InstallService {
     }
 
     /**
-     * users 表中是否已存在 admin 角色账号（表不存在/连接失败均视为不存在）
+     * users 表中是否已存在 admin 角色账号。
+     * 数据库不可用/查询失败时抛 503 业务异常（fail closed）：
+     * 上层 canResetInstallState / 完成安装前置校验据此拒绝操作，
+     * 防止瞬时数据库故障期间被误判为"零管理员"，导致匿名接口删除 install.lock。
      */
     private boolean hasAdminAccount() {
+        Integer adminCount;
         try {
-            Integer adminCount = jdbcTemplate.queryForObject(
+            adminCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.code = 'admin'",
                 Integer.class
             );
-            return adminCount != null && adminCount > 0;
-        } catch (Exception e) {
-            log.debug("检查管理员账号失败: {}", e.getMessage());
-            return false;
+        } catch (DataAccessException e) {
+            log.warn("检查管理员账号失败（数据库暂不可用?）: {}", e.getMessage());
+            throw new com.luomiblog.common.exception.BusinessException(
+                    503, "数据库暂不可用，无法校验管理员账户，请稍后重试");
         }
+        return adminCount != null && adminCount > 0;
     }
 
     @Override
     public boolean canResetInstallState() {
         // 未锁定（未完成/半安装）→ 允许；
         // 异常锁死态（install.lock 存在但无任何 ADMIN 账号，verify-reinstall 不可达）→ 允许恢复；
-        // 正常已安装（锁定且存在管理员）→ 不允许，必须走 verify-reinstall 流程
+        // 正常已安装（锁定且存在管理员）→ 不允许，必须走 verify-reinstall 流程。
+        // 数据库不可用时 hasAdminAccount 抛 503（fail closed）：直接向上抛，
+        // 由 GlobalExceptionHandler 返回"暂不可用"，绝不放行匿名重置
         return !isInstallLocked() || !hasAdminAccount();
     }
 

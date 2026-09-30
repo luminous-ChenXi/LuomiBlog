@@ -30,6 +30,7 @@ public enum ErrorCode {
     LOGIN_TOO_FREQUENT(4109, "登录过于频繁"),
     EMAIL_NOT_VERIFIED(4110, "邮箱未验证"),
     REGISTRATION_DISABLED(4111, "注册功能已关闭"),
+    BAD_CREDENTIALS(4112, "用户名或密码错误"),
 
     ROLE_NOT_FOUND(4200, "角色不存在"),
     ROLE_ALREADY_EXISTS(4201, "角色已存在"),

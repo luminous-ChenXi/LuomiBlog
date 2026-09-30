@@ -276,6 +276,9 @@ public class InstallController {
                 "success", true,
                 "message", "安装完成"
             )));
+        } catch (com.luomiblog.common.exception.BusinessException e) {
+            // 数据库暂不可用（管理员校验 fail closed）：原样抛给 GlobalExceptionHandler，保留 503 语义
+            throw e;
         } catch (com.luomiblog.common.exception.InstallNotReadyException e) {
             return ResponseEntity.status(409).body(ApiResponse.error(409, e.getMessage()));
         } catch (Exception e) {

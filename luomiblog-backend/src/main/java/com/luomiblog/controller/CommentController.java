@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.common.ClientIpResolver;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -24,6 +25,7 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
+    private final ClientIpResolver clientIpResolver;
     private final com.luomiblog.service.RateLimitService rateLimitService;
 
     @GetMapping("/article/{articleId}")
@@ -56,7 +58,9 @@ public class CommentController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestHeader(value = "X-Visitor-Id", required = false) String visitorId,
             HttpServletRequest httpRequest) {
-        String ipAddress = getClientIpAddress(httpRequest);
+        // 统一走 ClientIpResolver：受 app.security.trust-proxy 控制，
+        // 直连部署下忽略可伪造的 X-Forwarded-For，防止伪造来源落库/绕过限流
+        String ipAddress = clientIpResolver.resolve(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         Long userId = userPrincipal != null ? userPrincipal.getId() : null;
 
@@ -89,21 +93,14 @@ public class CommentController {
         return ApiResponse.success();
     }
 
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    /** 限流身份键：登录用户按 userId，访客按 visitorId，兜底 IP */
+    /** 限流身份键：登录用户按 userId；访客按 visitorId+IP 绑定（防轮换 X-Visitor-Id 刷新桶）；兜底 IP */
     private String commentIdentity(Long userId, String visitorId, String ipAddress) {
         if (userId != null) {
             return "u:" + userId;
         }
         if (visitorId != null && !visitorId.isBlank()) {
-            return "v:" + visitorId;
+            // 访客身份绑定 IP：X-Visitor-Id 由客户端自带、可随意轮换，仅凭它会拿到全新限流桶
+            return "v:" + visitorId + "|" + ipAddress;
         }
         return "ip:" + ipAddress;
     }

@@ -7,10 +7,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
 public class MemoryCacheServiceImpl implements MemoryCacheService {
+
+    /** 计数器默认 TTL（秒）：increment 首次创建键时使用，通常随后被 expire() 按窗口覆盖 */
+    private static final long DEFAULT_COUNTER_TTL_SECONDS = 1800L;
 
     private final Cache<String, CacheEntry> cache;
 
@@ -62,14 +66,28 @@ public class MemoryCacheServiceImpl implements MemoryCacheService {
 
     @Override
     public long increment(String key) {
-        CacheEntry entry = cache.getIfPresent(key);
-        if (entry == null || System.currentTimeMillis() > entry.expireAt) {
-            set(key, 1L, 1800L);
-            return 1L;
-        }
-        long newValue = ((Number) entry.value).longValue() + 1;
-        entry.value = newValue;
-        return newValue;
+        // 通过 cache.asMap().compute 让"检查过期 + 创建 + 自增"成为对同一 key 的单步原子操作，
+        // 消除原 getIfPresent → 判断 → set/自增 读改写竞态（并发首刷可能同时拿到 1，窗口计数偏小）
+        long[] result = new long[1];
+        cache.asMap().compute(key, (k, entry) -> {
+            long now = System.currentTimeMillis();
+            if (entry == null || now > entry.expireAt) {
+                // 不存在或已过期：新建计数器（默认 TTL，通常随后被 expire() 按窗口覆盖）
+                result[0] = 1L;
+                return new CacheEntry(new AtomicLong(1L), now + DEFAULT_COUNTER_TTL_SECONDS * 1000);
+            }
+            if (entry.value instanceof AtomicLong counter) {
+                // 同一窗口内原子自增，保留原过期时间
+                result[0] = counter.incrementAndGet();
+            } else {
+                // 兼容先经 set() 写入的普通数值：升级为 AtomicLong 后续自增
+                long newValue = ((Number) entry.value).longValue() + 1;
+                entry.value = new AtomicLong(newValue);
+                result[0] = newValue;
+            }
+            return entry;
+        });
+        return result[0];
     }
 
     @Override
@@ -99,6 +117,10 @@ public class MemoryCacheServiceImpl implements MemoryCacheService {
         return remainingMs > 0 ? remainingMs / 1000 : 0L;
     }
 
+    /**
+     * 缓存条目：value 为普通值或计数器（increment 写入的为 AtomicLong，
+     * 读取计数请走 getCounter()，其兼容任意 Number）
+     */
     private static class CacheEntry {
         Object value;
         long expireAt;
