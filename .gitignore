@@ -71,8 +71,7 @@ demos/
 docs/*
 !docs/chenxi-integration.md
 
-# 锁文件（根据项目规则）
-package-lock.json
+# 锁文件（package-lock.json 例外：必须入库——CI 的 npm ci 与 setup-node 缓存依赖它）
 yarn.lock
 pnpm-lock.yaml
 
