@@ -105,16 +105,22 @@ LuomiBlog/
 │       └── resources/
 │           └── db/         # 数据库脚本
 ├── scripts/                # 运维脚本（如 reset-install.ps1）
+├── docs/                   # 公开文档（辰汐通行证集成指南 chenxi-integration.md）
 ├── .github/workflows/      # GitHub Actions CI
-├── Demo/                   # 演示和参考
-└── 项目文档/               # 设计文档
+├── CHANGELOG.md            # 更新日志
+└── SECURITY.md             # 安全策略与漏洞报告
 ```
+
+> 本地开发建议用 Docker 跑 MySQL（Windows 原生 MySQL 兼容性较差），云端 Linux 可直接安装 MySQL 8。
 
 ## 快速开始（本地开发）
 
 ```bash
-# 1. 准备数据库（也可交给安装向导：JDBC URL 自带 createDatabaseIfNotExist）
-#    后端连接所需的用户名/密码通过环境变量传入，见下方「后端环境变量」
+# 1. 准备数据库（推荐 Docker，避免 Windows 原生 MySQL 的兼容性问题；
+#    也可交给安装向导：JDBC URL 自带 createDatabaseIfNotExist）
+docker run -d --name luomiblog-mysql -p 13306:3306 -e MYSQL_ROOT_PASSWORD=你的密码 mysql:8
+#    后端连接所需的用户名/密码通过环境变量传入，见下方「后端环境变量」；
+#    使用上面容器时再补一个环境变量：SPRING_DATASOURCE_URL='jdbc:mysql://localhost:13306/luomiblog?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai'
 
 # 2. 启动后端（需已安装 Maven 3.9+ 与 JDK 21+）
 cd luomiblog-backend
@@ -461,6 +467,14 @@ LuomiBlog 支持通过"辰汐通行证"一键登录（标准 OAuth 2.1 / OIDC �
 4. **轻量高效，低维落地** - 2核4G 跑起来且响应流畅
 
 ## 版本历史
+
+完整变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v0.4.0 (2026-09-30)
+- **安全加固**：密钥全部环境变量注入（无默认值）、安装向导纵深防护、接口限流、文章渲染消毒、登录审计日志（自动保留 180 天）
+- **站长安全开关**：注册邮箱验证 + 登录两步验证（TOTP，含还原码与管理员重置）
+- **辰汐通行证登录**（可选，OAuth 2.1 / OIDC + PKCE，默认关闭）
+- GitHub Actions CI、数据库迁移体系（V1–V4）、部署文档（nginx / COS+CDN）
 
 ### v0.3.0 (2026-03-12)
 - 新增可视化安装向导

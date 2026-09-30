@@ -86,7 +86,7 @@
 | Java | **21+** | The backend is compiled with Java 21 (`java.version=21` in `pom.xml`); Java 17 cannot build or run it |
 | MySQL | 8.0+ | **MySQL 8.0 or higher required**, lower versions don't support some SQL syntax |
 | Node.js | 18.17+ (20 LTS+ recommended) | Required for frontend build and SSR runtime (Astro 5 requirement) |
-| Maven | 3.9+ | Required to build the backend. **The repo does not ship a Maven Wrapper** (`mvnw` exists only under `Demo/` as reference), install Maven yourself |
+| Maven | 3.9+ | Required to build the backend. **The repo does not ship a Maven Wrapper**, install Maven yourself |
 
 ## Project Structure
 
@@ -105,17 +105,23 @@ LuomiBlog/
 │       └── resources/
 │           └── db/         # Database scripts
 ├── scripts/                # Ops scripts (e.g. reset-install.ps1)
+├── docs/                   # Public docs (Chenxi Passport integration guide, chenxi-integration.md)
 ├── .github/workflows/      # GitHub Actions CI
-├── Demo/                   # Demo and references
-└── 项目文档/               # Design documents
+├── CHANGELOG.md            # Changelog
+└── SECURITY.md             # Security policy & vulnerability reporting
 ```
+
+> For local development, running MySQL in Docker is recommended (native MySQL on Windows has compatibility issues). On Linux servers, install MySQL 8 directly.
 
 ## Quick Start (Local Development)
 
 ```bash
-# 1. Prepare a database (or let the install wizard do it:
+# 1. Prepare a database (Docker recommended; or let the install wizard do it:
 #    the JDBC URL ships with createDatabaseIfNotExist)
-#    DB credentials are provided via environment variables, see below
+docker run -d --name luomiblog-mysql -p 13306:3306 -e MYSQL_ROOT_PASSWORD=yourpassword mysql:8
+#    DB credentials are provided via environment variables, see below;
+#    with the container above, also set:
+#    SPRING_DATASOURCE_URL='jdbc:mysql://localhost:13306/luomiblog?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai'
 
 # 2. Start the backend (requires Maven 3.9+ and JDK 21+)
 cd luomiblog-backend
@@ -462,6 +468,14 @@ Includes 36 tables covering:
 4. **Lightweight & Efficient, Low-Dimension Landing** - Runs smoothly on 2-core 4GB
 
 ## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for the full changelog.
+
+### v0.4.0 (2026-09-30)
+- **Security hardening**: env-only secrets (no defaults), defense-in-depth install wizard, API rate limiting, article render sanitization, login audit logs (auto-purged after 180 days)
+- **Owner security switches**: registration email verification + login 2FA (TOTP with recovery codes and admin reset)
+- **Chenxi Passport SSO** (optional, OAuth 2.1 / OIDC + PKCE, disabled by default)
+- GitHub Actions CI, database migration set (V1–V4), deployment docs (nginx / COS+CDN)
 
 ### v0.3.0 (2026-03-12)
 - Added visual installation wizard
