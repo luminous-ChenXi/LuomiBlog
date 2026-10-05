@@ -851,3 +851,17 @@ CREATE TABLE IF NOT EXISTS `admin_operation_logs` (
 
 
 
+
+-- =============================================
+-- 已吊销令牌表（BUG-015：token 黑名单唯一事实源，DB 存储无淘汰跨重启）
+-- expired 行由 RevokedTokenCleanupJob 每日 03:47 清理
+-- =============================================
+CREATE TABLE IF NOT EXISTS `revoked_tokens` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `token_id` VARCHAR(64) NOT NULL COMMENT '令牌 jti',
+  `revoked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '吊销时间',
+  `expires_at` DATETIME NOT NULL COMMENT '吊销有效期（对齐令牌剩余寿命），到期可清理',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_revoked_tokens_token_id` (`token_id`),
+  KEY `idx_revoked_tokens_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='已吊销令牌表';

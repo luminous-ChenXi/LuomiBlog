@@ -20,6 +20,7 @@ import com.luomiblog.service.AuthService;
 import com.luomiblog.service.LoginSecurityService;
 import com.luomiblog.service.MailService;
 import com.luomiblog.service.MemoryCacheService;
+import com.luomiblog.service.TokenBlacklistService;
 import com.luomiblog.service.PermissionService;
 import com.luomiblog.service.SiteSettingsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final LoginSecurityService loginSecurityService;
     private final PermissionService permissionService;
     private final MemoryCacheService memoryCacheService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final SiteSettingsService siteSettingsService;
     private final MailService mailService;
     private final TotpUtil totpUtil;
@@ -85,7 +87,6 @@ public class AuthServiceImpl implements AuthService {
         return jwtConfig.getExpiration() / 1000L;
     }
 
-    private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
 
     /** 注册邮箱验证：验证令牌缓存前缀（TTL 30 分钟） */
     private static final String EMAIL_VERIFY_TOKEN_PREFIX = "emailverify:token:";
@@ -707,7 +708,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String tokenId = jwtUtil.getTokenId(refreshToken);
-        if (isTokenBlacklisted(tokenId)) {
+        if (tokenBlacklistService.isRevoked(tokenId)) {
             throw new AuthenticationException(ErrorCode.TOKEN_INVALID, "令牌已被撤销");
         }
 
@@ -726,7 +727,7 @@ public class AuthServiceImpl implements AuthService {
 
         // [BUG-012 修复] 轮换即吊销：旧 refresh token 的黑名单 TTL 必须等于其自身剩余寿命
         // （此前固定用 access 的 24h，导致第 2~7 天黑名单过期后旧令牌可再次刷新）
-        blacklistToken(tokenId, Math.max(1, jwtUtil.getRemainingValidityMs(refreshToken) / 1000));
+        tokenBlacklistService.revoke(tokenId, Math.max(1, jwtUtil.getRemainingValidityMs(refreshToken) / 1000));
 
         String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList());
         String newRefreshToken = jwtUtil.generateRefreshToken(username);
@@ -762,7 +763,7 @@ public class AuthServiceImpl implements AuthService {
                 return;
             }
             long ttlSeconds = Math.max(1, jwtUtil.getRemainingValidityMs(trimmed) / 1000);
-            blacklistToken(tokenId, ttlSeconds);
+            tokenBlacklistService.revoke(tokenId, ttlSeconds);
             log.info("用户登出，已吊销{}令牌, tokenId: {}, 剩余有效期: {}s", kind, tokenId, ttlSeconds);
         } catch (Exception e) {
             log.warn("吊销{}令牌失败: {}", kind, e.getMessage());
@@ -862,11 +863,4 @@ public class AuthServiceImpl implements AuthService {
         return hasUpper && hasLower && hasDigit;
     }
 
-    private void blacklistToken(String tokenId, long ttlSeconds) {
-        memoryCacheService.set(TOKEN_BLACKLIST_PREFIX + tokenId, true, ttlSeconds);
-    }
-
-    private boolean isTokenBlacklisted(String tokenId) {
-        return memoryCacheService.exists(TOKEN_BLACKLIST_PREFIX + tokenId);
-    }
 }

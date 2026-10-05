@@ -1,6 +1,6 @@
 package com.luomiblog.security;
 
-import com.luomiblog.service.MemoryCacheService;
+import com.luomiblog.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,10 +28,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public static final String NEW_TOKEN_HEADER = "X-New-Token";
 
     private final JwtUtil jwtUtil;
-    private final MemoryCacheService memoryCacheService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final UserDetailsService userDetailsService;
 
-    private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -43,7 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             String tokenId = jwtUtil.getTokenId(token);
 
-            if (isTokenBlacklisted(tokenId)) {
+            // [BUG-015 修复] 黑名单改查 revoked_tokens 表（唯一事实源，无淘汰跨重启）；
+            // 与下方 loadUserByUsername 同为每请求一次索引点查，量级可接受
+            if (tokenBlacklistService.isRevoked(tokenId)) {
                 log.debug("Token is blacklisted: {}", tokenId);
                 filterChain.doFilter(request, response);
                 return;
@@ -95,9 +96,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearerToken.substring(BEARER_PREFIX.length());
         }
         return null;
-    }
-
-    private boolean isTokenBlacklisted(String tokenId) {
-        return memoryCacheService.exists(TOKEN_BLACKLIST_PREFIX + tokenId);
     }
 }
