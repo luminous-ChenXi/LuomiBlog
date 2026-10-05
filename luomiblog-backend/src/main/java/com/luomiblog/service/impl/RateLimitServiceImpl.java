@@ -24,6 +24,11 @@ public class RateLimitServiceImpl implements RateLimitService {
     private static final String BUCKET_EMAIL_COOLDOWN = "emailcooldown:";
     private static final String BUCKET_COMMENT = "comment:";
     private static final String BUCKET_INTERACTION = "interaction:";
+    private static final String BUCKET_AUTH_VERIFY = "authverify:";
+
+    /** 敏感认证端点固定阈值：10 次/分钟/IP（不可配置调低的安全下限） */
+    private static final int AUTH_VERIFY_MAX_REQUESTS = 10;
+    private static final int AUTH_VERIFY_WINDOW_SECONDS = 60;
 
     private final MemoryCacheService memoryCacheService;
     private final RateLimitProperties properties;
@@ -78,6 +83,14 @@ public class RateLimitServiceImpl implements RateLimitService {
         RateLimitProperties.Rule rule = properties.getInteraction();
         acquireOrThrow(BUCKET_INTERACTION + identity, rule.getMaxRequests(), rule.getWindowSeconds(),
                 "操作过于频繁，请稍后再试");
+    }
+
+    @Override
+    public void checkAuthVerify(String clientIp, String scene) {
+        // 注意：不检查 properties.isEnabled()——敏感认证爆破面限流不受站点开关约束
+        acquireOrThrow(BUCKET_AUTH_VERIFY + scene + ":" + clientIp,
+                AUTH_VERIFY_MAX_REQUESTS, AUTH_VERIFY_WINDOW_SECONDS,
+                "验证尝试过于频繁，请 1 分钟后再试");
     }
 
     /**

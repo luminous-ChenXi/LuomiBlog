@@ -45,9 +45,12 @@ public class AuthController {
 
     /**
      * 注册邮箱验证：输码或点激活链接（token+code）→ 激活账号并自动登录
+     * [BUG-024 修复] 验证码爆破面：加 IP 频控（10 次/分钟）
      */
     @PostMapping("/email/verify")
-    public ApiResponse<AuthResponse> verifyRegistrationEmail(@Valid @RequestBody EmailVerifyRequest request) {
+    public ApiResponse<AuthResponse> verifyRegistrationEmail(@Valid @RequestBody EmailVerifyRequest request,
+                                                             HttpServletRequest httpRequest) {
+        rateLimitService.checkAuthVerify(clientIpResolver.resolve(httpRequest), "emailverify");
         return ApiResponse.success(authService.verifyRegistrationEmail(request.getToken(), request.getCode()));
     }
 
@@ -65,17 +68,23 @@ public class AuthController {
     /**
      * 2FA 强制绑定确认：输入认证器当前 6 位码完成绑定，
      * 返回正式 JWT + 一次性展示的 10 个还原码
+     * [BUG-016 修复] 绑定验证同样可爆破：加 IP 频控
      */
     @PostMapping("/2fa/enroll")
-    public ApiResponse<AuthResponse> enrollTwoFactor(@Valid @RequestBody TwoFactorEnrollRequest request) {
+    public ApiResponse<AuthResponse> enrollTwoFactor(@Valid @RequestBody TwoFactorEnrollRequest request,
+                                                     HttpServletRequest httpRequest) {
+        rateLimitService.checkAuthVerify(clientIpResolver.resolve(httpRequest), "2fa");
         return ApiResponse.success(authService.enrollTwoFactor(request.getChallengeToken(), request.getCode()));
     }
 
     /**
      * 2FA 挑战验证：6 位验证码或 8 位一次性还原码 → 换发正式 JWT
+     * [BUG-016 修复] 6 位码/还原码爆破面：加 IP 频控 + 挑战级失败计数（见 AuthServiceImpl）
      */
     @PostMapping("/2fa/verify")
-    public ApiResponse<AuthResponse> verifyTwoFactor(@Valid @RequestBody TwoFactorVerifyRequest request) {
+    public ApiResponse<AuthResponse> verifyTwoFactor(@Valid @RequestBody TwoFactorVerifyRequest request,
+                                                     HttpServletRequest httpRequest) {
+        rateLimitService.checkAuthVerify(clientIpResolver.resolve(httpRequest), "2fa");
         return ApiResponse.success(authService.verifyTwoFactor(
                 request.getChallengeToken(), request.getCode(), request.getRecoveryCode()));
     }

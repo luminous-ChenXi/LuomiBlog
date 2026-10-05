@@ -190,8 +190,13 @@ public class AuthServiceImpl implements AuthService {
         String token = java.util.UUID.randomUUID().toString().replace("-", "");
         String code = String.format("%06d", secureRandom.nextInt(1_000_000));
 
-        memoryCacheService.set(EMAIL_VERIFY_TOKEN_PREFIX + token,
-                Map.of("userId", user.getId(), "email", user.getEmail(), "code", code),
+        // [BUG-024 修复] payload 用可变 Map 携带 failCount，验证失败达 5 次作废令牌
+        Map<String, Object> tokenPayload = new java.util.HashMap<>();
+        tokenPayload.put("userId", user.getId());
+        tokenPayload.put("email", user.getEmail());
+        tokenPayload.put("code", code);
+        tokenPayload.put("failCount", 0);
+        memoryCacheService.set(EMAIL_VERIFY_TOKEN_PREFIX + token, tokenPayload,
                 EMAIL_VERIFY_TTL_SECONDS);
         memoryCacheService.set(EMAIL_VERIFY_CODE_PREFIX + user.getEmail(), code, EMAIL_VERIFY_TTL_SECONDS);
 
@@ -241,6 +246,9 @@ public class AuthServiceImpl implements AuthService {
         String expectedCode = (String) payload.get("code");
 
         if (code == null || code.isBlank() || !expectedCode.equals(code.trim())) {
+            // [BUG-024 修复] 验证码错误计数：连续 5 次作废验证令牌（配合 /email/verify 的 IP 频控）
+            registerChallengeFailure(EMAIL_VERIFY_TOKEN_PREFIX + token,
+                    userId, String.valueOf(payload.get("email")), LoginLog.LoginType.password);
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED, "验证码不正确");
         }
 
@@ -324,7 +332,7 @@ public class AuthServiceImpl implements AuthService {
                     String secret = totpUtil.generateSecret();
                     String challengeToken = java.util.UUID.randomUUID().toString().replace("-", "");
                     memoryCacheService.set(TWO_FACTOR_CHALLENGE_PREFIX + challengeToken,
-                            Map.of("userId", user.getId(), "secret", secret),
+                            challengePayload(user.getId(), secret, 0),
                             TWO_FACTOR_CHALLENGE_TTL_SECONDS);
                     Role role = roleRepository.findById(user.getRoleId())
                             .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
@@ -351,7 +359,7 @@ public class AuthServiceImpl implements AuthService {
                 // 已绑定：返回挑战态，等待 6 位验证码 / 还原码
                 String challengeToken = java.util.UUID.randomUUID().toString().replace("-", "");
                 memoryCacheService.set(TWO_FACTOR_CHALLENGE_PREFIX + challengeToken,
-                        Map.of("userId", user.getId()),
+                        challengePayload(user.getId(), null, 0),
                         TWO_FACTOR_CHALLENGE_TTL_SECONDS);
                 Role role = roleRepository.findById(user.getRoleId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
@@ -432,9 +440,16 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(challenge.userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!verifyTotpNotReplayed(user, challenge.secret, code,
-                "验证码不正确，请输入认证器当前 6 位码")) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码已被使用，请等待下一个 6 位码刷新后再试");
+        try {
+            if (!verifyTotpNotReplayed(user, challenge.secret, code,
+                    "验证码不正确，请输入认证器当前 6 位码")) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "验证码已被使用，请等待下一个 6 位码刷新后再试");
+            }
+        } catch (BusinessException e) {
+            // [BUG-016 修复] 绑定验证失败同样计数
+            registerChallengeFailure(TWO_FACTOR_CHALLENGE_PREFIX + challengeToken,
+                    user.getId(), user.getUsername(), LoginLog.LoginType.totp);
+            throw e;
         }
 
         // 绑定落库 + 生成 10 个 8 位还原码（BCrypt 存库，明文仅此一次返回）
@@ -474,8 +489,15 @@ public class AuthServiceImpl implements AuthService {
         List<String> remainingRecoveryCodes = null;
 
         if (code != null && !code.isBlank()) {
-            if (!verifyTotpNotReplayed(user, user.getTotpSecret(), code.trim(), "两步验证码不正确")) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "两步验证码已被使用，请等待刷新后重试");
+            try {
+                if (!verifyTotpNotReplayed(user, user.getTotpSecret(), code.trim(), "两步验证码不正确")) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "两步验证码已被使用，请等待刷新后重试");
+                }
+            } catch (BusinessException e) {
+                // [BUG-016 修复] 验证失败计数：连续 5 次作废挑战，逼迫重新密码登录
+                registerChallengeFailure(TWO_FACTOR_CHALLENGE_PREFIX + challengeToken,
+                        user.getId(), user.getUsername(), LoginLog.LoginType.totp);
+                throw e;
             }
         } else if (recoveryCode != null && !recoveryCode.isBlank()) {
             String normalized = recoveryCode.trim();
@@ -489,6 +511,8 @@ public class AuthServiceImpl implements AuthService {
                 }
             }
             if (!verified) {
+                registerChallengeFailure(TWO_FACTOR_CHALLENGE_PREFIX + challengeToken,
+                        user.getId(), user.getUsername(), LoginLog.LoginType.totp);
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "还原码不正确或已使用");
             }
             // 还原码一次性：使用后从列表移除
@@ -534,6 +558,48 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, invalidMessage);
         }
         return totpReplayGuard.checkAndRecord(user.getId(), matched);
+    }
+
+    /** 挑战/验证令牌允许的最大失败次数（达到即作废，逼迫重新认证） */
+    private static final int CHALLENGE_MAX_FAILURES = 5;
+
+    /**
+     * [BUG-016/024 修复] 验证失败计数：同一挑战/令牌连续失败达 5 次即作废，
+     * 关闭 6 位码/还原码/验证码在 TTL 窗口内的无限爆破面。
+     * 失败同时写入登录审计日志（此前 2FA 失败不落审计）。
+     *
+     * @param cacheKey 挑战/验证令牌的完整缓存键
+     * @param userId   用户（审计用，可能为 null）
+     * @param username 用户名（审计用）
+     * @param type     审计日志类型
+     */
+    private void registerChallengeFailure(String cacheKey, Long userId, String username, LoginLog.LoginType type) {
+        recordLoginLog(userId, username, type, false);
+        Map<String, Object> payload = memoryCacheService.get(cacheKey, Map.class);
+        if (payload == null) {
+            return;
+        }
+        int fails = payload.get("failCount") instanceof Number n ? n.intValue() + 1 : 1;
+        if (fails >= CHALLENGE_MAX_FAILURES) {
+            memoryCacheService.delete(cacheKey);
+            log.warn("挑战/验证令牌连续失败 {} 次，已作废: user={}", fails, username);
+        } else {
+            Map<String, Object> updated = new java.util.HashMap<>(payload);
+            updated.put("failCount", fails);
+            long remainingTtl = Math.max(1, memoryCacheService.getTtl(cacheKey));
+            memoryCacheService.set(cacheKey, updated, remainingTtl);
+        }
+    }
+
+    /** 挑战缓存 payload：可变 Map 携带 failCount（Map.of 不可变，无法原地递增） */
+    private Map<String, Object> challengePayload(Long userId, String secret, int failCount) {
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("userId", userId);
+        if (secret != null) {
+            payload.put("secret", secret);
+        }
+        payload.put("failCount", failCount);
+        return payload;
     }
 
     private TwoFactorChallenge loadChallenge(String challengeToken) {
