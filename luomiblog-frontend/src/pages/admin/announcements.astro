@@ -68,7 +68,7 @@ const getStatusBadge = (status: string) => {
     <!-- 页面头部 -->
     <header class="admin-section-header">
       <p class="admin-section-subtitle">notices</p>
-      <h1 class="admin-section-title">公告管理</h1>
+      <h1 class="admin-section-title">公告管理 <span style="background:#ff6b9d;color:#fff;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">WIP</span></h1>
       <p class="admin-section-description">
         管理系统公告，支持设置优先级和置顶状态。
       </p>
@@ -104,6 +104,7 @@ const getStatusBadge = (status: string) => {
 
     <!-- 公告列表 -->
     <div class="announcements-list">
+      <div style="background:#fdf2f7;border:1px solid #ff6b9d;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px;color:#c2255c;">⚠ 该页面为演示数据，公告管理功能开发中</div>
       {announcements.map((announcement) => {
         const levelBadge = getLevelBadge(announcement.level);
         const statusBadge = getStatusBadge(announcement.status);

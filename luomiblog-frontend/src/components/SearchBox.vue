@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
 
 const searchQuery = ref('');
 const isFocused = ref(false);
@@ -8,6 +9,7 @@ const handleSearch = () => {
   if (searchQuery.value.trim()) {
     // 示例：可以在这里实现搜索逻辑
     console.log('搜索:', searchQuery.value);
+    ElMessage.info('搜索功能开发中，敬请期待');
   }
 };
 
@@ -41,9 +43,10 @@ const handleKeydown = (e: KeyboardEvent) => {
         </svg>
       </button>
     </div>
-    <button class="search-btn" @click="handleSearch">
+    <button class="search-btn" title="功能开发中" @click="handleSearch">
       搜索
     </button>
+    <span style="background:#ff6b9d;color:#fff;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">WIP</span>
   </div>
 </template>
 

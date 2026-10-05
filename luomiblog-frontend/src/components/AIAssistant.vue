@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
 
 const userInput = ref('');
 const isFocused = ref(false);
 const isLoading = ref(false);
 
 const handleSend = () => {
+  ElMessage.info('AI 问答为演示模式，正式接入阿里云百炼后开放');
   if (userInput.value.trim() && !isLoading.value) {
     isLoading.value = true;
     // 示例：模拟AI回复
@@ -43,7 +45,7 @@ const quickQuestions = [
         </svg>
       </div>
       <div class="ai-info">
-        <h4 class="ai-title">AI 助手</h4>
+        <h4 class="ai-title">AI 助手 <span style="background:#ff6b9d;color:#fff;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">WIP</span></h4>
         <span class="ai-status">
           <span class="status-dot"></span>
           <span class="status-text">在线</span>
