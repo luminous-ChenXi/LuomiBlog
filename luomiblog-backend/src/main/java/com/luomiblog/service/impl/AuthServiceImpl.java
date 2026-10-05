@@ -62,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final LoginSecurityService loginSecurityService;
     private final PermissionService permissionService;
     private final MemoryCacheService memoryCacheService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final TokenBlacklistService tokenBlacklistService;
     private final SiteSettingsService siteSettingsService;
     private final MailService mailService;
@@ -201,28 +202,11 @@ public class AuthServiceImpl implements AuthService {
                 EMAIL_VERIFY_TTL_SECONDS);
         memoryCacheService.set(EMAIL_VERIFY_CODE_PREFIX + user.getEmail(), code, EMAIL_VERIFY_TTL_SECONDS);
 
-        String verifyUrl = baseUrl + "/register?verify-token=" + token + "&verify-code=" + code;
-        String html = """
-                <div style="max-width:520px;margin:0 auto;font-family:Arial,'PingFang SC','Microsoft YaHei',sans-serif;">
-                  <h2 style="color:#ff6b9d;">欢迎注册 %s</h2>
-                  <p>您好，<b>%s</b>！请使用以下验证码完成邮箱验证（30 分钟内有效）：</p>
-                  <p style="font-size:28px;font-weight:bold;letter-spacing:8px;background:#fdf2f7;padding:12px 16px;border-radius:8px;text-align:center;">%s</p>
-                  <p>也可以点击下方链接直接激活账号：</p>
-                  <p><a href="%s">%s</a></p>
-                  <p style="color:#999;font-size:12px;">如果这不是您的操作，请忽略本邮件。</p>
-                </div>
-                """.formatted(siteSettingsService.getString("site.name", "LuomiBlog"),
-                user.getUsername(), code, verifyUrl, verifyUrl);
-
-        try {
-            mailService.sendMail(user.getEmail(),
-                    "注册邮箱验证 - " + siteSettingsService.getString("site.name", "LuomiBlog"), html);
-        } catch (Exception e) {
-            memoryCacheService.delete(EMAIL_VERIFY_TOKEN_PREFIX + token);
-            memoryCacheService.delete(EMAIL_VERIFY_CODE_PREFIX + user.getEmail());
-            log.error("注册验证邮件发送失败: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "验证邮件发送失败，请稍后重试或联系管理员");
-        }
+        // [BUG-022 修复] SMTP 发送移出事务：AFTER_COMMIT 后由 mailExecutor 异步发送，
+        // 注册线程不再被 SMTP 阻塞最长 ~25s 占用 Hikari 连接；
+        // 发送失败由监听器清理缓存并走重发通道兜底（不再回滚注册）
+        eventPublisher.publishEvent(new com.luomiblog.event.RegistrationEmailRequestedEvent(
+                user.getEmail(), user.getUsername(), token, code));
         return token;
     }
 

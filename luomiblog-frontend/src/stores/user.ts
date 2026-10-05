@@ -36,12 +36,7 @@ function initAuth() {
       }
     }) as EventListener);
 
-    window.addEventListener('backend-status-changed', ((event: CustomEvent) => {
-      if (!event.detail?.available) {
-        token.value = null;
-        user.value = null;
-      }
-    }) as EventListener);
+    // [BUG-050 修复] 后端离线不再清登录态：令牌失效由 401 统一裁决
   }
 }
 

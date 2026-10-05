@@ -104,16 +104,30 @@ function classifyError(error: unknown): ApiError {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// [BUG-050 修复] 单次网络抖动/500 不再判定后端下线：
+// 连续 N 次失败才切离线态，且切离线不清凭据——令牌是否真失效由 401 响应裁决
+// （后端恢复后用户无感继续；令牌真过期会在下一次请求收到 401 走统一清理）
+let consecutiveBackendFailures = 0;
+const BACKEND_DOWN_THRESHOLD = 3;
+
 function markBackendUnavailable() {
+  consecutiveBackendFailures++;
+  if (consecutiveBackendFailures < BACKEND_DOWN_THRESHOLD) {
+    return;
+  }
   const wasAvailable = backendAvailable.value;
   backendAvailable.value = false;
   lastBackendCheck = Date.now();
   if (wasAvailable) {
-    clearAuthState();
+    console.warn('[API] 后端连续多次不可达，切换离线模式（保留本地登录态）');
+    window.dispatchEvent(new CustomEvent('backend-status-changed', {
+      detail: { available: false }
+    }));
   }
 }
 
 function markBackendAvailable(silent: boolean) {
+  consecutiveBackendFailures = 0;
   const wasUnavailable = !backendAvailable.value;
   backendAvailable.value = true;
   lastBackendCheck = Date.now();

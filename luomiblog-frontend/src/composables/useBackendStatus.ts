@@ -33,13 +33,6 @@ const isChecking = ref(false);
 const lastCheckTime = ref<Date | null>(null);
 const checkError = ref<string | null>(null);
 
-function clearLocalAuth() {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  }
-}
-
 export const useBackendStatus = () => {
   const isHealthy = computed(() => backendStatus.value?.status === 'healthy');
   const isDegraded = computed(() => backendStatus.value?.status === 'degraded');
@@ -159,10 +152,7 @@ export const useBackendStatus = () => {
       setBackendAvailable(false);
 
       if (wasAvailable) {
-        clearLocalAuth();
-        window.dispatchEvent(new CustomEvent('auth-state-changed', {
-          detail: { authenticated: false }
-        }));
+        // [BUG-050 修复] 健康检查失败≠登录失效：只播报状态，不清凭据
         window.dispatchEvent(new CustomEvent('backend-status-changed', {
           detail: { available: false }
         }));
@@ -224,10 +214,7 @@ export const useBackendStatus = () => {
       if (available !== isBackendAvailable()) {
         setBackendAvailable(available);
         if (!available) {
-          clearLocalAuth();
-          window.dispatchEvent(new CustomEvent('auth-state-changed', {
-            detail: { authenticated: false }
-          }));
+          // [BUG-050 修复] ping 失败不清凭据
         }
         window.dispatchEvent(new CustomEvent('backend-status-changed', {
           detail: { available }
@@ -238,10 +225,7 @@ export const useBackendStatus = () => {
     } catch {
       if (isBackendAvailable()) {
         setBackendAvailable(false);
-        clearLocalAuth();
-        window.dispatchEvent(new CustomEvent('auth-state-changed', {
-          detail: { authenticated: false }
-        }));
+        // [BUG-050 修复] ping 异常不清凭据
         window.dispatchEvent(new CustomEvent('backend-status-changed', {
           detail: { available: false }
         }));

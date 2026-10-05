@@ -148,7 +148,7 @@ public class ArticleServiceImpl implements ArticleService {
                 createMarkdownFile(article, request.getTagIds());
             } else if ("published".equals(oldStatus)) {
                 // 从发布变为草稿/归档，删除 MD 文件
-                deleteMarkdownFile(oldSlug);
+                deleteMarkdownFileAfterCommit(oldSlug);
             }
         } else if ("published".equals(newStatus)) {
             // 状态未变但仍是发布状态，更新 MD 文件
@@ -156,7 +156,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         if (slugChanged) {
             // slug 已变：旧 slug 的文件必须清理（重复调用无害，内部有 exists 检查）
-            deleteMarkdownFile(oldSlug);
+            deleteMarkdownFileAfterCommit(oldSlug);
         }
 
         return convertToResponse(article);
@@ -174,6 +174,9 @@ public class ArticleServiceImpl implements ArticleService {
 
         article.setDeletedAt(LocalDateTime.now());
         articleRepository.save(article);
+
+        // [BUG-019 修复] 软删除同步清理 MD 文件（此前残留导致已删文章在静态站仍可见）
+        deleteMarkdownFileAfterCommit(article.getSlug());
     }
 
     @Override
@@ -308,8 +311,14 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException(403, "无权归档此文章");
         }
 
+        boolean wasPublished = "published".equals(article.getStatus());
         article.setStatus("archived");
         articleRepository.save(article);
+
+        // [BUG-019 修复] 发布态归档后撤下 MD 文件
+        if (wasPublished) {
+            deleteMarkdownFileAfterCommit(article.getSlug());
+        }
 
         return convertToResponse(article);
     }
@@ -581,6 +590,24 @@ public class ArticleServiceImpl implements ArticleService {
     /**
      * 删除 Markdown 文件
      */
+    /**
+     * [BUG-019 修复] MD 文件删除推迟到事务提交后执行：
+     * 事务内删文件而事务回滚时文件已被误删（写路径仍在事务内，保 rollback 一致性）。
+     */
+    private void deleteMarkdownFileAfterCommit(String slug) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            deleteMarkdownFile(slug);
+                        }
+                    });
+        } else {
+            deleteMarkdownFile(slug);
+        }
+    }
+
     private void deleteMarkdownFile(String slug) {
         if (!SafePathValidator.isSafeSlug(slug)) {
             log.warn("跳过删除：slug 不合法: {}", slug);
