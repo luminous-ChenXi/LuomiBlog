@@ -14,6 +14,9 @@ const { slug } = Astro.params;
 
 let articleData: Record<string, any> | null = null;
 let contentHtml = '';
+// [BUG-003 修复] 本地 content collection 分支用 Astro 渲染组件 <Content />，
+// 而非 String(rendered)——后者输出字面量 "[object Object]"
+let localContent: any = null;
 let relatedArticles: Array<{ title: string; slug: string; date: string }> = [];
 let readTime = 0;
 
@@ -72,8 +75,10 @@ if (localPost) {
     articleId: dbArticle?.id,
   };
 
+  // [BUG-003 修复] render() 返回 { Content, headings, ... } 对象：
+  // 取出 Content 组件交给模板渲染（markdown 经 remark/rehype 管线输出，天然安全）
   const rendered = await render(localPost);
-  contentHtml = String(rendered);
+  localContent = rendered.Content;
 } else {
   try {
     const controller = new AbortController();
@@ -247,7 +252,9 @@ function escapeHtml(text: string): string {
           </div>
         )}
 
-        <div class="article-content prose" set:html={contentHtml} />
+        <div class="article-content prose">
+          {localContent ? <localContent /> : <Fragment set:html={contentHtml} />}
+        </div>
 
         <footer class="article-footer">
           <div class="article-actions">

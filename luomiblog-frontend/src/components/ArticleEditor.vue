@@ -729,6 +729,47 @@ async function loadCategories() {
   }
 }
 
+/**
+ * [BUG-005 修复] 标签名 → tagId 解析：
+ * 后端 ArticleRequest 只接受 tagIds（List<Long>），名称无法直传。
+ * 拉取标签字典做名称匹配；匹配不到的名称（新标签）跳过并提示——
+ * 后端创建标签是独立接口，编辑器暂不做自动建标。
+ */
+async function resolveTagIds(tagNames: string[]): Promise<number[]> {
+  if (!tagNames || tagNames.length === 0) {
+    return [];
+  }
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tags?size=200`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` }
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const result = await response.json();
+    const rows: Array<{ id: number; name: string }> =
+      result.code === 200 ? (result.data?.content ?? result.data ?? []) : [];
+    const nameToId = new Map(rows.map(t => [t.name, t.id]));
+    const ids: number[] = [];
+    const unknown: string[] = [];
+    for (const name of tagNames) {
+      const id = nameToId.get(name);
+      if (id != null) {
+        ids.push(id);
+      } else {
+        unknown.push(name);
+      }
+    }
+    if (unknown.length > 0) {
+      ElMessage.info(`以下标签不存在，已跳过：${unknown.join('、')}`);
+    }
+    return ids;
+  } catch (error) {
+    console.error('解析标签失败:', error);
+    return [];
+  }
+}
+
 async function loadArticle() {
   if (!currentSlug.value) {
     loading.value = false;
@@ -763,7 +804,8 @@ async function loadArticle() {
       content: data.content || '',
       status: data.status || 'draft',
       categoryId: data.category?.id || null,
-      tags: data.tags || [],
+      // [BUG-005 修复] 后端返回 TagInfo 对象数组，编辑态统一转为名称数组（否则输入框显示 [object Object]）
+      tags: (data.tags || []).map((t: any) => typeof t === 'string' ? t : t?.name).filter(Boolean),
       coverImage: data.coverImage || '',
       author: data.authorName || (data.author?.nickname || data.author?.username) || '',
       allowComments: data.allowComments !== false,
@@ -910,7 +952,21 @@ async function saveArticle() {
   isSubmitting.value = true;
 
   try {
-    const payload = { ...article.value };
+    // [BUG-005 修复] 后端 ArticleRequest 契约为 tagIds: number[]（此前发 tags 名称数组被静默丢弃）：
+    // 显式构造 payload，把标签名解析为 tagId；未匹配到的名称跳过并提示
+    const tagIds = await resolveTagIds(article.value.tags);
+    const payload = {
+      title: article.value.title,
+      slug: article.value.slug || undefined,
+      summary: article.value.summary || undefined,
+      content: article.value.content,
+      categoryId: article.value.categoryId ?? undefined,
+      tagIds,
+      language: article.value.language || 'zh',
+      status: article.value.status,
+      allowComments: article.value.allowComments,
+      allowSuggestions: article.value.allowSuggestions
+    };
 
     let response;
     if (isNew.value) {
@@ -956,7 +1012,8 @@ async function saveArticle() {
     });
 
     if (isNew.value) {
-      window.location.href = `/admin/articles/${result.data.slug}`;
+      // [BUG-004 修复] 后台无 /admin/articles/[slug] 路由，跳列表页而非 404
+      window.location.href = '/admin/articles';
     } else {
       articleInfo.value.updatedAt = result.data.updatedAt;
     }
@@ -1034,13 +1091,19 @@ function canEditAuthor(): boolean {
 }
 
 onMounted(async () => {
-  // 设置 currentSlug
+  // 设置 currentSlug：优先 prop，其次 ?slug= 查询参数；
+  // pathname 末段兜底时必须排除 new/edit 字面量（BUG-004：'edit' 曾被当作 slug 请求）
   if (props.slug) {
     currentSlug.value = props.slug;
   } else if (typeof window !== 'undefined') {
-    const pathParts = window.location.pathname.split('/');
-    const slugFromUrl = pathParts[pathParts.length - 1];
-    currentSlug.value = slugFromUrl && slugFromUrl !== 'new' ? slugFromUrl : '';
+    const slugFromQuery = new URLSearchParams(window.location.search).get('slug');
+    if (slugFromQuery) {
+      currentSlug.value = slugFromQuery;
+    } else {
+      const pathParts = window.location.pathname.split('/');
+      const slugFromUrl = pathParts[pathParts.length - 1];
+      currentSlug.value = slugFromUrl && slugFromUrl !== 'new' && slugFromUrl !== 'edit' ? slugFromUrl : '';
+    }
   }
 
   await loadCategories();

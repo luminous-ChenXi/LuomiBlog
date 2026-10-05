@@ -3,8 +3,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import ArticleEditor from '../../../components/ArticleEditor.vue';
 
 export const prerender = false;
+
+// [BUG-004 修复] 列表页跳转 /admin/articles/edit?slug=xxx，
+// slug 必须由页面显式传给组件——组件此前从 pathname 末段解析，
+// 只会拿到字面量 "edit"，导致永远请求 /api/articles/edit 而报"文章不存在"
+const slug = Astro.url.searchParams.get('slug') || undefined;
 ---
 
 <AdminLayout title="编辑文章">
-  <ArticleEditor client:load />
+  <ArticleEditor client:load slug={slug} />
 </AdminLayout>
