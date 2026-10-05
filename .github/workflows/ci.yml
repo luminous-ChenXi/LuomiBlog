@@ -1,6 +1,6 @@
 # LuomiBlog CI
 # - backend:  JDK 21 + Maven 单元测试（纯单元测试，不依赖 MySQL，无数据库也可完整执行）
-# - frontend: Node 20 + npm ci + Astro 构建（构建允许后端不在线）
+# - frontend: Node 20 + npm ci + astro check 类型检查 + Astro 构建（构建允许后端不在线）
 # 仅质量门禁：不做部署、不发版。站长自建等价校验见 README「从源码到上线：CI/CD」。
 name: CI
 
@@ -10,10 +10,19 @@ on:
   pull_request:
     branches: [main]
 
+# 最小权限 + 同分支去重（重复 push 白跑）+ 单任务超时兜底（BUG-071 硬化）
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     name: Backend (Maven test)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,8 +39,9 @@ jobs:
         run: mvn -B -ntp test --file luomiblog-backend/pom.xml
 
   frontend:
-    name: Frontend (Astro build)
+    name: Frontend (typecheck + build)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +56,11 @@ jobs:
       - name: Install dependencies
         working-directory: luomiblog-frontend
         run: npm ci
+
+      # [BUG-071 修复] 类型检查进 CI：DTO 契约漂移与断链此前一路存活到 main
+      - name: Typecheck (astro check)
+        working-directory: luomiblog-frontend
+        run: npm run typecheck
 
       - name: Build
         working-directory: luomiblog-frontend

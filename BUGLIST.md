@@ -134,7 +134,7 @@
 - **业界范式**(nginx `real_ip` / Spring `ForwardedHeaderFilter` 思路):配置**可信代理列表**,从 XFF **最右向左**取第一个非可信地址;或文档强制要求反代设置 `X-Real-IP` 且后端只信任该头;至少在 README 标注"trust-proxy=true 必须确保反代覆写(而非追加)XFF"。
 - **验证**:单测:`X-Forwarded-For: 1.2.3.4, 10.0.0.1`(10.0.0.1 为可信代理)应返回 10.0.0.1。
 
-### BUG-015 `[ ]` 限流/黑名单/锁定/TOTP 防重放共用 10000 条 Caffeine,可被挤库驱逐
+### BUG-015 `[x]` 限流/黑名单/锁定/TOTP 防重放共用 10000 条 Caffeine,可被挤库驱逐
 - **位置**:`MemoryCacheServiceImpl.java:22-25`;消费方:`AuthServiceImpl:88,97`、`TotpReplayGuard:21`、各限流
 - **影响**:匿名 `/api/articles/{id}/view` 的 visitorId 参与限流键(`ArticleStatsController.java:144-153`)且客户端可控 → 高频轮换 visitorId 挤出真实用户的锁定/黑名单/2FA 记录(已登出令牌复活、被锁账号解锁)。
 - **业界范式**:①token 黑名单独立存储(DB 表 `revoked_tokens(jti, expires_at)` + 每日清理任务,重启不丢、容量无界可查);②各关注点分桶(至少 blacklist / ratelimit / 2fa 三个独立 Caffeine 实例);③visitorId 限流键加长度/熵约束,并叠加 IP 键。
@@ -152,7 +152,7 @@
 - **修复范式**:**原子 UPDATE**(业界标准):`@Modifying @Query("UPDATE Article a SET a.likeCount = a.likeCount + 1 WHERE a.id = :id")`;去重插入用 `INSERT IGNORE` 语义(捕获 `DataIntegrityViolationException` 返回幂等结果);visitorId 加 `@NotBlank @Size(min:8,max:64)`;高并发站点可再加 Redis INCR + 定时落库(当前规模原子 UPDATE 已够)。
 - **验证**:并发 50 线程同文章点赞,断言计数与行数一致;匿名不带 visitorId 请求 400。
 
-### BUG-018 `[ ]` 业务异常全兜底 500(40+ 处 RuntimeException)
+### BUG-018 `[x]` 业务异常全兜底 500(40+ 处 RuntimeException)
 - **位置**:`GlobalExceptionHandler.java:94-99` 兜底;调用方如 `ArticleServiceImpl.java:97,100,106,154,157`、`UserServiceImpl.java:68,72,75`(旧密码错误也 500!)、`CommentServiceImpl`、`CategoryServiceImpl`、`TagServiceImpl`、`LikeServiceImpl`
 - **修复范式**:统一异常语义(REST 标准):资源不存在→`BusinessException(404)`、无权→403、参数→400、冲突→409;保留 Exception 兜底给真异常。建议加 ArchUnit 单测禁止 service 层直接 `new RuntimeException(`。
 - **验证**:全仓 grep `throw new RuntimeException` 归零(或白名单);API 错误码回归清单。
@@ -314,3 +314,16 @@
 - **BUG-088 `[ ]`(P2) POST /api/tags 建标签 500**(冒烟实测): 请求 `{"name","slug"}` 返回 500, 需查 TagController 入参与 TagService 是否要求必填字段/角色; 前端编辑器"新标签自动创建"依赖此接口。
 - BUG-061 获实测佐证: 非法 JSON(Git Bash GBK 编码中文)→500 而非 400。
 - 媒体上传链路: 后端无独立媒体上传端点(仅 favicon/站点配置), 前端 attachment 管理页是假壳(BUG-052 已列), 无需单测。
+
+---
+
+## 9. 修复进度记录(2026-10-05 第二批: Wave8-11)
+
+| 提交 | 内容 | 对应 BUG |
+|---|---|---|
+| 77d081f | 异常语义统一 38 处 + createTag usage_count + 异常映射补全 | 018/088/061 |
+| 4bb346f | token 黑名单 DB 化(revoked_tokens 表+清理任务+双消费点切换) | 015 |
+| edffb7c | 列表 DTO 拆分+批量装配+统计轻量化 | 040/041/042 |
+| (本次) | CI 门禁: astro check 进 CI + permissions/concurrency/timeout + 死 lint 脚本移除 | 071(部分) |
+
+第二批后剩余高价值项: BUG-019 余量(MD afterCommit)、BUG-022(注册邮件异步)、BUG-028/029(评论校验/ADMIN 越权边界)、BUG-033(token_version 改密踢会话)、BUG-035(Flyway, 含 BUG-086 根治)、BUG-043/044(缓存+EP 按需)、BUG-050(误杀登出)、BUG-051(admin 中间件验签)、BUG-052/053(假功能/状态收敛)、BUG-088 关联(前端新标签自动建)。
