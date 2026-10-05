@@ -80,6 +80,8 @@ public class JwtUtil {
         Date now = new Date();
         return Jwts.builder()
                 .subject(username)
+                // jti 必填：logout/吊销按 jti 进黑名单，缺失时黑名单键退化为 null 无法吊销任何会话
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + durationMs))
                 .claim(CLAIM_CHENXI_SESSION, true)
@@ -118,6 +120,7 @@ public class JwtUtil {
         Date now = new Date();
         return Jwts.builder()
                 .subject(claims.getSubject())
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + durationMs))
                 .claim(CLAIM_CHENXI_SESSION, true)
@@ -154,6 +157,20 @@ public class JwtUtil {
     public String getTokenId(String token) {
         Claims claims = parseToken(token);
         return claims.getId();
+    }
+
+    /**
+     * 令牌剩余有效期毫秒数：黑名单 TTL 必须对齐被拉黑令牌自身的寿命，
+     * 而非固定用 access 的有效期——否则 refresh token（7 天）被拉黑 24h 后即可复活。
+     * 解析失败（含已过期）返回 0。
+     */
+    public long getRemainingValidityMs(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return Math.max(0, claims.getExpiration().getTime() - System.currentTimeMillis());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {

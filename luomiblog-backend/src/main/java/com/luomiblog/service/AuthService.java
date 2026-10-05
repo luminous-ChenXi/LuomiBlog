@@ -12,7 +12,11 @@ public interface AuthService {
 
     AuthResponse refreshToken(String refreshToken);
 
-    void logout(String accessToken);
+    /**
+     * 登出：access 与 refresh 令牌一并按 jti 吊销（黑名单 TTL = 各自剩余有效期）。
+     * 两个参数均可为空，幂等。
+     */
+    void logout(String accessToken, String refreshToken);
 
     /**
      * 校验注册邮箱验证码 / 激活链接令牌；通过后激活账号并自动登录。

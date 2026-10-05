@@ -658,7 +658,9 @@ public class AuthServiceImpl implements AuthService {
 
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
 
-        blacklistToken(tokenId, accessTokenExpiresSeconds());
+        // [BUG-012 修复] 轮换即吊销：旧 refresh token 的黑名单 TTL 必须等于其自身剩余寿命
+        // （此前固定用 access 的 24h，导致第 2~7 天黑名单过期后旧令牌可再次刷新）
+        blacklistToken(tokenId, Math.max(1, jwtUtil.getRemainingValidityMs(refreshToken) / 1000));
 
         String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList());
         String newRefreshToken = jwtUtil.generateRefreshToken(username);
@@ -669,12 +671,35 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String accessToken) {
-        if (jwtUtil.validateToken(accessToken)) {
-            String tokenId = jwtUtil.getTokenId(accessToken);
-            long ttl = accessTokenExpiresSeconds();
-            blacklistToken(tokenId, ttl);
-            log.info("用户登出成功, tokenId: {}", tokenId);
+    public void logout(String accessToken, String refreshToken) {
+        // [BUG-012 修复] access 与 refresh 一并吊销；TTL 各自对齐剩余寿命
+        blacklistIfValid(accessToken, "access");
+        blacklistIfValid(refreshToken, "refresh");
+    }
+
+    /**
+     * 按令牌自身的 jti 与剩余有效期拉黑；无效/缺失令牌静默跳过（logout 幂等）。
+     */
+    private void blacklistIfValid(String token, String kind) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        try {
+            String trimmed = token.startsWith("Bearer ") ? token.substring(7) : token;
+            if (!jwtUtil.validateToken(trimmed)) {
+                return;
+            }
+            String tokenId = jwtUtil.getTokenId(trimmed);
+            if (tokenId == null || tokenId.isBlank()) {
+                // 无 jti 的历史令牌无法精确吊销（签发侧已修复，存量令牌随过期自然消亡）
+                log.warn("登出时发现无 jti 的{}令牌，跳过吊销", kind);
+                return;
+            }
+            long ttlSeconds = Math.max(1, jwtUtil.getRemainingValidityMs(trimmed) / 1000);
+            blacklistToken(tokenId, ttlSeconds);
+            log.info("用户登出，已吊销{}令牌, tokenId: {}, 剩余有效期: {}s", kind, tokenId, ttlSeconds);
+        } catch (Exception e) {
+            log.warn("吊销{}令牌失败: {}", kind, e.getMessage());
         }
     }
 

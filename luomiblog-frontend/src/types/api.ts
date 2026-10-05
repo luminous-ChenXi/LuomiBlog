@@ -127,6 +127,8 @@ export interface AuthResponse {
   token: string;
   type: string;
   user: User;
+  /** 刷新令牌（7 天）：登出时交后端吊销（BUG-012 修复） */
+  refreshToken?: string;
 
   /* 注册邮箱验证：true 表示注册成功但需先验证邮箱（无 token，不可登录） */
   pendingEmailVerification?: boolean;

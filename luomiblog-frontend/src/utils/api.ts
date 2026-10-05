@@ -254,7 +254,8 @@ function normalizeAuth(data: any): AuthResponse {
   return {
     ...data,
     token: data?.accessToken ?? data?.token,
-    type: data?.tokenType ?? data?.type ?? 'Bearer'
+    type: data?.tokenType ?? data?.type ?? 'Bearer',
+    refreshToken: data?.refreshToken
   };
 }
 
@@ -281,8 +282,12 @@ export const api = {
         body: JSON.stringify(data)
       }).then(normalizeAuth),
 
-    logout: () =>
-      request<void>('/api/auth/logout', { method: 'POST' }),
+    logout: (refreshToken?: string | null) =>
+      request<void>('/api/auth/logout', {
+        method: 'POST',
+        // [BUG-012 修复] refresh 令牌一并交后端吊销；后端对缺省 body 兼容旧客户端
+        body: refreshToken ? JSON.stringify({ refreshToken }) : undefined
+      }),
 
     me: () =>
       request<User>('/api/auth/me'),

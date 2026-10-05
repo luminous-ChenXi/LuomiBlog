@@ -94,9 +94,12 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@RequestHeader("Authorization") String token) {
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String token,
+                                    @RequestBody(required = false) Map<String, String> body) {
         String accessToken = token.replace("Bearer ", "");
-        authService.logout(accessToken);
+        // [BUG-012 修复] refresh 令牌一并吊销（body.refreshToken 可选，兼容旧客户端）
+        String refreshToken = body != null ? body.get("refreshToken") : null;
+        authService.logout(accessToken, refreshToken);
         return ApiResponse.success();
     }
 

@@ -69,7 +69,7 @@ const menuItems = [
 
 <script>
   import { ElMessage, ElMessageBox } from 'element-plus';
-  import { clearAuth } from '../stores/user';
+  import { logout } from '../stores/user';
 
   // 检查登录状态
   (function checkAuth() {
@@ -97,8 +97,8 @@ const menuItems = [
         }
       );
       
-      // 清除登录状态
-      clearAuth();
+      // 先吊销服务端会话（access/refresh 一并拉黑），再清本地状态
+      await logout();
       
       ElMessage.success('已安全退出登录');
       

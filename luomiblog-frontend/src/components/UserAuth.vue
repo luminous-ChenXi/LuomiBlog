@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useUserStore, clearAuth } from '../stores/user';
+import { useUserStore, logout } from '../stores/user';
 import type { User } from '../types/api';
 
 const userStore = useUserStore();
@@ -26,8 +26,9 @@ const handleRegisterClick = () => {
   window.dispatchEvent(new CustomEvent('open-register-modal'));
 };
 
-const handleLogout = () => {
-  clearAuth();
+const handleLogout = async () => {
+  // 先吊销服务端会话（access/refresh 一并拉黑），再清本地状态
+  await logout();
   isMenuOpen.value = false;
   // 刷新页面以更新状态
   window.location.reload();
