@@ -76,13 +76,44 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException e) {
         Map<String, String> errors = new HashMap<>();
         e.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
+            // [BUG-061 修复] 类级别约束是 ObjectError 而非 FieldError，直接强转会 ClassCastException → 500
+            String fieldName = error instanceof FieldError fe ? fe.getField() : error.getObjectName();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
         log.warn("参数校验失败: {}", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(4001, "参数校验失败", errors));
+    }
+
+    /**
+     * [BUG-061 修复] 请求体不可读（坏 JSON/编码错误）应 400 而非落兜底 500
+     * （集成冒烟实测：GBK 编码中文打进来曾返回 500）
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableBody(
+            org.springframework.http.converter.HttpMessageNotReadableException e) {
+        log.warn("请求体不可读: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "请求体格式错误，请检查 JSON 与编码（需 UTF-8）"));
+    }
+
+    /** [BUG-061 修复] 路径/参数类型不匹配应 400 */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException e) {
+        log.warn("参数类型不匹配: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "参数类型不正确: " + e.getName()));
+    }
+
+    /** 上传超限应 413 而非 500 */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(
+            org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        log.warn("上传文件超限: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.error(413, "上传文件过大"));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

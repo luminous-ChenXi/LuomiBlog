@@ -1,6 +1,7 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.TagRequest;
+import com.luomiblog.common.exception.BusinessException;
 import com.luomiblog.dto.TagResponse;
 import com.luomiblog.entity.Tag;
 import com.luomiblog.repository.TagRepository;
@@ -37,6 +38,8 @@ public class TagServiceImpl implements TagService {
                 .description(request.getDescription())
                 .type(request.getType() != null ? request.getType() : "user")
                 .articleCount(0)
+                // [BUG-088 修复] usage_count 实体 nullable=false, 缺省即插 NULL → 500
+                .usageCount(0)
                 .build();
 
         tagRepository.save(tag);
@@ -47,12 +50,12 @@ public class TagServiceImpl implements TagService {
     @Transactional
     public TagResponse updateTag(Long id, TagRequest request) {
         Tag tag = tagRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("标签不存在"));
+                .orElseThrow(() -> new BusinessException(404, "标签不存在"));
 
         tag.setName(request.getName());
         if (request.getSlug() != null && !request.getSlug().equals(tag.getSlug())) {
             if (tagRepository.existsBySlug(request.getSlug())) {
-                throw new RuntimeException("slug已存在");
+                throw new BusinessException(409, "slug 已存在");
             }
             tag.setSlug(request.getSlug());
         }
@@ -69,7 +72,7 @@ public class TagServiceImpl implements TagService {
     @Transactional
     public void deleteTag(Long id) {
         Tag tag = tagRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("标签不存在"));
+                .orElseThrow(() -> new BusinessException(404, "标签不存在"));
 
         tag.setDeletedAt(LocalDateTime.now());
         tagRepository.save(tag);
@@ -79,7 +82,7 @@ public class TagServiceImpl implements TagService {
     @Transactional(readOnly = true)
     public TagResponse getTagById(Long id) {
         Tag tag = tagRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("标签不存在"));
+                .orElseThrow(() -> new BusinessException(404, "标签不存在"));
         return convertToResponse(tag);
     }
 
@@ -87,7 +90,7 @@ public class TagServiceImpl implements TagService {
     @Transactional(readOnly = true)
     public TagResponse getTagBySlug(String slug) {
         Tag tag = tagRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("标签不存在"));
+                .orElseThrow(() -> new BusinessException(404, "标签不存在"));
         return convertToResponse(tag);
     }
 

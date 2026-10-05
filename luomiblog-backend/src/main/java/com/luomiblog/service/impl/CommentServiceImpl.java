@@ -1,6 +1,7 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.CommentRequest;
+import com.luomiblog.common.exception.BusinessException;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.entity.Comment;
 import com.luomiblog.repository.ArticleRepository;
@@ -50,7 +51,7 @@ public class CommentServiceImpl implements CommentService {
 
         if (request.getParentId() != null) {
             Comment parentComment = commentRepository.findById(request.getParentId())
-                    .orElseThrow(() -> new RuntimeException("父评论不存在"));
+                    .orElseThrow(() -> new BusinessException(404, "父评论不存在"));
             // [BUG-017 修复] 数据库端原子自增（旧实现读-改-写并发丢计数）
             commentRepository.incrementReplyCount(parentComment.getId());
         }
@@ -64,17 +65,17 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void deleteComment(Long id, Long userId) {
         Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
 
         // 空身份（principal 缺失）不再跳过校验：删除必须携带可核对的用户身份
         if (userId == null) {
-            throw new com.luomiblog.common.exception.BusinessException(
+            throw new BusinessException(
                     com.luomiblog.common.exception.ErrorCode.UNAUTHORIZED, "请先登录后再删除评论");
         }
 
         // 非本人评论一律拒绝（管理员下线评论走 approve/reject 管理通道）
         if (!userId.equals(comment.getUserId())) {
-            throw new com.luomiblog.common.exception.BusinessException(
+            throw new BusinessException(
                     com.luomiblog.common.exception.ErrorCode.ACCESS_DENIED, "无权删除此评论");
         }
 
@@ -98,7 +99,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional(readOnly = true)
     public CommentResponse getCommentById(Long id) {
         Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
         return convertToResponse(comment, null);
     }
 
@@ -148,7 +149,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void approveComment(Long id) {
         Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
         boolean wasApproved = "approved".equals(comment.getStatus());
         comment.setStatus("approved");
         commentRepository.save(comment);
@@ -162,7 +163,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void rejectComment(Long id) {
         Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
         boolean wasApproved = "approved".equals(comment.getStatus());
         comment.setStatus("rejected");
         commentRepository.save(comment);
@@ -176,7 +177,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void incrementLikeCount(Long commentId) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
         comment.setLikeCount(comment.getLikeCount() + 1);
         commentRepository.save(comment);
     }
@@ -185,7 +186,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void decrementLikeCount(Long commentId) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("评论不存在"));
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
         comment.setLikeCount(Math.max(0, comment.getLikeCount() - 1));
         commentRepository.save(comment);
     }

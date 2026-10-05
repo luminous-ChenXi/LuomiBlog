@@ -1,6 +1,7 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.CategoryRequest;
+import com.luomiblog.common.exception.BusinessException;
 import com.luomiblog.dto.CategoryResponse;
 import com.luomiblog.entity.Category;
 import com.luomiblog.repository.CategoryRepository;
@@ -48,12 +49,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("分类不存在"));
+                .orElseThrow(() -> new BusinessException(404, "分类不存在"));
 
         category.setName(request.getName());
         if (request.getSlug() != null && !request.getSlug().equals(category.getSlug())) {
             if (categoryRepository.existsBySlug(request.getSlug())) {
-                throw new RuntimeException("slug已存在");
+                throw new BusinessException(409, "slug 已存在");
             }
             category.setSlug(request.getSlug());
         }
@@ -71,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("分类不存在"));
+                .orElseThrow(() -> new BusinessException(404, "分类不存在"));
 
         category.setDeletedAt(LocalDateTime.now());
         categoryRepository.save(category);
@@ -81,7 +82,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("分类不存在"));
+                .orElseThrow(() -> new BusinessException(404, "分类不存在"));
         return convertToResponse(category);
     }
 
@@ -89,7 +90,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public CategoryResponse getCategoryBySlug(String slug) {
         Category category = categoryRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("分类不存在"));
+                .orElseThrow(() -> new BusinessException(404, "分类不存在"));
         return convertToResponse(category);
     }
 

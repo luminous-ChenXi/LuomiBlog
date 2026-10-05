@@ -98,10 +98,10 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public ArticleResponse updateArticle(Long id, ArticleRequest request, Long authorId) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
 
         if (!article.getAuthorId().equals(authorId)) {
-            throw new RuntimeException("无权修改此文章");
+            throw new BusinessException(403, "无权修改此文章");
         }
 
         article.setTitle(request.getTitle());
@@ -111,7 +111,7 @@ public class ArticleServiceImpl implements ArticleService {
                 throw new BusinessException(400, "slug 不合法：仅允许字母/数字/中文/下划线/连字符");
             }
             if (articleRepository.existsBySlug(request.getSlug())) {
-                throw new RuntimeException("slug已存在");
+                throw new BusinessException(409, "slug 已存在");
             }
             article.setSlug(request.getSlug());
         }
@@ -164,10 +164,10 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public void deleteArticle(Long id, Long authorId) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
 
         if (!article.getAuthorId().equals(authorId)) {
-            throw new RuntimeException("无权删除此文章");
+            throw new BusinessException(403, "无权删除此文章");
         }
 
         article.setDeletedAt(LocalDateTime.now());
@@ -255,7 +255,7 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public void incrementViewCount(Long articleId) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
         article.setViewCount(article.getViewCount() + 1);
         articleRepository.save(article);
     }
@@ -264,7 +264,7 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public void incrementLikeCount(Long articleId) {
         Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
         article.setLikeCount(article.getLikeCount() + 1);
         articleRepository.save(article);
     }
@@ -280,10 +280,10 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public ArticleResponse publishArticle(Long id, Long authorId) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
 
         if (!article.getAuthorId().equals(authorId)) {
-            throw new RuntimeException("无权发布此文章");
+            throw new BusinessException(403, "无权发布此文章");
         }
 
         article.setStatus("published");
@@ -299,10 +299,10 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public ArticleResponse archiveArticle(Long id, Long authorId) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
 
         if (!article.getAuthorId().equals(authorId)) {
-            throw new RuntimeException("无权归档此文章");
+            throw new BusinessException(403, "无权归档此文章");
         }
 
         article.setStatus("archived");
@@ -315,10 +315,10 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public ArticleResponse toggleTop(Long id, boolean top, Long authorId) {
         Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("文章不存在"));
+                .orElseThrow(() -> new BusinessException(404, "文章不存在"));
 
         if (!article.getAuthorId().equals(authorId)) {
-            throw new RuntimeException("无权修改此文章");
+            throw new BusinessException(403, "无权修改此文章");
         }
 
         article.setTop(top);

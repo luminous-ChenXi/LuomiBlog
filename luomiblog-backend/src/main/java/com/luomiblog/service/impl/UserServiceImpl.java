@@ -1,6 +1,7 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.dto.PasswordChangeRequest;
+import com.luomiblog.common.exception.BusinessException;
 import com.luomiblog.dto.UserProfileRequest;
 import com.luomiblog.dto.UserProfileResponse;
 import com.luomiblog.entity.User;
@@ -25,7 +26,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
         return convertToResponse(user);
     }
 
@@ -33,7 +34,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserProfileResponse updateUserProfile(Long userId, UserProfileRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
 
         if (request.getNickname() != null) {
             user.setNickname(request.getNickname());
@@ -65,14 +66,14 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void changePassword(Long userId, PasswordChangeRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new RuntimeException("两次输入的密码不一致");
+            throw new BusinessException(400, "两次输入的密码不一致");
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("旧密码错误");
+            throw new BusinessException(400, "旧密码错误");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
@@ -83,7 +84,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void uploadAvatar(Long userId, String avatarUrl) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
         applyAvatarUrl(user, avatarUrl);
         userRepository.save(user);
     }
