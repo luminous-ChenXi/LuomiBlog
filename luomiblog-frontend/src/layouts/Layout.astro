@@ -34,17 +34,28 @@ const fullTitle = article ? `${article.title} - ${siteName}` : title;
 const ogImage = image || '/img/icon120.png';
 
 let siteFavicon = '/favicon.svg';
+// [BUG-043 修复] 模块级 TTL 缓存：SSR 每个请求不再同步打后端拿 favicon（阻塞 TTFB）。
+// Node 进程内跨请求复用，5 分钟过期；后端不可用时静默用默认值
+let __siteFaviconCache: string | null = null;
+let __siteFaviconAt = 0;
+const SITE_FAVICON_TTL_MS = 5 * 60 * 1000;
 try {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000);
-  const response = await fetch(`${API_BASE_URL}/api/site/config`, {
-    signal: controller.signal
-  });
-  clearTimeout(timeoutId);
-  if (response.ok) {
-    const result = await response.json();
-    if (result.code === 200 && result.data?.siteFavicon) {
-      siteFavicon = result.data.siteFavicon;
+  if (__siteFaviconCache && Date.now() - __siteFaviconAt < SITE_FAVICON_TTL_MS) {
+    siteFavicon = __siteFaviconCache;
+  } else {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(`${API_BASE_URL}/api/site/config`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (response.ok) {
+      const result = await response.json();
+      if (result.code === 200 && result.data?.siteFavicon) {
+        siteFavicon = result.data.siteFavicon;
+        __siteFaviconCache = siteFavicon;
+        __siteFaviconAt = Date.now();
+      }
     }
   }
 } catch (e) {

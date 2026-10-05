@@ -22,6 +22,7 @@ public class SiteSettingsServiceImpl implements SiteSettingsService {
     private final SiteSettingRepository siteSettingRepository;
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(cacheNames = "cxSiteSettings", key = "#key + '::' + #defaultValue")
     public String getString(String key, String defaultValue) {
         try {
             Optional<SiteSetting> setting = siteSettingRepository.findById(key);
@@ -53,6 +54,7 @@ public class SiteSettingsServiceImpl implements SiteSettingsService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = "cxSiteSettings", allEntries = true)
     public void set(String key, String value) {
         SiteSetting setting = siteSettingRepository.findById(key).orElseGet(() -> {
             SiteSetting s = new SiteSetting();

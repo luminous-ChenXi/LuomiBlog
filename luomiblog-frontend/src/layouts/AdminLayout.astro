@@ -361,7 +361,7 @@ const isActive = (href: string) => {
       const user = JSON.parse(userStr);
       const role = user.role?.toLowerCase();
       const allowedRoles = ['admin', 'blogger'];
-      
+
       if (!allowedRoles.includes(role)) {
         if (authLayer) authLayer.style.display = 'none';
         if (noPermissionLayer) noPermissionLayer.style.display = 'flex';
@@ -379,7 +379,25 @@ const isActive = (href: string) => {
         }
         return;
       }
-      
+
+      // [BUG-051 修复] 服务端验签守卫：改 localStorage 可越过本地角色检查，
+      // 但伪造令牌过不了 /api/auth/me（JWT 验签 + DB 实时角色）——401 即踢回首页
+      (async () => {
+        try {
+          const resp = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (resp.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/?login=1';
+          }
+        } catch {
+          /* 网络失败不阻塞页面，后续 API 调用各自处理 */
+        }
+      })();
+
       checkBackendAndShow();
     } catch {
       if (authLayer) authLayer.style.display = 'none';
