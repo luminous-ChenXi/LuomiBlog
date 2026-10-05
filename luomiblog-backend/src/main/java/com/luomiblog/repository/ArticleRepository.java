@@ -4,6 +4,7 @@ import com.luomiblog.entity.Article;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -62,4 +63,34 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
      * 统计创建时间在某时间点之前的文章数
      */
     long countByCreatedAtBefore(java.time.LocalDateTime dateTime);
+
+    // ==================== [BUG-017 修复] 原子计数 ====================
+    // 旧实现为「读实体→内存+1→save 全字段更新」：并发丢失更新，
+    // 且每次自增都重写 content LONGTEXT 溢出页。数据库端原子自增是行业标准做法。
+
+    /** 浏览量原子自增（绕过实体加载，不触碰 content 大字段） */
+    @Modifying
+    @Query("UPDATE Article a SET a.viewCount = a.viewCount + 1 WHERE a.id = :id")
+    int incrementViewCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Article a SET a.likeCount = a.likeCount + 1 WHERE a.id = :id")
+    int incrementLikeCount(@Param("id") Long id);
+
+    /** 点赞数原子递减，下限 0（防历史脏数据变负） */
+    @Modifying
+    @Query("UPDATE Article a SET a.likeCount = CASE WHEN a.likeCount > 0 THEN a.likeCount - 1 ELSE 0 END WHERE a.id = :id")
+    int decrementLikeCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Article a SET a.commentCount = a.commentCount + 1 WHERE a.id = :id")
+    int incrementCommentCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Article a SET a.commentCount = CASE WHEN a.commentCount > 0 THEN a.commentCount - 1 ELSE 0 END WHERE a.id = :id")
+    int decrementCommentCount(@Param("id") Long id);
+
+    /** 轻量读取计数值（避免为拿一个 int 加载整行含 LONGTEXT） */
+    @Query("SELECT a.likeCount FROM Article a WHERE a.id = :id")
+    Optional<Integer> getLikeCountById(@Param("id") Long id);
 }

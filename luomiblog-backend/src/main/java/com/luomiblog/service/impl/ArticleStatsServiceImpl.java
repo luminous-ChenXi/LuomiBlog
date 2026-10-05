@@ -48,13 +48,11 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
     @Transactional
     @SuppressWarnings("null")
     public boolean recordView(Long articleId, Long userId, String visitorId, String ipAddress, String userAgent) {
-        // 1. 检查文章是否存在
-        Optional<Article> articleOpt = articleRepository.findById(articleId);
-        if (articleOpt.isEmpty()) {
+        // 1. 检查文章是否存在（[BUG-017 修复] 存在性探测即可，不再加载含 LONGTEXT 的整行）
+        if (!articleRepository.existsById(articleId)) {
             log.warn("文章不存在: articleId={}", articleId);
             return false;
         }
-        Article article = articleOpt.get();
 
         // 2. 检查24小时内是否已浏览过
         LocalDateTime since = LocalDateTime.now().minusHours(24);
@@ -76,9 +74,8 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
         behavior.setUserAgent(userAgent);
         userBehaviorRepository.save(behavior);
 
-        // 4. 更新文章浏览数
-        article.setViewCount(article.getViewCount() + 1);
-        articleRepository.save(article);
+        // 4. [BUG-017 修复] 浏览数数据库端原子自增（旧实现读-改-写全字段 save，并发丢计数且重写 LONGTEXT）
+        articleRepository.incrementViewCount(articleId);
 
         log.info("记录文章浏览: articleId={}, userId={}, visitorId={}", articleId, userId, visitorId);
         return true;
@@ -88,37 +85,37 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
     @Transactional
     @SuppressWarnings("null")
     public ArticleStatsResult toggleLike(Long articleId, Long userId, String visitorId, String ipAddress) {
-        // 1. 检查文章是否存在
-        Optional<Article> articleOpt = articleRepository.findById(articleId);
-        if (articleOpt.isEmpty()) {
+        // 1. 检查文章是否存在（不加载整行）
+        if (!articleRepository.existsById(articleId)) {
             return ArticleStatsResult.builder()
                     .success(false)
                     .message("文章不存在")
                     .build();
         }
-        Article article = articleOpt.get();
 
-        // 2. 检查是否已点赞（登录用户优先使用userId，否则使用visitorId）
+        // 2. 检查是否已点赞（登录用户优先使用userId；匿名必须携带 visitorId，否则唯一键对 NULL 不去重=刷赞入口）
         boolean hasLiked;
         if (userId != null) {
             hasLiked = articleLikeRepository.existsByArticleIdAndUserId(articleId, userId);
-        } else {
+        } else if (visitorId != null && !visitorId.isBlank()) {
             hasLiked = articleLikeRepository.existsByArticleIdAndVisitorId(articleId, visitorId);
+        } else {
+            return ArticleStatsResult.builder()
+                    .success(false)
+                    .message("缺少有效的访客标识，无法点赞")
+                    .build();
         }
 
-        // 3. 切换点赞状态
+        // 3. 切换点赞状态（[BUG-017 修复] 计数全部走数据库端原子 UPDATE）
         if (hasLiked) {
-            // 取消点赞
             if (userId != null) {
                 articleLikeRepository.deleteByArticleIdAndUserId(articleId, userId);
             } else {
                 articleLikeRepository.deleteByArticleIdAndVisitorId(articleId, visitorId);
             }
 
-            // 更新文章点赞数（确保不小于0）
-            int newLikeCount = Math.max(0, article.getLikeCount() - 1);
-            article.setLikeCount(newLikeCount);
-            articleRepository.save(article);
+            articleRepository.decrementLikeCount(articleId);
+            int newLikeCount = articleRepository.getLikeCountById(articleId).orElse(0);
 
             log.info("取消点赞: articleId={}, userId={}, visitorId={}", articleId, userId, visitorId);
 
@@ -129,29 +126,39 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
                     .hasLiked(false)
                     .message("已取消点赞")
                     .build();
-        } else {
-            // 添加点赞 - 使用构造函数避免null警告
-            ArticleLike like = new ArticleLike();
-            like.setArticleId(articleId);
-            like.setUserId(userId);
-            like.setVisitorId(visitorId);
-            like.setIpAddress(ipAddress);
+        }
+
+        ArticleLike like = new ArticleLike();
+        like.setArticleId(articleId);
+        like.setUserId(userId);
+        like.setVisitorId(visitorId);
+        like.setIpAddress(ipAddress);
+        try {
             articleLikeRepository.save(like);
-
-            // 更新文章点赞数
-            article.setLikeCount(article.getLikeCount() + 1);
-            articleRepository.save(article);
-
-            log.info("点赞成功: articleId={}, userId={}, visitorId={}", articleId, userId, visitorId);
-
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 并发双击撞唯一键：幂等返回已点赞态（旧实现 500）
+            log.info("并发点赞唯一键冲突，按已点赞处理: articleId={}, userId={}, visitorId={}",
+                    articleId, userId, visitorId);
             return ArticleStatsResult.builder()
                     .success(true)
                     .action("like")
-                    .likeCount(article.getLikeCount())
+                    .likeCount(articleRepository.getLikeCountById(articleId).orElse(0))
                     .hasLiked(true)
-                    .message("点赞成功")
+                    .message("已点赞")
                     .build();
         }
+        articleRepository.incrementLikeCount(articleId);
+        int newLikeCount = articleRepository.getLikeCountById(articleId).orElse(0);
+
+        log.info("点赞成功: articleId={}, userId={}, visitorId={}", articleId, userId, visitorId);
+
+        return ArticleStatsResult.builder()
+                .success(true)
+                .action("like")
+                .likeCount(newLikeCount)
+                .hasLiked(true)
+                .message("点赞成功")
+                .build();
     }
 
     @Override

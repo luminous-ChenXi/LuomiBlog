@@ -3,6 +3,7 @@ package com.luomiblog.service.impl;
 import com.luomiblog.dto.CommentRequest;
 import com.luomiblog.dto.CommentResponse;
 import com.luomiblog.entity.Comment;
+import com.luomiblog.repository.ArticleRepository;
 import com.luomiblog.repository.CommentRepository;
 import com.luomiblog.repository.UserRepository;
 import com.luomiblog.service.CommentService;
@@ -25,6 +26,7 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final ArticleRepository articleRepository;
 
     @Override
     @Transactional
@@ -49,10 +51,12 @@ public class CommentServiceImpl implements CommentService {
         if (request.getParentId() != null) {
             Comment parentComment = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new RuntimeException("父评论不存在"));
-            parentComment.setReplyCount(parentComment.getReplyCount() + 1);
-            commentRepository.save(parentComment);
+            // [BUG-017 修复] 数据库端原子自增（旧实现读-改-写并发丢计数）
+            commentRepository.incrementReplyCount(parentComment.getId());
         }
 
+        // [BUG-027 部分] article.commentCount 此前全项目从未维护（前端展示恒为 0）：
+        // 审核通过/下线时同步维护；此处为创建（pending 不计入，见 CommentModerationServiceImpl）
         return convertToResponse(comment, userId);
     }
 
@@ -74,15 +78,19 @@ public class CommentServiceImpl implements CommentService {
                     com.luomiblog.common.exception.ErrorCode.ACCESS_DENIED, "无权删除此评论");
         }
 
+        boolean wasApproved = "approved".equals(comment.getStatus());
+
         comment.setDeletedAt(LocalDateTime.now());
         commentRepository.save(comment);
 
         if (comment.getParentId() != null) {
-            Comment parentComment = commentRepository.findById(comment.getParentId()).orElse(null);
-            if (parentComment != null) {
-                parentComment.setReplyCount(Math.max(0, parentComment.getReplyCount() - 1));
-                commentRepository.save(parentComment);
-            }
+            // [BUG-017 修复] 数据库端原子递减（下限 0）
+            commentRepository.decrementReplyCount(comment.getParentId());
+        }
+
+        // [BUG-027 部分] 已审核通过的评论被删，文章评论数同步递减
+        if (wasApproved && comment.getArticleId() != null) {
+            articleRepository.decrementCommentCount(comment.getArticleId());
         }
     }
 
@@ -141,8 +149,13 @@ public class CommentServiceImpl implements CommentService {
     public void approveComment(Long id) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("评论不存在"));
+        boolean wasApproved = "approved".equals(comment.getStatus());
         comment.setStatus("approved");
         commentRepository.save(comment);
+        // [BUG-027 部分] 审核通过计入文章评论数（重复 approve 不重复计数）
+        if (!wasApproved && comment.getArticleId() != null) {
+            articleRepository.incrementCommentCount(comment.getArticleId());
+        }
     }
 
     @Override
@@ -150,8 +163,13 @@ public class CommentServiceImpl implements CommentService {
     public void rejectComment(Long id) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("评论不存在"));
+        boolean wasApproved = "approved".equals(comment.getStatus());
         comment.setStatus("rejected");
         commentRepository.save(comment);
+        // [BUG-027 部分] 已计数的评论被驳回时回退文章评论数
+        if (wasApproved && comment.getArticleId() != null) {
+            articleRepository.decrementCommentCount(comment.getArticleId());
+        }
     }
 
     @Override

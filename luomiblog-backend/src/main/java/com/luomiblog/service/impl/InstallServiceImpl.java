@@ -29,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -486,34 +487,68 @@ public class InstallServiceImpl implements InstallService {
         // 写入半安装标记（完成安装/重置安装状态时清理）
         writeProgressMarker();
 
-        // 使用用户配置的数据源执行 SQL 脚本
-        DataSource dataSource = createDataSource(request);
-        JdbcTemplate template = new JdbcTemplate(dataSource);
+        // [BUG-009 修复] 全程单连接（旧实现经 DriverManagerDataSource 每语句新建连接），
+        // schema.sql 的 DDL 会被 MySQL 隐式提交（无法纳入事务，与 AstrNest 同语义）；
+        // data.sql 为 DML，纳入显式事务，失败回滚，杜绝半截种子数据
+        try (Connection connection = createDataSource(request).getConnection()) {
+            executeSqlFile("db/schema.sql", connection);
 
-        try {
-            // 执行 schema.sql
-            executeSqlFile("db/schema.sql", template);
-            // 执行 data.sql
-            executeSqlFile("db/data.sql", template);
-            log.info("SQL 脚本执行成功");
-
-            // 验证表是否创建成功
+            boolean originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
             try {
-                Integer tableCount = template.queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
-                    Integer.class
-                );
-                if (tableCount == null || tableCount == 0) {
+                executeSqlFile("db/data.sql", connection);
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(originalAutoCommit);
+            }
+
+            // 验证表是否创建成功（同一连接）
+            try (var ps = connection.prepareStatement(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'");
+                 var rs = ps.executeQuery()) {
+                if (!rs.next() || rs.getInt(1) == 0) {
                     throw new RuntimeException("验证失败：users 表未创建成功");
                 }
                 log.info("验证成功：users 表已创建");
-            } catch (Exception e) {
-                log.error("验证表创建失败", e);
-                throw new RuntimeException("验证表创建失败: " + e.getMessage());
             }
+
+            // 向导目标库与运行时主库不一致会导致"管理员落在另一个库"的分裂状态，提前暴露
+            warnIfRuntimeDatabaseMismatch(connection);
+            log.info("SQL 脚本执行成功");
         } catch (Exception e) {
             log.error("SQL 脚本执行失败", e);
             throw new RuntimeException("SQL 脚本执行失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * [BUG-009 修复] 向导填写的库与容器运行时主库不一致时告警：
+     * createAdminAccount/checkReadyForCompletion 走容器主数据源，
+     * 两库不一致会造成"有用户无表/有表无管理员"的分裂状态。
+     */
+    private void warnIfRuntimeDatabaseMismatch(Connection wizardConnection) {
+        try {
+            String wizardDb;
+            try (var ps = wizardConnection.prepareStatement("SELECT DATABASE()");
+                 var rs = ps.executeQuery()) {
+                wizardDb = rs.next() ? rs.getString(1) : null;
+            }
+            String runtimeDb = jdbcTemplate.execute(
+                    (org.springframework.jdbc.core.ConnectionCallback<String>) conn -> {
+                        try (var st = conn.prepareStatement("SELECT DATABASE()");
+                             var r = st.executeQuery()) {
+                            return r.next() ? r.getString(1) : null;
+                        }
+                    });
+            if (wizardDb != null && runtimeDb != null && !wizardDb.equalsIgnoreCase(runtimeDb)) {
+                log.warn("向导目标数据库({})与运行时主数据库({})不一致：管理员/站点配置将写入运行时主库，"
+                        + "请确保两者相同或立即修改运行时配置", wizardDb, runtimeDb);
+            }
+        } catch (Exception e) {
+            log.debug("运行时数据库一致性检查失败: {}", e.getMessage());
         }
     }
 
@@ -947,8 +982,9 @@ public class InstallServiceImpl implements InstallService {
     }
 
     @Override
-    @Transactional
     public void executeReinstall(ReinstallOption option, DatabaseConfigRequest request) {
+        // [BUG-009 修复] 移除误导性 @Transactional：内部走自建数据源，
+        // 容器事务管理不到，注解只会白白占用主库连接
         log.info("执行重新安装，选项: {}", option.getName());
 
         switch (option) {
@@ -977,10 +1013,9 @@ public class InstallServiceImpl implements InstallService {
      * 仅执行 schema.sql（使用 IF NOT EXISTS，不会删除现有数据）
      */
     private void executeSchemaOnly(DatabaseConfigRequest request) {
-        try {
-            DataSource dataSource = createDataSource(request);
-            JdbcTemplate template = new JdbcTemplate(dataSource);
-            executeSqlFile("db/schema.sql", template);
+        // [BUG-009 修复] 单连接 + 用完即关
+        try (Connection connection = createDataSource(request).getConnection()) {
+            executeSqlFile("db/schema.sql", connection);
             log.info("数据库结构更新完成（保留数据）");
         } catch (Exception e) {
             log.error("更新数据库结构失败", e);
@@ -992,39 +1027,42 @@ public class InstallServiceImpl implements InstallService {
      * 全新安装：清空所有数据
      */
     private void executeFreshInstall(DatabaseConfigRequest request) {
-        try {
+        // [BUG-009 修复] 全程单连接；DDL 隐式提交无法整体回滚（MySQL 语义），
+        // 但 data.sql 事务化 + 单连接保证无连接泄漏、无半截种子数据
+        try (Connection connection = createDataSource(request).getConnection()) {
             // 警告：这会删除所有数据！
             log.warn("执行全新安装，将清空所有数据");
 
-            // 获取当前数据源
-            DataSource dataSource = createDataSource(request);
-            JdbcTemplate template = new JdbcTemplate(dataSource);
-
             // 删除所有表（危险操作！）
-            dropAllTables(template);
+            dropAllTables(connection);
 
-            // 重新执行所有脚本（使用同一个template）
             log.info("开始执行 SQL 脚本，数据库: {}@{}:{}/{}",
                 request.getUsername(), request.getHost(), request.getPort(), request.getDatabase());
 
             // 执行 schema.sql
-            executeSqlFile("db/schema.sql", template);
-            // 执行 data.sql
-            executeSqlFile("db/data.sql", template);
+            executeSqlFile("db/schema.sql", connection);
+
+            // 执行 data.sql（显式事务，失败回滚）
+            boolean originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                executeSqlFile("db/data.sql", connection);
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(originalAutoCommit);
+            }
 
             // 验证表是否创建成功
-            try {
-                Integer tableCount = template.queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'",
-                    Integer.class
-                );
-                if (tableCount == null || tableCount == 0) {
+            try (var ps = connection.prepareStatement(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'");
+                 var rs = ps.executeQuery()) {
+                if (!rs.next() || rs.getInt(1) == 0) {
                     throw new RuntimeException("验证失败：users 表未创建成功");
                 }
                 log.info("验证成功：users 表已创建");
-            } catch (Exception e) {
-                log.error("验证表创建失败", e);
-                throw new RuntimeException("验证表创建失败: " + e.getMessage());
             }
 
             log.info("全新安装完成");
@@ -1035,24 +1073,42 @@ public class InstallServiceImpl implements InstallService {
     }
 
     /**
-     * 删除所有表（仅用于全新安装）
+     * 删除所有表（仅用于全新安装，单连接执行）
      */
-    private void dropAllTables(JdbcTemplate template) {
-        log.warn("正在删除所有数据库表...");
+    private void dropAllTables(Connection connection) throws SQLException {
+        log.warn("正在删除所有数据库对象...");
 
         // 禁用外键检查
-        template.execute("SET FOREIGN_KEY_CHECKS = 0");
+        try (var st = connection.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+        }
 
-        // 获取所有表名
-        List<String> tables = template.queryForList(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()",
-            String.class
-        );
+        // 获取所有表名（含视图；分别处理避免 DROP TABLE 误伤视图报错）
+        List<String> tables = new ArrayList<>();
+        List<String> views = new ArrayList<>();
+        try (var ps = connection.prepareStatement(
+                "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = DATABASE()");
+             var rs = ps.executeQuery()) {
+            while (rs.next()) {
+                if ("VIEW".equalsIgnoreCase(rs.getString("table_type"))) {
+                    views.add(rs.getString("table_name"));
+                } else {
+                    tables.add(rs.getString("table_name"));
+                }
+            }
+        }
 
-        // 删除每个表
+        for (String view : views) {
+            try (var st = connection.createStatement()) {
+                st.execute("DROP VIEW IF EXISTS `" + view + "`");
+                log.debug("已删除视图: {}", view);
+            } catch (Exception e) {
+                log.warn("删除视图 {} 失败: {}", view, e.getMessage());
+            }
+        }
         for (String table : tables) {
-            try {
-                template.execute("DROP TABLE IF EXISTS `" + table + "`");
+            try (var st = connection.createStatement()) {
+                st.execute("DROP TABLE IF EXISTS `" + table + "`");
                 log.debug("已删除表: {}", table);
             } catch (Exception e) {
                 log.warn("删除表 {} 失败: {}", table, e.getMessage());
@@ -1060,7 +1116,9 @@ public class InstallServiceImpl implements InstallService {
         }
 
         // 启用外键检查
-        template.execute("SET FOREIGN_KEY_CHECKS = 1");
+        try (var st = connection.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 1");
+        }
 
         log.warn("所有表已删除");
     }
@@ -1212,6 +1270,19 @@ public class InstallServiceImpl implements InstallService {
     }
 
     private void executeSqlFile(String resourcePath, JdbcTemplate template) throws IOException {
+        // [BUG-009 修复] ScriptUtils 不会关闭传入连接：必须 try-with-resources
+        // （旧实现每次执行泄漏一个物理连接，反复重装可耗尽 MySQL 连接数）
+        try (Connection connection = template.getDataSource().getConnection()) {
+            executeSqlFile(resourcePath, connection);
+        } catch (SQLException e) {
+            throw new IOException("获取数据库连接失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 在给定连接上执行 SQL 脚本文件（不负责关闭连接，由调用方管理生命周期）。
+     */
+    private void executeSqlFile(String resourcePath, Connection connection) throws IOException {
         Resource resource = new ClassPathResource(resourcePath);
         if (!resource.exists()) {
             log.error("SQL 文件不存在: {}", resourcePath);
@@ -1225,7 +1296,7 @@ public class InstallServiceImpl implements InstallService {
             org.springframework.core.io.support.EncodedResource encodedResource =
                 new org.springframework.core.io.support.EncodedResource(resource, StandardCharsets.UTF_8);
             org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
-                template.getDataSource().getConnection(),
+                connection,
                 encodedResource,
                 false,  // continueOnError
                 true,   // ignoreFailedDrops

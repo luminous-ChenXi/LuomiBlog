@@ -4,11 +4,13 @@ import com.luomiblog.entity.Comment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
@@ -41,4 +43,26 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 统计创建时间在某时间点之前的评论数
      */
     long countByCreatedAtBefore(java.time.LocalDateTime dateTime);
+
+    // ==================== [BUG-017 修复] 原子计数 ====================
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.likeCount = c.likeCount + 1 WHERE c.id = :id")
+    int incrementLikeCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.likeCount = CASE WHEN c.likeCount > 0 THEN c.likeCount - 1 ELSE 0 END WHERE c.id = :id")
+    int decrementLikeCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.replyCount = c.replyCount + 1 WHERE c.id = :id")
+    int incrementReplyCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Comment c SET c.replyCount = CASE WHEN c.replyCount > 0 THEN c.replyCount - 1 ELSE 0 END WHERE c.id = :id")
+    int decrementReplyCount(@Param("id") Long id);
+
+    /** 轻量读取计数值（避免为拿一个 int 加载整行） */
+    @Query("SELECT c.likeCount FROM Comment c WHERE c.id = :id")
+    Optional<Integer> getLikeCountById(@Param("id") Long id);
 }
