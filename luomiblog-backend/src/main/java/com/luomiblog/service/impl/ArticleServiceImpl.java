@@ -1,6 +1,7 @@
 package com.luomiblog.service.impl;
 
 import com.luomiblog.common.BusinessException;
+import com.luomiblog.common.SafePathValidator;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.dto.ArticleStatsResponse;
@@ -47,6 +48,9 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     public ArticleResponse createArticle(ArticleRequest request, Long authorId) {
         String slug = request.getSlug() != null ? request.getSlug() : generateSlug(request.getTitle());
+        if (!SafePathValidator.isSafeSlug(slug)) {
+            throw new BusinessException(400, "slug 不合法：仅允许字母/数字/中文/下划线/连字符");
+        }
 
         if (articleRepository.existsBySlug(slug)) {
             slug = slug + "-" + System.currentTimeMillis();
@@ -101,7 +105,11 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         article.setTitle(request.getTitle());
+        String oldSlug = article.getSlug();
         if (request.getSlug() != null && !request.getSlug().equals(article.getSlug())) {
+            if (!SafePathValidator.isSafeSlug(request.getSlug())) {
+                throw new BusinessException(400, "slug 不合法：仅允许字母/数字/中文/下划线/连字符");
+            }
             if (articleRepository.existsBySlug(request.getSlug())) {
                 throw new RuntimeException("slug已存在");
             }
@@ -129,19 +137,24 @@ public class ArticleServiceImpl implements ArticleService {
             saveArticleTags(id, request.getTagIds());
         }
 
-        // 根据状态变更处理 MD 文件
+        // 根据状态变更处理 MD 文件（slug 变更时按旧 slug 清理旧文件，避免残留公开可访问）
         String newStatus = article.getStatus();
+        boolean slugChanged = !oldSlug.equals(article.getSlug());
         if (!oldStatus.equals(newStatus)) {
             if ("published".equals(newStatus)) {
                 // 从草稿/归档变为发布，创建 MD 文件
                 createMarkdownFile(article, request.getTagIds());
             } else if ("published".equals(oldStatus)) {
                 // 从发布变为草稿/归档，删除 MD 文件
-                deleteMarkdownFile(article.getSlug());
+                deleteMarkdownFile(oldSlug);
             }
         } else if ("published".equals(newStatus)) {
             // 状态未变但仍是发布状态，更新 MD 文件
             createMarkdownFile(article, request.getTagIds());
+        }
+        if (slugChanged) {
+            // slug 已变：旧 slug 的文件必须清理（重复调用无害，内部有 exists 检查）
+            deleteMarkdownFile(oldSlug);
         }
 
         return convertToResponse(article);
@@ -419,10 +432,11 @@ public class ArticleServiceImpl implements ArticleService {
                 Files.createDirectories(blogDir);
             }
 
-            // 获取分类名称
-            String categoryName = categoryRepository.findById(article.getCategoryId())
-                    .map(Category::getName)
-                    .orElse("未分类");
+            // 获取分类名称（categoryId 可为 null，findById(null) 会抛非 IOException 异常导致 500）
+            String categoryName = article.getCategoryId() == null ? "未分类"
+                    : categoryRepository.findById(article.getCategoryId())
+                            .map(Category::getName)
+                            .orElse("未分类");
 
             // 获取标签列表
             List<String> tagNames = tagRepository.findByArticleId(article.getId())
@@ -458,8 +472,11 @@ public class ArticleServiceImpl implements ArticleService {
             frontmatter.append("comments: ").append(article.getCommentCount()).append("\n");
             frontmatter.append("---\n\n");
 
-            // 写入文件
+            // 写入文件（纵深防御：即便 slug 校验被绕过，也拒绝逃出内容目录树）
             Path filePath = blogDir.resolve(article.getSlug() + ".md");
+            if (!SafePathValidator.isInsideRoot(blogDir, filePath)) {
+                throw new RuntimeException("文章路径不合法: " + article.getSlug());
+            }
             String content = frontmatter.toString() + article.getContent();
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
 
@@ -478,9 +495,17 @@ public class ArticleServiceImpl implements ArticleService {
      * 删除 Markdown 文件
      */
     private void deleteMarkdownFile(String slug) {
+        if (!SafePathValidator.isSafeSlug(slug)) {
+            log.warn("跳过删除：slug 不合法: {}", slug);
+            return;
+        }
         try {
             Path blogDir = Paths.get(contentPath);
             Path filePath = blogDir.resolve(slug + ".md");
+            if (!SafePathValidator.isInsideRoot(blogDir, filePath)) {
+                log.warn("跳过删除：路径逃逸内容目录: {}", slug);
+                return;
+            }
 
             if (Files.exists(filePath)) {
                 Files.delete(filePath);

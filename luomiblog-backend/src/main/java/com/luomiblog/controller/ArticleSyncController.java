@@ -3,6 +3,7 @@ package com.luomiblog.controller;
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.UploadArticleRequest;
 import com.luomiblog.service.ArticleSyncService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -79,7 +80,7 @@ public class ArticleSyncController {
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:create')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> uploadArticle(
-            @RequestBody UploadArticleRequest request) {
+            @Valid @RequestBody UploadArticleRequest request) {
         Map<String, Object> result = articleSyncService.uploadArticle(request);
         return ResponseEntity.ok(ApiResponse.success(result));
     }

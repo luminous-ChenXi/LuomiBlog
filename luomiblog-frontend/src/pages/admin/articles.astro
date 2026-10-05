@@ -412,6 +412,10 @@ import { API_BASE_URL } from '../../config/api';
     return localStorage.getItem('token');
   }
 
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
   // 初始化
   document.addEventListener('DOMContentLoaded', () => {
     loadArticles();
@@ -545,12 +549,12 @@ import { API_BASE_URL } from '../../config/api';
       return `
         <tr class="${hasConflict ? 'has-conflict' : ''}">
           <td class="col-checkbox">
-            <input type="checkbox" class="checkbox article-checkbox" value="${article.id}" />
+            <input type="checkbox" class="checkbox article-checkbox" value="${escapeHtml(article.id)}" />
           </td>
           <td class="col-title">
             <div class="title-cell">
               <svg class="doc-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
-              <span class="article-title">${article.title}</span>
+              <span class="article-title">${escapeHtml(article.title)}</span>
             </div>
           </td>
           <td class="col-created">
@@ -563,10 +567,10 @@ import { API_BASE_URL } from '../../config/api';
             <span class="cell-text stat-text">${article.likeCount || 0}</span>
           </td>
           <td class="col-category">
-            ${article.category ? `<span class="category-badge">${article.category.name}</span>` : '<span class="cell-text">未分类</span>'}
+            ${article.category ? `<span class="category-badge">${escapeHtml(article.category.name)}</span>` : '<span class="cell-text">未分类</span>'}
           </td>
           <td class="col-status">
-            <span class="status-badge ${status.class}">${status.label}</span>
+            <span class="status-badge ${status.class}">${escapeHtml(status.label)}</span>
           </td>
           <td class="col-more">
             <div class="more-btn" role="button" tabindex="0" onclick="window.toggleMoreMenu(${article.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.toggleMoreMenu(${article.id}, event)">
@@ -775,7 +779,7 @@ import { API_BASE_URL } from '../../config/api';
       <div class="file-item">
         <div class="file-info">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span class="file-name">${file.name}</span>
+          <span class="file-name">${escapeHtml(file.name)}</span>
           <span class="file-size">${formatFileSize(file.size)}</span>
         </div>
         <button class="file-remove" onclick="removeFile(${index})" title="移除">
@@ -1021,7 +1025,7 @@ import { API_BASE_URL } from '../../config/api';
       newFilesList.innerHTML = newFiles.map(file => `
         <li class="sync-file-item">
           <i class="el-icon el-icon-document"></i>
-          <span class="sync-file-name">${file.title || file.filename}</span>
+          <span class="sync-file-name">${escapeHtml(file.title || file.filename)}</span>
           <span class="el-tag el-tag--info el-tag--mini">将导入</span>
         </li>
       `).join('');
@@ -1037,7 +1041,7 @@ import { API_BASE_URL } from '../../config/api';
       modifiedFilesList.innerHTML = modifiedFiles.map(file => `
         <li class="sync-file-item">
           <i class="el-icon el-icon-edit-outline"></i>
-          <span class="sync-file-name">${file.title || file.filename}</span>
+          <span class="sync-file-name">${escapeHtml(file.title || file.filename)}</span>
           <span class="el-tag el-tag--warning el-tag--mini">将更新</span>
         </li>
       `).join('');
@@ -1053,8 +1057,8 @@ import { API_BASE_URL } from '../../config/api';
       conflictsList.innerHTML = conflicts.map(file => `
         <li class="sync-file-item conflict">
           <i class="el-icon el-icon-warning-outline" style="color: #f56c6c;"></i>
-          <span class="sync-file-name">${file.title || file.filename}</span>
-          <button class="el-button el-button--danger el-button--mini is-plain" onclick="resolveSingleConflict('${file.slug}')">
+          <span class="sync-file-name">${escapeHtml(file.title || file.filename)}</span>
+          <button class="el-button el-button--danger el-button--mini is-plain" onclick="resolveSingleConflict('${escapeHtml(file.slug)}')">
             <i class="el-icon el-icon-magic-stick"></i>
             解决
           </button>
@@ -1256,7 +1260,7 @@ import { API_BASE_URL } from '../../config/api';
       notification.innerHTML = `
         <div class="notification-content">
           <span class="notification-icon">${lucideIcons[iconKey] || lucideIcons[type]}</span>
-          <span class="notification-message">${displayMessage}</span>
+          <span class="notification-message">${escapeHtml(displayMessage)}</span>
         </div>
       `;
       document.body.appendChild(notification);

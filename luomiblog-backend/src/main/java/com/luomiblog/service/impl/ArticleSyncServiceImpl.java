@@ -1,5 +1,6 @@
 package com.luomiblog.service.impl;
 
+import com.luomiblog.common.SafePathValidator;
 import com.luomiblog.dto.ArticleFileInfo;
 import com.luomiblog.dto.ArticleSyncResult;
 import com.luomiblog.dto.UploadArticleRequest;
@@ -510,10 +511,14 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
     public Map<String, Object> uploadArticle(UploadArticleRequest request) {
         String filename = request.getFilename();
         String content = request.getContent();
+        if (!SafePathValidator.isSafeArticleFilename(filename)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "文件名不合法：仅允许字母/数字/中文/下划线/连字符且必须以 .md 结尾");
+        }
         boolean autoPublish = request.getAutoPublish() != null ? request.getAutoPublish() : true;
         boolean skipExisting = request.getSkipExisting() != null ? request.getSkipExisting() : false;
 
-        // 提取 slug
+        // 提取 slug（filename 已过白名单，replace 不会 NPE）
         String slug = filename.replace(".md", "");
 
         // 检查是否已存在
@@ -535,6 +540,9 @@ public class ArticleSyncServiceImpl implements ArticleSyncService {
                 Files.createDirectories(blogDir);
             }
             Path filePath = blogDir.resolve(filename);
+            if (!SafePathValidator.isInsideRoot(blogDir, filePath)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件名不合法");
+            }
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("保存文件失败: {}", filename, e);

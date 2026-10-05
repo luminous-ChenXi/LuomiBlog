@@ -118,6 +118,10 @@ const quickActions = [
     return sign + growth + '%';
   }
 
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
   (function filterQuickActions() {
     const userStr = localStorage.getItem('user');
     if (!userStr) return;
@@ -192,15 +196,15 @@ const quickActions = [
     if (activitiesList && data.recentActivities && data.recentActivities.length > 0) {
       activitiesList.innerHTML = data.recentActivities.map((activity) => `
         <div class="activity-item">
-          <div class="activity-icon ${activity.type}">
+          <div class="activity-icon ${escapeHtml(activity.type)}">
             ${getActivityIcon(activity.type)}
           </div>
           <div class="activity-content">
             <div class="activity-header">
-              <span class="activity-action">${activity.action}</span>
-              <span class="activity-time">${activity.time}</span>
+              <span class="activity-action">${escapeHtml(activity.action)}</span>
+              <span class="activity-time">${escapeHtml(activity.time)}</span>
             </div>
-            <p class="activity-detail">${activity.detail}</p>
+            <p class="activity-detail">${escapeHtml(activity.detail)}</p>
           </div>
         </div>
       `).join('');

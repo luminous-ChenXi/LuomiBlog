@@ -81,6 +81,14 @@ const jsonLd = article ? {
   "description": description,
   "url": Astro.site?.href
 };
+
+// JSON-LD 注入防护（OWASP JSON Injection）：
+// JSON.stringify 不转义 <，博主可控的 title/summary/author 可借 </script> 逃逸执行任意脚本。
+// 统一将 <、行分隔符 U+2028/U+2029 转义为安全形式。
+const safeJsonLd = JSON.stringify(jsonLd)
+  .replace(/</g, '\\u003c')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
 ---
 
 <!DOCTYPE html>
@@ -124,7 +132,7 @@ const jsonLd = article ? {
     )}
 
     <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script type="application/ld+json" set:html={safeJsonLd} />
 
     <script is:inline>
       const theme = localStorage.getItem('theme') || 'light';

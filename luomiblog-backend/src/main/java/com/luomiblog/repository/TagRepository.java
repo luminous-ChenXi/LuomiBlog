@@ -35,8 +35,9 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
 
     org.springframework.data.domain.Page<Tag> findAllByDeletedAtIsNull(org.springframework.data.domain.Pageable pageable);
 
-    @Query(value = "SELECT t FROM Tag t WHERE t.deletedAt IS NULL ORDER BY t.articleCount DESC")
-    List<Tag> findTopByArticleCountDesc(int limit);
+    @Query(value = "SELECT t.* FROM tags t WHERE t.deleted_at IS NULL ORDER BY t.article_count DESC LIMIT :limit",
+            nativeQuery = true)
+    List<Tag> findTopByArticleCountDesc(@Param("limit") int limit);
 
     List<Tag> findByNameContainingAndDeletedAtIsNull(String keyword);
 }

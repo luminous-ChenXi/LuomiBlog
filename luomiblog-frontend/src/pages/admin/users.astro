@@ -202,6 +202,10 @@ export const prerender = false;
       String(d.getDate()).padStart(2, '0');
   }
 
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
   function getInitials(user) {
     if (user.nickname) return user.nickname.charAt(0).toUpperCase();
     return user.username.charAt(0).toUpperCase();
@@ -280,22 +284,22 @@ export const prerender = false;
       const roleInfo = ROLE_MAP[user.role] || { label: user.roleName || user.role, color: 'default' };
       const statusInfo = STATUS_MAP[user.status] || { label: user.status, class: 'admin-badge-default' };
 
-      return '<tr data-user-id="' + user.id + '">' +
+      return '<tr data-user-id="' + escapeHtml(user.id) + '">' +
         '<td>' +
           '<div class="user-cell">' +
             '<div class="user-avatar">' +
               (user.avatarUrl
-                ? '<img src="' + user.avatarUrl + '" alt="' + (user.nickname || user.username) + '" />'
-                : '<span class="avatar-placeholder">' + getInitials(user) + '</span>') +
+                ? '<img src="' + escapeHtml(user.avatarUrl) + '" alt="' + escapeHtml(user.nickname || user.username) + '" />'
+                : '<span class="avatar-placeholder">' + escapeHtml(getInitials(user)) + '</span>') +
             '</div>' +
             '<div class="user-info">' +
-              '<span class="user-name">' + (user.nickname || user.username) + '</span>' +
-              '<span class="user-meta">' + user.username + ' &middot; ' + user.email + '</span>' +
+              '<span class="user-name">' + escapeHtml(user.nickname || user.username) + '</span>' +
+              '<span class="user-meta">' + escapeHtml(user.username) + ' &middot; ' + escapeHtml(user.email) + '</span>' +
             '</div>' +
           '</div>' +
         '</td>' +
         '<td>' +
-          '<select class="role-select" data-user-id="' + user.id + '" data-role-id="' + user.roleId + '">' +
+          '<select class="role-select" data-user-id="' + escapeHtml(user.id) + '" data-role-id="' + escapeHtml(user.roleId) + '">' +
             Object.entries(ROLE_MAP).map(([code, info]) =>
               '<option value="' + code + '"' + (user.role === code ? ' selected' : '') + '>' + info.label + '</option>'
             ).join('') +
@@ -314,27 +318,27 @@ export const prerender = false;
           '</div>' +
         '</td>' +
         '<td>' +
-          '<span class="admin-badge ' + statusInfo.class + '">' + statusInfo.label + '</span>' +
+          '<span class="admin-badge ' + statusInfo.class + '">' + escapeHtml(statusInfo.label) + '</span>' +
         '</td>' +
         '<td>' +
           '<span class="date-text">' + formatDate(user.createdAt) + '</span>' +
         '</td>' +
         '<td>' +
           '<div class="action-buttons">' +
-            '<button class="btn-icon" title="编辑" data-action="edit" data-user-id="' + user.id + '">' +
+            '<button class="btn-icon" title="编辑" data-action="edit" data-user-id="' + escapeHtml(user.id) + '">' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' +
             '</button>' +
             (user.status === 'banned'
-              ? '<button class="btn-icon btn-success" title="解封" data-action="unban" data-user-id="' + user.id + '">' +
+              ? '<button class="btn-icon btn-success" title="解封" data-action="unban" data-user-id="' + escapeHtml(user.id) + '">' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>' +
               '</button>'
-              : '<button class="btn-icon btn-warning" title="封禁" data-action="ban" data-user-id="' + user.id + '">' +
+              : '<button class="btn-icon btn-warning" title="封禁" data-action="ban" data-user-id="' + escapeHtml(user.id) + '">' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg>' +
               '</button>') +
-            '<button class="btn-icon" title="重置密码" data-action="reset-pwd" data-user-id="' + user.id + '" data-username="' + (user.nickname || user.username) + '">' +
+            '<button class="btn-icon" title="重置密码" data-action="reset-pwd" data-user-id="' + escapeHtml(user.id) + '" data-username="' + escapeHtml(user.nickname || user.username) + '">' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
             '</button>' +
-            '<button class="btn-icon btn-danger" title="删除" data-action="delete" data-user-id="' + user.id + '">' +
+            '<button class="btn-icon btn-danger" title="删除" data-action="delete" data-user-id="' + escapeHtml(user.id) + '">' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>' +
             '</button>' +
           '</div>' +
