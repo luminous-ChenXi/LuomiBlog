@@ -37,7 +37,7 @@
 
 ## 2. P0 — 致命(发布阻断,共 8 条)
 
-### BUG-001 `[ ]` 文章上传接口任意路径写文件 → RCE
+### BUG-001 `[x]` 文章上传接口任意路径写文件 → RCE
 - **严重度**:P0 致命(安全) | **类型**:路径遍历
 - **位置**:`luomiblog-backend/.../service/impl/ArticleSyncServiceImpl.java:511-542`;`dto/UploadArticleRequest.java`(全字段零校验);`controller/ArticleSyncController.java:79-85`
 - **证据**:`filename` 来自请求体,直接 `blogDir.resolve(filename)` 后 `Files.writeString(...)`。`../../x.md`、绝对路径均可;DTO 无校验注解、controller 无 `@Valid`;`filename=null` 时 `:517 filename.replace(".md","")` 直接 NPE。
@@ -45,7 +45,7 @@
 - **业界范式**(OWASP Path Traversal):①文件名白名单 `^[A-Za-z0-9._\-\u4e00-\u9fa5]+\.md$`(`@Pattern` + controller `@Valid`);②`Path resolved = blogDir.resolve(filename).normalize(); if (!resolved.startsWith(blogDir.toAbsolutePath())) throw 400;` 双保险;③拒绝绝对路径(resolve 遇绝对路径直接返回自身,必须先判 `filename.isAbsolute()` 或依赖②)。
 - **验证**:单测断言 `filename="../../evil.md"` 抛 400;集成测试写 `../` 路径被拒。
 
-### BUG-002 `[ ]` 文章 slug 路径遍历(写/删任意 .md)
+### BUG-002 `[x]` 文章 slug 路径遍历(写/删任意 .md)
 - **严重度**:P0 致命(安全) | **类型**:路径遍历
 - **位置**:`ArticleServiceImpl.java:462`(`blogDir.resolve(article.getSlug()+".md")` 写)、`:480-493`(删)、`:104-109`(slug 仅查重不校验字符)
 - **证据**:slug 由 `request.getSlug()` 显式传入时原样入库并直接拼文件路径;`generateSlug()` 只在未传时净化。
@@ -53,7 +53,7 @@
 - **业界范式**:slug 统一白名单 `^[a-z0-9]+(?:-[a-z0-9]+)*$`(WordPress/Ghost 同款),创建/更新/删除三处共用同一个 `resolveSafely()` 校验函数(与 BUG-001 同一工具方法)。
 - **验证**:单测断言非法 slug 400。
 
-### BUG-003 `[ ]` 本地 markdown 文章正文渲染成 `[object Object]`
+### BUG-003 `[x]` 本地 markdown 文章正文渲染成 `[object Object]`
 - **严重度**:P0 致命(功能主路径已坏) | **类型**:运行时 bug
 - **位置**:`luomiblog-frontend/src/pages/article/[slug].astro:75-76`(`contentHtml = String(rendered)`)、`:250`(`set:html={contentHtml}`)
 - **证据**:Astro 5 `render()` 返回 `{ Content, headings, remarkPluginFrontmatter }` 对象,`String()` 结果即 `"[object Object]"`。已实测 build 通过(该页是 SSR 不在构建期触发),运行时必然复现。
@@ -61,40 +61,40 @@
 - **业界范式**(Astro 官方):`const { Content } = await render(localPost);` 模板中 `<Content />`;如需字符串(如消毒管道),改用 `experimental.contentCollectioIntrospection` 或统一走后端渲染 HTML 分支。
 - **验证**:本地起后端+`astro dev`,打开一篇本地 content 文章,正文正常渲染。
 
-### BUG-004 `[ ]` 后台文章编辑器链路断裂(slug 解析错误 + 保存后 404)
+### BUG-004 `[x]` 后台文章编辑器链路断裂(slug 解析错误 + 保存后 404)
 - **严重度**:P0 致命(后台核心功能不可用) | **类型**:路由/状态 bug
 - **位置**:`ArticleEditor.vue:1036-1044`(`pathname` 最后一段=`'edit'` 被当成 slug);`pages/admin/articles/edit.astro`(未把 query 参数传给组件);`ArticleEditor.vue:958-959`(保存后跳 `/admin/articles/{slug}` 路由不存在)
 - **证据**:列表页跳 `/admin/articles/edit?slug=xxx` → 组件 `currentSlug='edit'` → 请求 `/api/articles/edit` → 404"文章不存在"。
 - **修复范式**:`edit.astro` 里 `const slug = Astro.url.searchParams.get('slug')` 传 `<ArticleEditor client:load slug={slug} />`;组件优先读 `new URLSearchParams(location.search).get('slug')`;保存成功后跳回 `/admin/articles` 列表页(或建真正的 `[slug]` 详情路由)。
 - **验证**:浏览器实操:列表→编辑→改标题→保存→重新打开,内容一致。
 
-### BUG-005 `[ ]` 前后端 DTO 契约断裂:带标签文章保存必失败
+### BUG-005 `[x]` 前后端 DTO 契约断裂:带标签文章保存必失败
 - **严重度**:P0 致命(数据写入路径) | **类型**:契约漂移
 - **位置**:前端 `ArticleEditor.vue:913-933` 提交 `tags: string[]`;后端 `ArticleRequest.java` 只认 `tagIds: List<Long>` → Jackson 400。另 `types/api.ts` 的 `contentHtml/coverImage/top` 在后端 `ArticleResponse.java` 不存在(DB 文章封面永远不显示、消毒分支成死代码)。
 - **修复范式**:**以后端 DTO 为单一事实源**。短期:前端改发 `tagIds: number[]`,`isTop` 字段名对齐;中期:引入 OpenAPI(springdoc 已有 swagger 依赖)→ `openapi-typescript` 生成前端类型,杜绝再次漂移。
 - **验证**:新建文章选 2 个标签保存成功;类型检查通过。
 
-### BUG-006 `[ ]` `/api/tags/popular` 必然报错(JPQL 参数无法绑定)
+### BUG-006 `[x]` `/api/tags/popular` 必然报错(JPQL 参数无法绑定)
 - **严重度**:P0(公开端点 500) | **类型**:查询定义错误
 - **位置**:`TagRepository.java:38-39`
 - **证据**:`@Query` JPQL 无任何占位符,方法带 `int limit`;`Top` 前缀在 `@Query` 存在时失效 → 绑定失败(部分版本启动期即炸)。
 - **修复范式**:`@Query(nativeQuery=true, "...ORDER BY t.article_count DESC LIMIT :limit")`;或改 `Pageable`;或派生命名 `findFirst10ByDeletedAtIsNullOrderByArticleCountDesc()`。
 - **验证**:`curl /api/tags/popular` 返回 200;补一个 `@DataJpaTest`。
 
-### BUG-007 `[ ]` 安装向导 SQL 注入 + JDBC URL 注入
+### BUG-007 `[x]` 安装向导 SQL 注入 + JDBC URL 注入
 - **严重度**:P0 致命(安全,叠加 BUG-008 竞态可匿名触达) | **类型**:注入
 - **位置**:`InstallServiceImpl.java:349-350`(库名拼进 `CREATE DATABASE`)、`:1050-1063`(host/database 直接拼 JDBC URL)
 - **修复范式**:标识符白名单 `^[A-Za-z0-9_]{1,64}$`(DDL 无法参数化,只能白名单);JDBC URL 参数用 `URLEncoder` 或只允许 `host:port` 格式 `^[A-Za-z0-9.\-]+(:\d{1,5})?$`。
 - **验证**:单测断言库名含反引号/host 含 `/` 时 400。
 
-### BUG-008 `[ ]` 安装向导匿名开放 + 重装验证通过即删锁(TOCTOU 竞态)
+### BUG-008 `[x]` 安装向导匿名开放 + 重装验证通过即删锁(TOCTOU 竞态)
 - **严重度**:P0 致命(安全) | **类型**:访问控制/竞态
 - **位置**:`SecurityConfig.java:47`(permitAll)、`InstallController.java:322-330`(verify 成功即 `resetInstallation()` 删锁)、`InstallLockFilter.java:45-61`(锁丢失仅告警不拦截)
 - **影响**:首次部署窗口/锁文件丢失期间,任何人可 execute-sql(可指向任意 MySQL 主机)、create-admin——**谁先 complete 谁当站长**;`check-environment` 匿名泄露系统信息。
 - **业界范式**(WordPress/Ghost/Typecho 安装器通用做法):①安装向导仅允许 localhost 来源(反代传 `X-Real-IP` 校验)或**一次性安装令牌**(安装时输出到服务器控制台/需在服务器创建 seed 文件才能继续);②锁文件缺失时 fail-closed(禁用向导+要求人工介入),而非仅打日志;③verify-reinstall 通过后签发短期(15min)一次性管理员票据,后续 execute-sql/reinstall/complete 必须携带。
 - **验证**:手动删除 install.lock 后访问 /api/install/check-environment 应 403;未携带票据调 execute-sql 应 401。
 
-### BUG-009 `[ ]` 安装流程假事务 + 连接泄漏 + 半初始化数据丢失
+### BUG-009 `[x]` 安装流程假事务 + 连接泄漏 + 半初始化数据丢失
 - **严重度**:P0 致命(数据安全) | **类型**:事务/资源管理
 - **位置**:`InstallServiceImpl.java:1084`(连接传 `ScriptUtils` 后永不关闭,`DriverManagerDataSource` 每次新建物理连接)、`:832-856`(`@Transactional` 管不到自建数据源)、`:876-948`(先 DROP 全表再建,中途失败不可回滚)、`:516-557`(管理员写入容器主数据源,可能与向导目标库不一致)
 - **修复范式**:同一 `Connection` 上 `autoCommit=false` 执行脚本(`ResourceDatabasePopulator` 支持传 Connection),统一 commit/rollback;try-with-resources 管连接;建管理员与建库校验同库(比较 `JdbcTemplate.datasource` 与目标 URL)。
@@ -104,31 +104,31 @@
 
 ## 3. P1 — 高危(安全/数据正确性,共 12 条)
 
-### BUG-010 `[ ]` JSON-LD 存储型 XSS:博主可提权管理员
+### BUG-010 `[x]` JSON-LD 存储型 XSS:博主可提权管理员
 - **位置**:`luomiblog-frontend/src/layouts/Layout.astro:127`
 - **证据**:`<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />`;title/summary 从不消毒,`JSON.stringify` 不转义 `<`。
 - **影响**:title 埋 `</script><script>…</script>` → 任何访问者(含管理员)执行任意 JS → 偷 localStorage 里的管理员 JWT(`stores/user.ts:44-46`)→ 提权。
 - **业界范式**(OWASP JSON Injection):`JSON.stringify(jsonLd).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029')`,封装成 `safeJsonLd()` 工具函数;或对 jsonLd 字段先过一遍文本剥离。
 - **验证**:单测断言输出无裸 `<`;手测:标题含 payload 的文章页无脚本执行。
 
-### BUG-011 `[ ]` 后台管理页存储型 XSS(innerHTML 拼接零转义)
+### BUG-011 `[x]` 后台管理页存储型 XSS(innerHTML 拼接零转义)
 - **位置**:`admin/users.astro:271-355`(nickname/username/email/avatarUrl)、`admin/index.astro:193-198`(activity 字段)、`admin/articles.astro:550`(title)
 - **影响**:低权用户昵称设为 `<img onerror=…>` → 管理员打开用户管理即执行,可调同域 `/api/admin/*` → 权限提升。
 - **修复范式**:三页统一引入项目里已有的 `escapeHtml()`(admin/settings.astro:268 已有实现,复制或抽公共 util);长期:这些列表页改用 Vue 岛渲染,文本插值天然转义。
 - **验证**:注册恶意昵称账号 → 管理员打开用户页 → 无脚本执行。
 
-### BUG-012 `[ ]` refresh token 撤销失效:轮换黑名单 TTL 错误 + logout 不拉黑 refresh
+### BUG-012 `[x]` refresh token 撤销失效:轮换黑名单 TTL 错误 + logout 不拉黑 refresh
 - **位置**:`AuthServiceImpl.java:661`(刷新轮换时 `blacklistToken(tokenId, accessTokenExpiresSeconds())`——旧 refresh 有效期 7 天,黑名单只写 24h)、`:671-679`(logout 只拉黑 access,接口不接收 refresh)
 - **影响**:第 2~7 天旧 refresh token 黑名单过期后**可再次刷新**(会话无法撤销);泄露的 refresh 在受害者登出后仍可用 7 天。
 - **业界范式**(Auth0/Supabase 轮换模式):①黑名单 TTL = 被拉黑令牌**自身**的剩余有效期(`parseToken` 拿 exp-now);②logout 请求体同时携带 refresh_token 一并拉黑;③更彻底:引入用户级 `token_version`(users 表),登出/改密/封禁时 +1,JWT 带 `ver` 声明,filter 比对不一致即 401——一次查询吊销该用户全部会话。
 - **验证**:单测:refresh 一次 → 用旧 refresh 再刷 → 拒绝;模拟 25h 后仍拒绝(把 TTL 断言为剩余有效期而非固定值)。
 
-### BUG-013 `[ ]` 辰汐 SSO 会话令牌无 jti → 登出不可吊销、30 天滑动续期
+### BUG-013 `[x]` 辰汐 SSO 会话令牌无 jti → 登出不可吊销、30 天滑动续期
 - **位置**:`JwtUtil.java:79-89`(generateChenxiSessionToken 无 `.id()`)、`:115-127`(slideToken 同)、`AuthServiceImpl.java:672-679`(logout 取 jti 得 null,黑名单键 `token:blacklist:null`)
 - **修复范式**:签发与续期都写入随机 jti;logout 按该 jti 拉黑(TTL=剩余有效期,与 BUG-012 同修);建议默认有效期 30d→7d 并保留滑动续期。
 - **验证**:签发的辰汐令牌解析含 jti;登出后该令牌请求 401。
 
-### BUG-014 `[ ]` trust-proxy=true 时取 XFF 首段 → 所有限流/锁定可绕过
+### BUG-014 `[x]` trust-proxy=true 时取 XFF 首段 → 所有限流/锁定可绕过
 - **位置**:`ClientIpResolver.java:23-28`(`split(",")[0]` 取最左=客户端可伪造段)
 - **影响**:登录爆破、注册 5/h、评论/点赞限流、审计 IP 全部可被随机 XFF 绕过(nginx `proxy_add_x_forwarded_for` 是追加模式)。
 - **业界范式**(nginx `real_ip` / Spring `ForwardedHeaderFilter` 思路):配置**可信代理列表**,从 XFF **最右向左**取第一个非可信地址;或文档强制要求反代设置 `X-Real-IP` 且后端只信任该头;至少在 README 标注"trust-proxy=true 必须确保反代覆写(而非追加)XFF"。
@@ -140,13 +140,13 @@
 - **业界范式**:①token 黑名单独立存储(DB 表 `revoked_tokens(jti, expires_at)` + 每日清理任务,重启不丢、容量无界可查);②各关注点分桶(至少 blacklist / ratelimit / 2fa 三个独立 Caffeine 实例);③visitorId 限流键加长度/熵约束,并叠加 IP 键。
 - **验证**:压测制造 1 万个 view 键后,断言早前的锁定记录仍在。
 
-### BUG-016 `[ ]` 2FA 验证无失败限制(TOTP 与还原码均可爆破)
+### BUG-016 `[x]` 2FA 验证无失败限制(TOTP 与还原码均可爆破)
 - **位置**:`AuthController.java:69-81`(两端点无 IP 频控)、`AuthServiceImpl.java:464-521`(错码不销毁挑战、无失败计数)
 - **影响**:拿到密码的攻击者可对 300s 挑战窗口内持续猜 6 位码;8 位还原码同理。IP 限流只挂在 /login。
 - **业界范式**:挑战对象加 `failCount`,≥5 次即删除挑战(要求重新密码登录);`/2fa/verify`、`/2fa/enroll` 各挂 IP 限流(如 10/min);失败尝试写 login_logs(当前失败不落审计)。
 - **验证**:连错 5 次后挑战失效;login_logs 有失败记录。
 
-### BUG-017 `[ ]` 计数器全面读-改-写:并发丢更新 + 匿名无 visitorId 可无限刷赞
+### BUG-017 `[x]` 计数器全面读-改-写:并发丢更新 + 匿名无 visitorId 可无限刷赞
 - **位置**:`ArticleStatsServiceImpl.java:80-81,119-121,142-143`、`LikeServiceImpl.java:34-46,63-64,95-96,113-114`、`CommentServiceImpl.java:49-54,159-173`;`LikeRequest.java:17`(visitorId 无 `@NotNull`)
 - **证据**:`article.setXxx(xxx+1); save()`;`existsByArticleIdAndVisitorId(id, null)` 生成 `visitor_id=NULL` 恒 false;MySQL 唯一索引对 NULL 不去重 → 每次点赞都插入成功+计数+1。
 - **修复范式**:**原子 UPDATE**(业界标准):`@Modifying @Query("UPDATE Article a SET a.likeCount = a.likeCount + 1 WHERE a.id = :id")`;去重插入用 `INSERT IGNORE` 语义(捕获 `DataIntegrityViolationException` 返回幂等结果);visitorId 加 `@NotBlank @Size(min:8,max:64)`;高并发站点可再加 Redis INCR + 定时落库(当前规模原子 UPDATE 已够)。
@@ -157,7 +157,7 @@
 - **修复范式**:统一异常语义(REST 标准):资源不存在→`BusinessException(404)`、无权→403、参数→400、冲突→409;保留 Exception 兜底给真异常。建议加 ArchUnit 单测禁止 service 层直接 `new RuntimeException(`。
 - **验证**:全仓 grep `throw new RuntimeException` 归零(或白名单);API 错误码回归清单。
 
-### BUG-019 `[ ]` MD 文件与 DB 状态系统性失同步
+### BUG-019 `[w→ ]` 部分修复: 改 slug 残留已修, 软删文件/afterCommit 未做 | 原条目: MD 文件与 DB 状态系统性失同步
 - **位置**:`ArticleServiceImpl.java:104-108,140`(改 slug 后按**新** slug 删文件,旧 `<old-slug>.md` 永久残留且公开可见)、`:150-162`(软删除不删 MD 文件)、`:415-475`(事务内文件 IO,回滚后孤儿文件)
 - **修复范式**:①改 slug 前先记 oldSlug,状态/文件操作一律用 oldSlug 删旧、newSlug 写新;②deleteArticle/archive 同步 `deleteMarkdownFile`;③文件操作移入 `TransactionSynchronization.afterCommit()`(Spring 标准范式:事务成功后执行副作用),失败补偿任务(每日对账 DB published 文章 ↔ 磁盘文件)。
 - **验证**:改 slug 后旧文件不存在;软删除后公开页 404 且文件消失。
@@ -280,3 +280,37 @@
 - [ ] `npm run typecheck && npm run build` 通过
 - [ ] 手工回归五链路:注册(开/关邮箱验证两种)→ 登录(含 2FA 开/关)→ 发文章(带/不带分类、带标签)→ 改 slug/删除后检查 MD 文件与前台可见性 → 浏览量/点赞并发正确性
 - [ ] gitleaks 扫描 + `git log` 复查无新密钥
+
+---
+
+## 8. 修复进度记录(2026-10-05 第一批修复完成)
+
+### 已完成提交(Wave1-6, 均经 mvn test + 前端 build 验证)
+| 提交 | 内容 | 对应 BUG |
+|---|---|---|
+| 7299385 | 路径遍历双修+JSON-LD XSS+admin XSS+tags/popular | 001/002/006/010/011/019部分/021 |
+| d2844a3 | 安装向导票据(TOCTOU)+DB配置服务层白名单 | 007/008 |
+| 0a0b308 | token 撤销链路(黑名单TTL+refresh吊销+辰汐jti+前端真登出) | 012/013 |
+| 714ebfd | XFF 可信代理解析+2FA/邮箱验证失败限制+IP频控 | 014/016/024 |
+| ea0c709 | 前端主路径三连([object Object]/编辑器断链/DTO契约) | 003/004/005 |
+| d111040 | 安装事务/连接泄漏+计数器全面原子化+commentCount 维护 | 009/017/027部分/026 |
+
+### Docker MySQL 8 集成冒烟实测结果(2026-10-05)
+| 链路 | 结果 |
+|---|---|
+| 安装向导: test-database→execute-sql→create-admin→complete→锁 403 | ✅ 全通 |
+| 注册(邮箱验证关=直发令牌)→登录→/me | ✅ 全通 |
+| 发文(带 tagIds)→MD 落盘→article_tags 关联→详情返回标签 | ✅ 全通 |
+| 浏览量 24h 去重(同 visitor 2 次=1, 换 visitor=2) | ✅ 实测正确 |
+| 点赞原子开关(1→0)+匿名缺 visitorId 被拒 | ✅ 实测正确 |
+| GET /api/tags/popular | ✅ 200(修复前必 500) |
+| /2fa/verify 频控: 第 11 发精准 429 | ✅ 实测生效 |
+| logout 吊销 refresh 后旧令牌 | ✅ 401(修复前可复活) |
+| 重装窗口: 无票据 403 / 带票据 200 / complete 后锁恢复 | ✅ 实测生效 |
+
+### 实测新发现
+- **BUG-086 `[ ]`(P1) 双源建表竞争**:`ddl-auto: update` 使 Hibernate 在应用启动时抢先建表(Hibernate 命名的唯一键, schema.sql 的默认值/注释/索引从不生效), 安装向导 execute-sql 的 `CREATE TABLE IF NOT EXISTS` 全部空转。本轮已修 data.sql 侧(BUG-087), **根治需 BUG-035 的 Flyway 化**(安装前禁用 Hibernate 建表, schema.sql 为唯一事实源)。AstrNest 同样存在此问题(其 InstallGuardFilter+SchemaAlignmentRunner 是另一套兜底)。
+- **BUG-087 `[x]`(P1) data.sql 零日期**: 种子 INSERT 未提供 created_at/updated_at, 落进无 DEFAULT 的 Hibernate 版表 → '0000-00-00', 依赖 JDBC `zeroDateTimeBehavior=convertToNull` 掩码, 换连接配置即全线崩溃(登录/注册全挂)。已修: 全部种子行显式 NOW(), role_permissions 改 INSERT IGNORE 幂等。**部署过旧版本的站需要一次性数据修复 SQL。**
+- **BUG-088 `[ ]`(P2) POST /api/tags 建标签 500**(冒烟实测): 请求 `{"name","slug"}` 返回 500, 需查 TagController 入参与 TagService 是否要求必填字段/角色; 前端编辑器"新标签自动创建"依赖此接口。
+- BUG-061 获实测佐证: 非法 JSON(Git Bash GBK 编码中文)→500 而非 400。
+- 媒体上传链路: 后端无独立媒体上传端点(仅 favicon/站点配置), 前端 attachment 管理页是假壳(BUG-052 已列), 无需单测。

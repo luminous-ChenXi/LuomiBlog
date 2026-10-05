@@ -7,62 +7,64 @@
 -- 1. 初始化角色数据
 -- =============================================
 
-INSERT IGNORE INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`) VALUES
-(1, 'visitor', '访客', '未登录的匿名用户', 0, 1),
-(2, 'member', '会员', '注册登录的用户', 1, 1),
-(3, 'blogger', '博主', '可以写文章的用户', 10, 1),
-(4, 'admin', '管理员', '全站管理员', 100, 1);
+-- created_at/updated_at 显式 NOW()：表结构可能由 Hibernate 先建（无 DEFAULT），
+-- 不写时间戳会落 '0000-00-00'，换连接参数即读崩（BUG-087）
+INSERT IGNORE INTO `roles` (`id`, `code`, `name`, `description`, `level`, `is_system`, `created_at`, `updated_at`) VALUES
+(1, 'visitor', '访客', '未登录的匿名用户', 0, 1, NOW(), NOW()),
+(2, 'member', '会员', '注册登录的用户', 1, 1, NOW(), NOW()),
+(3, 'blogger', '博主', '可以写文章的用户', 10, 1, NOW(), NOW()),
+(4, 'admin', '管理员', '全站管理员', 100, 1, NOW(), NOW());
 
 -- =============================================
 -- 2. 初始化权限数据
 -- =============================================
 
-INSERT IGNORE INTO `permissions` (`code`, `name`, `type`, `description`, `sort_order`) VALUES
+INSERT IGNORE INTO `permissions` (`code`, `name`, `type`, `description`, `sort_order`, `created_at`, `updated_at`) VALUES
 -- 文章权限
-('article:view', '查看文章', 'api', '查看文章列表和详情', 1),
-('article:create', '创建文章', 'api', '创建新文章', 2),
-('article:update', '更新文章', 'api', '更新自己的文章', 3),
-('article:delete', '删除文章', 'api', '删除文章', 4),
-('article:manage', '管理文章', 'api', '管理所有文章', 5),
+('article:view', '查看文章', 'api', '查看文章列表和详情', 1, NOW(), NOW()),
+('article:create', '创建文章', 'api', '创建新文章', 2, NOW(), NOW()),
+('article:update', '更新文章', 'api', '更新自己的文章', 3, NOW(), NOW()),
+('article:delete', '删除文章', 'api', '删除文章', 4, NOW(), NOW()),
+('article:manage', '管理文章', 'api', '管理所有文章', 5, NOW(), NOW()),
 -- 评论权限
-('comment:view', '查看评论', 'api', '查看评论列表', 10),
-('comment:create', '创建评论', 'api', '发表评论', 11),
-('comment:delete', '删除评论', 'api', '删除评论', 12),
-('comment:manage', '管理评论', 'api', '审核和管理评论', 13),
+('comment:view', '查看评论', 'api', '查看评论列表', 10, NOW(), NOW()),
+('comment:create', '创建评论', 'api', '发表评论', 11, NOW(), NOW()),
+('comment:delete', '删除评论', 'api', '删除评论', 12, NOW(), NOW()),
+('comment:manage', '管理评论', 'api', '审核和管理评论', 13, NOW(), NOW()),
 -- 用户权限
-('user:view', '查看用户', 'api', '查看用户信息', 20),
-('user:update', '更新用户', 'api', '更新用户信息', 21),
-('user:manage', '管理用户', 'api', '管理所有用户', 22),
+('user:view', '查看用户', 'api', '查看用户信息', 20, NOW(), NOW()),
+('user:update', '更新用户', 'api', '更新用户信息', 21, NOW(), NOW()),
+('user:manage', '管理用户', 'api', '管理所有用户', 22, NOW(), NOW()),
 -- 系统权限
-('system:view', '查看数据概览', 'api', '查看统计数据', 30),
-('system:config', '系统配置', 'api', '修改系统配置', 31),
+('system:view', '查看数据概览', 'api', '查看统计数据', 30, NOW(), NOW()),
+('system:config', '系统配置', 'api', '修改系统配置', 31, NOW(), NOW()),
 -- 协作权限
-('suggestion:create', '提交建议', 'api', '提交编辑建议', 40),
-('suggestion:review', '审核建议', 'api', '审核编辑建议', 41),
+('suggestion:create', '提交建议', 'api', '提交编辑建议', 40, NOW(), NOW()),
+('suggestion:review', '审核建议', 'api', '审核编辑建议', 41, NOW(), NOW()),
 -- 收藏权限
-('favorite:create', '收藏文章', 'api', '收藏文章', 50),
-('favorite:delete', '取消收藏', 'api', '取消收藏文章', 51),
-('favorite:view', '查看收藏', 'api', '查看收藏列表', 52),
+('favorite:create', '收藏文章', 'api', '收藏文章', 50, NOW(), NOW()),
+('favorite:delete', '取消收藏', 'api', '取消收藏文章', 51, NOW(), NOW()),
+('favorite:view', '查看收藏', 'api', '查看收藏列表', 52, NOW(), NOW()),
 -- 芙贝币权限
-('coin:view', '查看芙贝币', 'api', '查看芙贝币余额和记录', 60),
-('checkin:create', '每日签到', 'api', '每日签到获取芙贝币', 61),
+('coin:view', '查看芙贝币', 'api', '查看芙贝币余额和记录', 60, NOW(), NOW()),
+('checkin:create', '每日签到', 'api', '每日签到获取芙贝币', 61, NOW(), NOW()),
 -- 赞赏/打赏权限
-('reward:view', '查看赞赏', 'api', '查看赞赏二维码', 70),
-('reward:config', '配置赞赏', 'api', '配置文章赞赏', 71),
-('reward:give', '打赏文章', 'api', '使用芙贝币打赏文章', 72),
+('reward:view', '查看赞赏', 'api', '查看赞赏二维码', 70, NOW(), NOW()),
+('reward:config', '配置赞赏', 'api', '配置文章赞赏', 71, NOW(), NOW()),
+('reward:give', '打赏文章', 'api', '使用芙贝币打赏文章', 72, NOW(), NOW()),
 -- 点赞权限
-('article:like', '点赞文章', 'api', '点赞文章', 80),
-('comment:like', '点赞评论', 'api', '点赞评论', 81),
+('article:like', '点赞文章', 'api', '点赞文章', 80, NOW(), NOW()),
+('comment:like', '点赞评论', 'api', '点赞评论', 81, NOW(), NOW()),
 -- 文章状态管理权限
-('article:publish', '发布文章', 'api', '更改文章发布状态', 90),
-('article:unpublish', '取消发布', 'api', '取消文章发布状态', 91);
+('article:publish', '发布文章', 'api', '更改文章发布状态', 90, NOW(), NOW()),
+('article:unpublish', '取消发布', 'api', '取消文章发布状态', 91, NOW(), NOW());
 
 -- =============================================
 -- 3. 分配角色权限
 -- =============================================
 
 -- 访客：查看文章/评论、点赞、收藏、查看赞赏
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, id FROM `permissions` WHERE `code` IN (
   'article:view', 'comment:view',
   'article:like', 'comment:like',
@@ -71,7 +73,7 @@ SELECT 1, id FROM `permissions` WHERE `code` IN (
 );
 
 -- 会员：继承访客权限 + 评论、提交建议、签到、打赏（使用芙贝币）
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions` WHERE `code` IN (
   'article:view', 'comment:view', 'comment:create',
   'article:like', 'comment:like',
@@ -82,7 +84,7 @@ SELECT 2, id FROM `permissions` WHERE `code` IN (
 );
 
 -- 博主：继承会员权限 + 写文章、管理文章、更改文章状态、数据概览、后台访问
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, id FROM `permissions` WHERE `code` IN (
   'article:view', 'article:create', 'article:update', 'article:delete',
   'article:publish', 'article:unpublish',
@@ -97,7 +99,7 @@ SELECT 3, id FROM `permissions` WHERE `code` IN (
 );
 
 -- 管理员：所有权限
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 4, id FROM `permissions`;
 
 -- =============================================
