@@ -241,19 +241,19 @@ public class ArticleStatsServiceImpl implements ArticleStatsService {
     @Override
     @SuppressWarnings("null")
     public ArticleStatsResult getArticleStats(Long articleId, Long userId, String visitorId) {
-        Optional<Article> articleOpt = articleRepository.findById(articleId);
-        if (articleOpt.isEmpty()) {
+        // [BUG-042 修复] 标量查询取计数，不再为统计加载含 content LONGTEXT 的整行
+        Optional<Integer> viewCount = articleRepository.getViewCountById(articleId);
+        if (viewCount.isEmpty()) {
             return ArticleStatsResult.builder()
                     .success(false)
                     .message("文章不存在")
                     .build();
         }
-        Article article = articleOpt.get();
 
         return ArticleStatsResult.builder()
                 .success(true)
-                .viewCount(article.getViewCount())
-                .likeCount(article.getLikeCount())
+                .viewCount(viewCount.get())
+                .likeCount(articleRepository.getLikeCountById(articleId).orElse(0))
                 .favoriteCount((int) articleFavoriteRepository.countByArticleId(articleId))
                 .hasLiked(hasLiked(articleId, userId, visitorId))
                 .hasFavorited(hasFavorited(articleId, userId))

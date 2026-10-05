@@ -2,6 +2,7 @@ package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
 import com.luomiblog.dto.ArticleRequest;
+import com.luomiblog.dto.ArticleListItemResponse;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.dto.ArticleStatsResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -25,7 +26,7 @@ public class AdminArticleController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'BLOGGER') and hasAuthority('PERM_article:manage')")
-    public ApiResponse<Page<ArticleResponse>> getArticles(
+    public ApiResponse<Page<ArticleListItemResponse>> getArticles(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search,

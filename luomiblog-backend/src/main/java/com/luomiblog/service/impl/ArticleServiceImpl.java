@@ -3,6 +3,7 @@ package com.luomiblog.service.impl;
 import com.luomiblog.common.BusinessException;
 import com.luomiblog.common.SafePathValidator;
 import com.luomiblog.dto.ArticleRequest;
+import com.luomiblog.dto.ArticleListItemResponse;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.dto.ArticleStatsResponse;
 import com.luomiblog.entity.*;
@@ -27,6 +28,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -223,32 +225,32 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ArticleResponse> getPublishedArticles(Pageable pageable) {
-        return articleRepository.findPublishedArticles(pageable)
-                .map(this::convertToResponse);
+    public Page<ArticleListItemResponse> getPublishedArticles(Pageable pageable) {
+        Page<Article> page = articleRepository.findPublishedArticles(pageable);
+        return new org.springframework.data.domain.PageImpl<>(
+                toListItemResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ArticleResponse> getArticlesByCategory(Long categoryId, Pageable pageable) {
-        return articleRepository.findByCategoryId(categoryId, pageable)
-                .map(this::convertToResponse);
+    public Page<ArticleListItemResponse> getArticlesByCategory(Long categoryId, Pageable pageable) {
+        Page<Article> page = articleRepository.findByCategoryId(categoryId, pageable);
+        return new org.springframework.data.domain.PageImpl<>(
+                toListItemResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ArticleResponse> getArticlesByAuthor(Long authorId, Pageable pageable) {
-        return articleRepository.findByAuthorId(authorId, pageable)
-                .map(this::convertToResponse);
+    public Page<ArticleListItemResponse> getArticlesByAuthor(Long authorId, Pageable pageable) {
+        Page<Article> page = articleRepository.findByAuthorId(authorId, pageable);
+        return new org.springframework.data.domain.PageImpl<>(
+                toListItemResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ArticleResponse> searchArticles(String keyword) {
-        return articleRepository.searchByKeyword(keyword)
-                .stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+    public List<ArticleListItemResponse> searchArticles(String keyword) {
+        return toListItemResponses(articleRepository.searchByKeyword(keyword));
     }
 
     @Override
@@ -271,9 +273,10 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ArticleResponse> getAdminArticles(Pageable pageable, String search, String category, String status) {
-        return articleRepository.findAdminArticles(search, category, status, pageable)
-                .map(this::convertToResponse);
+    public Page<ArticleListItemResponse> getAdminArticles(Pageable pageable, String search, String category, String status) {
+        Page<Article> page = articleRepository.findAdminArticles(search, category, status, pageable);
+        return new org.springframework.data.domain.PageImpl<>(
+                toListItemResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Override
@@ -344,6 +347,90 @@ public class ArticleServiceImpl implements ArticleService {
                 .replaceAll("^-|-$", "");
     }
 
+    /**
+     * [BUG-040/041 修复] 列表批量装配：
+     * 旧实现每篇文章 3 次额外查询（分类/标签/作者，每页 12 篇 = 37 条 SQL），
+     * 且复用 ArticleResponse 连 content LONGTEXT 一起序列化（单页可达数 MB）。
+     * 现按批各 1 条查询（分类/作者/标签关联）组装轻量 DTO，每页共 4 条 SQL。
+     */
+    private List<ArticleListItemResponse> toListItemResponses(List<Article> articles) {
+        if (articles == null || articles.isEmpty()) {
+            return List.of();
+        }
+        java.util.Set<Long> categoryIds = new java.util.HashSet<>();
+        java.util.Set<Long> authorIds = new java.util.HashSet<>();
+        for (Article a : articles) {
+            if (a.getCategoryId() != null) categoryIds.add(a.getCategoryId());
+            if (a.getAuthorId() != null) authorIds.add(a.getAuthorId());
+        }
+        Map<Long, Category> categoryMap = categoryRepository.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, c -> c));
+        Map<Long, com.luomiblog.entity.User> authorMap = userRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(com.luomiblog.entity.User::getId, u -> u));
+
+        List<Long> articleIds = articles.stream().map(Article::getId).collect(Collectors.toList());
+        Map<Long, List<ArticleListItemResponse.TagInfo>> tagsByArticle = new java.util.HashMap<>();
+        List<ArticleTag> links = articleTagRepository.findByArticleIdIn(articleIds);
+        if (!links.isEmpty()) {
+            java.util.Set<Long> tagIds = links.stream().map(ArticleTag::getTagId).collect(Collectors.toSet());
+            Map<Long, Tag> tagMap = tagRepository.findAllById(tagIds).stream()
+                    .filter(t -> t.getDeletedAt() == null)
+                    .collect(Collectors.toMap(Tag::getId, t -> t));
+            for (ArticleTag link : links) {
+                Tag tag = tagMap.get(link.getTagId());
+                if (tag != null) {
+                    tagsByArticle.computeIfAbsent(link.getArticleId(), k -> new java.util.ArrayList<>())
+                            .add(ArticleListItemResponse.TagInfo.builder()
+                                    .id(tag.getId()).name(tag.getName()).slug(tag.getSlug()).build());
+                }
+            }
+        }
+
+        return articles.stream()
+                .map(a -> buildListItem(a, categoryMap, authorMap, tagsByArticle.getOrDefault(a.getId(), List.of())))
+                .collect(Collectors.toList());
+    }
+
+    private ArticleListItemResponse buildListItem(
+            Article article,
+            Map<Long, Category> categoryMap,
+            Map<Long, com.luomiblog.entity.User> authorMap,
+            List<ArticleListItemResponse.TagInfo> tags) {
+        ArticleListItemResponse.ArticleListItemResponseBuilder builder = ArticleListItemResponse.builder()
+                .id(article.getId())
+                .title(article.getTitle())
+                .slug(article.getSlug())
+                .summary(article.getSummary())
+                .language(article.getLanguage())
+                .status(article.getStatus())
+                .isTop(article.getTop())
+                .viewCount(article.getViewCount())
+                .likeCount(article.getLikeCount())
+                .commentCount(article.getCommentCount())
+                .wordCount(article.getWordCount())
+                .readingTime(article.getReadingTime())
+                .allowComments(article.getAllowComments())
+                .allowSuggestions(article.getAllowSuggestions())
+                .tags(tags)
+                .publishedAt(article.getPublishedAt())
+                .createdAt(article.getCreatedAt())
+                .updatedAt(article.getUpdatedAt());
+
+        if (article.getCategoryId() != null) {
+            Category category = categoryMap.get(article.getCategoryId());
+            if (category != null) {
+                builder.categoryId(category.getId()).categoryName(category.getName());
+            }
+        }
+        if (article.getAuthorId() != null) {
+            com.luomiblog.entity.User author = authorMap.get(article.getAuthorId());
+            if (author != null) {
+                builder.authorId(author.getId())
+                        .authorName(author.getNickname() != null ? author.getNickname() : author.getUsername());
+            }
+        }
+        return builder.build();
+    }
     private ArticleResponse convertToResponse(Article article) {
         ArticleResponse.ArticleResponseBuilder builder = ArticleResponse.builder()
                 .id(article.getId())

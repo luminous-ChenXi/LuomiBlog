@@ -93,4 +93,14 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     /** 轻量读取计数值（避免为拿一个 int 加载整行含 LONGTEXT） */
     @Query("SELECT a.likeCount FROM Article a WHERE a.id = :id")
     Optional<Integer> getLikeCountById(@Param("id") Long id);
+
+    /** [BUG-042 修复] 统计接口轻量化：标量查询替代整行加载 */
+    @Query("SELECT a.viewCount FROM Article a WHERE a.id = :id")
+    Optional<Integer> getViewCountById(@Param("id") Long id);
+
+    @Query("SELECT a.commentCount FROM Article a WHERE a.id = :id")
+    Optional<Integer> getCommentCountById(@Param("id") Long id);
+
+    @Query("SELECT COUNT(a) > 0 FROM Article a WHERE a.id = :id")
+    boolean existsByIdAndNotDeleted(@Param("id") Long id);
 }

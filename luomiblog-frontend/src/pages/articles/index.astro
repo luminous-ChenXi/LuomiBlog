@@ -41,7 +41,8 @@ try {
         likes: a.likeCount || 0,
         cover: a.coverImage,
         author: a.authorName || (a.author?.nickname || a.author?.username) || '辰汐',
-        readTime: Math.max(1, Math.ceil((a.content?.split(/\s+/).length || 300) / 300)),
+        // [BUG-040 配套] 列表接口已不再返回全文，阅读时长改用后端 word_count（回退 300 字）
+        readTime: Math.max(1, Math.ceil((a.wordCount || 300) / 300)),
       }));
       totalPages = data.totalPages || 0;
       totalElements = data.totalElements || 0;

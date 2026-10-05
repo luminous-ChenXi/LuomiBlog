@@ -1,6 +1,7 @@
 package com.luomiblog.controller;
 
 import com.luomiblog.common.ApiResponse;
+import com.luomiblog.dto.ArticleListItemResponse;
 import com.luomiblog.dto.ArticleRequest;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.security.UserPrincipal;
@@ -25,7 +26,7 @@ public class ArticleController {
     private final ArticleService articleService;
 
     @GetMapping
-    public ApiResponse<Page<ArticleResponse>> getArticles(
+    public ApiResponse<Page<ArticleListItemResponse>> getArticles(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
@@ -43,7 +44,7 @@ public class ArticleController {
     }
 
     @GetMapping("/category/{categoryId}")
-    public ApiResponse<Page<ArticleResponse>> getArticlesByCategory(
+    public ApiResponse<Page<ArticleListItemResponse>> getArticlesByCategory(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -52,7 +53,7 @@ public class ArticleController {
     }
 
     @GetMapping("/search")
-    public ApiResponse<List<ArticleResponse>> searchArticles(@RequestParam String keyword) {
+    public ApiResponse<List<ArticleListItemResponse>> searchArticles(@RequestParam String keyword) {
         return ApiResponse.success(articleService.searchArticles(keyword));
     }
 

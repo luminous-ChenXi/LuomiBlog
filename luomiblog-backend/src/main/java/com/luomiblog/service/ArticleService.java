@@ -1,6 +1,7 @@
 package com.luomiblog.service;
 
 import com.luomiblog.dto.ArticleRequest;
+import com.luomiblog.dto.ArticleListItemResponse;
 import com.luomiblog.dto.ArticleResponse;
 import com.luomiblog.dto.ArticleStatsResponse;
 import org.springframework.data.domain.Page;
@@ -20,19 +21,19 @@ public interface ArticleService {
 
     ArticleResponse getArticleById(Long id);
 
-    Page<ArticleResponse> getPublishedArticles(Pageable pageable);
+    Page<ArticleListItemResponse> getPublishedArticles(Pageable pageable);
 
-    Page<ArticleResponse> getArticlesByCategory(Long categoryId, Pageable pageable);
+    Page<ArticleListItemResponse> getArticlesByCategory(Long categoryId, Pageable pageable);
 
-    Page<ArticleResponse> getArticlesByAuthor(Long authorId, Pageable pageable);
+    Page<ArticleListItemResponse> getArticlesByAuthor(Long authorId, Pageable pageable);
 
-    List<ArticleResponse> searchArticles(String keyword);
+    List<ArticleListItemResponse> searchArticles(String keyword);
 
     void incrementViewCount(Long articleId);
 
     void incrementLikeCount(Long articleId);
 
-    Page<ArticleResponse> getAdminArticles(Pageable pageable, String search, String category, String status);
+    Page<ArticleListItemResponse> getAdminArticles(Pageable pageable, String search, String category, String status);
 
     ArticleResponse publishArticle(Long id, Long authorId);
 
