@@ -69,6 +69,14 @@ public class User {
     @Builder.Default
     private Boolean totpEnabled = false;
 
+    /**
+     * [BUG-033] 会话版本号：改密/管理员重置/封禁时 +1，
+     * JWT 携带签发时版本，过滤器与 DB 实时比对，旧版本令牌立即失效
+     */
+    @Builder.Default
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
+
     /** 2FA 还原码（BCrypt 哈希 JSON 数组），一次性使用 */
     @Column(name = "recovery_codes", columnDefinition = "TEXT")
     private String recoveryCodes;

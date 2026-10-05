@@ -145,7 +145,7 @@ public class AuthServiceImpl implements AuthService {
             userRepository.save(user);
 
             Set<String> permissions = permissionService.getPermissionCodesByRoleId(memberRole.getId());
-            String accessToken = jwtUtil.generateAccessToken(user.getUsername(), memberRole.getCode(), permissions.stream().toList());
+            String accessToken = jwtUtil.generateAccessToken(user.getUsername(), memberRole.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
             String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
             log.info("用户注册成功: {}, 角色: {}", request.getUsername(), memberRole.getCode());
@@ -249,7 +249,7 @@ public class AuthServiceImpl implements AuthService {
         Role role = roleRepository.findById(user.getRoleId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
-        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList());
+        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
         log.info("用户邮箱验证成功并激活: {}", user.getUsername());
@@ -449,7 +449,7 @@ public class AuthServiceImpl implements AuthService {
         Role role = roleRepository.findById(user.getRoleId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
-        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList());
+        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
         AuthResponse response = buildAuthResponse(accessToken, refreshToken, user, role, permissions);
@@ -514,7 +514,7 @@ public class AuthServiceImpl implements AuthService {
         Role role = roleRepository.findById(user.getRoleId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROLE_NOT_FOUND));
         Set<String> permissions = permissionService.getPermissionCodesByRoleId(user.getRoleId());
-        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList());
+        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), role.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
         updateUserLoginInfo(user, getClientIp());
@@ -713,7 +713,7 @@ public class AuthServiceImpl implements AuthService {
         // （此前固定用 access 的 24h，导致第 2~7 天黑名单过期后旧令牌可再次刷新）
         tokenBlacklistService.revoke(tokenId, Math.max(1, jwtUtil.getRemainingValidityMs(refreshToken) / 1000));
 
-        String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList());
+        String newAccessToken = jwtUtil.generateAccessToken(username, role.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
         String newRefreshToken = jwtUtil.generateRefreshToken(username);
 
         log.info("令牌刷新成功: {}", username);
@@ -752,6 +752,12 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             log.warn("吊销{}令牌失败: {}", kind, e.getMessage());
         }
+    }
+
+
+    /** [BUG-033] 空安全取会话版本 */
+    private int nvl(Integer v) {
+        return v == null ? 0 : v;
     }
 
     private void updateUserLoginInfo(User user, String clientIp) {

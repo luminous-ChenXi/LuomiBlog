@@ -73,6 +73,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
+                // [BUG-033] 会话版本比对：改密/管理员重置/封禁后版本 +1，
+                // 旧版本令牌立即失效（历史令牌无 ver 声明按 0 处理）
+                int tokenVer = jwtUtil.getTokenVersionFromToken(token);
+                int dbVer = ((com.luomiblog.security.UserPrincipal) principal)
+                        .getUser().getTokenVersion() == null ? 0
+                        : ((com.luomiblog.security.UserPrincipal) principal).getUser().getTokenVersion();
+                if (tokenVer != dbVer) {
+                    log.debug("令牌会话版本过期: tokenVer={}, dbVer={}, user={}", tokenVer, dbVer, username);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

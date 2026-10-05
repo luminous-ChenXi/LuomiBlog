@@ -37,11 +37,12 @@ public class JwtUtil {
         return generateAccessToken(
                 userPrincipal.getUsername(),
                 userPrincipal.getRoleCode(),
-                userPrincipal.getPermissions().stream().toList()
+                userPrincipal.getPermissions().stream().toList(),
+                userPrincipal.getUser().getTokenVersion() == null ? 0 : userPrincipal.getUser().getTokenVersion()
         );
     }
 
-    public String generateAccessToken(String username, String roleCode, List<String> permissions) {
+    public String generateAccessToken(String username, String roleCode, List<String> permissions, int tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
 
@@ -50,11 +51,23 @@ public class JwtUtil {
                 .claim("role", roleCode)
                 .claim("perms", permissions)
                 .claim("type", "access")
+                // [BUG-033] 会话版本：改密/封禁 +1 后旧版本令牌被过滤器拒绝
+                .claim("ver", tokenVersion)
                 .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    /** 读取令牌的会话版本声明（历史令牌无此声明视为 0） */
+    public int getTokenVersionFromToken(String token) {
+        try {
+            Integer ver = parseToken(token).get("ver", Integer.class);
+            return ver == null ? 0 : ver;
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     public String generateRefreshToken(String username) {

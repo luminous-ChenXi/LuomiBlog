@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email_verified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '邮箱是否验证',
   `totp_secret` VARCHAR(64) DEFAULT NULL COMMENT 'TOTP 两步验证密钥（Base32）',
   `totp_enabled` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已绑定 TOTP 两步验证',
+  `token_version` INT NOT NULL DEFAULT 0 COMMENT '会话版本号：改密/重置/封禁时+1踢会话（BUG-033）',
   `recovery_codes` TEXT DEFAULT NULL COMMENT '2FA 还原码（BCrypt 哈希 JSON 数组）',
   `avatar_url` VARCHAR(512) DEFAULT NULL COMMENT '头像URL',
   `website` VARCHAR(255) DEFAULT NULL COMMENT '个人网站',

@@ -158,6 +158,10 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         String oldStatus = user.getStatus();
         user.setStatus(request.getStatus());
+        if ("banned".equals(request.getStatus())) {
+            // [BUG-033] 封禁踢会话：既有 JWT 立即失效
+            user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
+        }
         userRepository.save(user);
 
         logAudit("CHANGE_STATUS", operatorId, id, "状态变更: " + oldStatus + " -> " + request.getStatus());
@@ -192,6 +196,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         User user = findActiveUserById(id);
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // [BUG-033] 重置密码踢会话
+        user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
         userRepository.save(user);
 
         logAudit("RESET_PASSWORD", operatorId, id, "重置用户密码");
