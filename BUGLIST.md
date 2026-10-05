@@ -327,3 +327,21 @@
 | (本次) | CI 门禁: astro check 进 CI + permissions/concurrency/timeout + 死 lint 脚本移除 | 071(部分) |
 
 第二批后剩余高价值项: BUG-019 余量(MD afterCommit)、BUG-022(注册邮件异步)、BUG-028/029(评论校验/ADMIN 越权边界)、BUG-033(token_version 改密踢会话)、BUG-035(Flyway, 含 BUG-086 根治)、BUG-043/044(缓存+EP 按需)、BUG-050(误杀登出)、BUG-051(admin 中间件验签)、BUG-052/053(假功能/状态收敛)、BUG-088 关联(前端新标签自动建)。
+
+---
+
+## 10. 修复进度记录(2026-10-05 第三批: Wave12-15)
+
+| 提交 | 内容 | 对应 BUG |
+|---|---|---|
+| ed99bfb | 误杀登出修复 + 注册邮件异步化(mailExecutor) + MD afterCommit/软删归档撤文件 | 050/022/019 |
+| 0ee7f1a | 会话版本号 token_version: 改密/重置/封禁即时踢会话 | 033 |
+| 372aae8 | SiteSettings 读写缓存 + Layout favicon TTL + AdminLayout /me 验签守卫 | 043/051 |
+| 4c60bfb | 假功能 WIP 诚实化标注(AI/搜索/评论管理/公告/邮件/用户中心) | 052 |
+
+**顺延项**: BUG-044(Element Plus 按需)——本机 npm registry 不可达,网络恢复后
+`npm i -D unplugin-vue-components` + `ElementPlusResolver` 即可实施(约 1 小时)。
+**第三批后剩余**: BUG-035(Flyway 化, 含 BUG-086 根治, 建议下个功能版本前做)、
+BUG-053(状态层 Pinia 化)、BUG-088 关联(编辑器新标签自动创建)、
+BUG-060(软删过滤)、性能文档(JVM 参数与 2核4G 匹配)。
+**三批累计**: 15 个提交, BUGLIST 勾销 34 项, 全程 mvn test + astro check + build 三绿。
