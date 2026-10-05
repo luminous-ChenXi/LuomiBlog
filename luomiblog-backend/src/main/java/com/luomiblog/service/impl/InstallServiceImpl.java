@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.time.LocalDateTime;
@@ -59,6 +60,15 @@ public class InstallServiceImpl implements InstallService {
     private static final int MAX_RATE_LIMITER_ENTRIES = 10_000;
     /** 重新安装验证锁定标识前缀（复用 LoginSecurityService 的失败计数/锁定机制） */
     private static final String REINSTALL_VERIFY_LOCK_PREFIX = "install-verify:";
+
+    /** 重装窗口标记文件：位于锁文件同目录，后缀 .reinstall，内容 = 时间戳:SHA-256(票据) */
+    private static final String REINSTALL_MARKER_SUFFIX = ".reinstall";
+    /** 重装窗口有效期（票据与标记同步过期），超时后 fail-closed 需重新 verify-reinstall */
+    private static final long REINSTALL_WINDOW_TTL_MS = 30 * 60 * 1000L;
+    /** 一次性安装票据随机字节数（32 字节 = 64 hex） */
+    private static final int INSTALL_TICKET_BYTES = 32;
+
+    private final SecureRandom ticketRandom = new SecureRandom();
 
     /** 重新安装验证限流桶（IP -> 桶） */
     private final Map<String, ReinstallVerifyBucket> reinstallVerifyBuckets = new ConcurrentHashMap<>();
@@ -669,8 +679,9 @@ public class InstallServiceImpl implements InstallService {
             }
             log.info("安装完成，已创建安装锁文件: {}", lockPath.toAbsolutePath());
 
-            // 安装完成，清理半安装标记
+            // 安装完成，清理半安装标记与重装窗口标记
             deleteProgressMarker();
+            deleteReinstallMarker();
         } catch (IOException e) {
             log.error("创建安装锁失败", e);
             throw new RuntimeException("安装完成操作失败: " + e.getMessage(), e);
@@ -795,6 +806,113 @@ public class InstallServiceImpl implements InstallService {
             log.error("重置安装状态失败", e);
             throw new RuntimeException("重置安装状态失败: " + e.getMessage(), e);
         }
+    }
+
+    // =====================================================================
+    // 重装窗口（BUG-008 TOCTOU 修复）：验证通过 ≠ 匿名开放，写操作一律凭票
+    // =====================================================================
+
+    @Override
+    public String beginReinstall() {
+        try {
+            String ticket = generateInstallTicket();
+            // 先落标记再删锁：任何时刻都不存在"既无锁又无标记"的匿名危险窗口
+            writeReinstallMarker(ticket);
+            resetInstallation();
+            log.warn("重装窗口已开启（{} 分钟内有效），安装写操作必须携带 X-Lcx-Install-Ticket",
+                    REINSTALL_WINDOW_TTL_MS / 60_000);
+            return ticket;
+        } catch (IOException e) {
+            log.error("开启重装窗口失败", e);
+            throw new RuntimeException("开启重装窗口失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public boolean isReinstallWindowOpen() {
+        return Files.exists(reinstallMarkerPath());
+    }
+
+    @Override
+    public boolean isInstallTicketValid(String ticket) {
+        if (ticket == null || ticket.isBlank()) {
+            return false;
+        }
+        Path marker = reinstallMarkerPath();
+        if (!Files.exists(marker)) {
+            return false;
+        }
+        try {
+            String content = Files.readString(marker);
+            String[] parts = content.split(":", 2);
+            if (parts.length != 2) {
+                return false;
+            }
+            long issuedAt = Long.parseLong(parts[0].trim());
+            if (System.currentTimeMillis() - issuedAt > REINSTALL_WINDOW_TTL_MS) {
+                log.warn("重装窗口已过期，请重新执行 verify-reinstall");
+                return false;
+            }
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] candidate = digest.digest(ticket.trim().getBytes(StandardCharsets.UTF_8));
+            byte[] expected = hexToBytes(parts[1].trim());
+            // 常量时间比较，避免侧信道逐位枚举票据
+            return MessageDigest.isEqual(candidate, expected);
+        } catch (Exception e) {
+            log.warn("安装票据校验异常: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private String generateInstallTicket() {
+        byte[] bytes = new byte[INSTALL_TICKET_BYTES];
+        ticketRandom.nextBytes(bytes);
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    private Path reinstallMarkerPath() {
+        Path lock = installLockLocator.resolve();
+        return lock.resolveSibling(lock.getFileName().toString() + REINSTALL_MARKER_SUFFIX);
+    }
+
+    private void writeReinstallMarker(String ticket) throws IOException {
+        Path marker = reinstallMarkerPath();
+        if (marker.getParent() != null) {
+            Files.createDirectories(marker.getParent());
+        }
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (Exception e) {
+            throw new IOException("SHA-256 不可用", e);
+        }
+        byte[] hash = digest.digest(ticket.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            hex.append(String.format("%02x", b));
+        }
+        Files.writeString(marker, System.currentTimeMillis() + ":" + hex);
+    }
+
+    private void deleteReinstallMarker() {
+        try {
+            Files.deleteIfExists(reinstallMarkerPath());
+        } catch (IOException e) {
+            log.warn("清理重装窗口标记失败: {}", e.getMessage());
+        }
+    }
+
+    private byte[] hexToBytes(String hex) {
+        int len = hex.length();
+        byte[] out = new byte[len / 2];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        }
+        return out;
     }
 
     @Override
@@ -1045,6 +1163,7 @@ public class InstallServiceImpl implements InstallService {
     }
 
     private DataSource createDataSource(DatabaseConfigRequest request) {
+        validateDbConfig(request);
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
         dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull",
@@ -1058,6 +1177,7 @@ public class InstallServiceImpl implements InstallService {
      * 服务器级数据源（不带库名），用于 CREATE DATABASE
      */
     private DataSource createServerDataSource(DatabaseConfigRequest request) {
+        validateDbConfig(request);
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
         dataSource.setUrl(String.format("jdbc:mysql://%s:%d/?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull",
@@ -1065,6 +1185,30 @@ public class InstallServiceImpl implements InstallService {
         dataSource.setUsername(request.getUsername());
         dataSource.setPassword(request.getPassword());
         return dataSource;
+    }
+
+    /**
+     * [BUG-007 注入修复] 数据库配置白名单校验（服务层兜底）：
+     * /api/install/reinstall 从原始 Map 手工构建 DTO、不经 @Valid，
+     * 必须在建立任何连接前统一校验，杜绝库名反引号逃逸与 host 注入 JDBC URL 参数。
+     * 正则对齐 AstrNest 姊妹项目的 InstallDatabaseTestService。
+     */
+    private void validateDbConfig(DatabaseConfigRequest request) {
+        if (request == null) {
+            throw new RuntimeException("数据库配置不能为空");
+        }
+        if (request.getHost() == null || !request.getHost().matches("^[a-zA-Z0-9.\\-]{1,253}$")) {
+            throw new RuntimeException("数据库主机格式不正确");
+        }
+        if (request.getPort() == null || request.getPort() < 1 || request.getPort() > 65535) {
+            throw new RuntimeException("数据库端口不合法（1-65535）");
+        }
+        if (request.getDatabase() == null || !request.getDatabase().matches("^[A-Za-z0-9_]{1,64}$")) {
+            throw new RuntimeException("数据库名称只能包含字母、数字、下划线（≤64 位）");
+        }
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new RuntimeException("数据库用户名不能为空");
+        }
     }
 
     private void executeSqlFile(String resourcePath, JdbcTemplate template) throws IOException {

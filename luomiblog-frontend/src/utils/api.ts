@@ -125,6 +125,20 @@ function markBackendAvailable(silent: boolean) {
   }
 }
 
+// 重装窗口安装票据（X-Lcx-Install-Ticket）：
+// verify-reinstall 通过后由后端签发（installTicket 字段），重装窗口期内
+// 所有安装写操作必须携带，否则后端 InstallLockFilter 返回 403（BUG-008 TOCTOU 修复）。
+// 模块级内存态即可：票据有效期 30 分钟，刷新页面需重新走 ADMIN 密码验证。
+let lcxInstallTicket: string | null = null;
+
+export function setLcxInstallTicket(ticket: string | null): void {
+  lcxInstallTicket = ticket;
+}
+
+function installTicketHeaders(): Record<string, string> {
+  return lcxInstallTicket ? { 'X-Lcx-Install-Ticket': lcxInstallTicket } : {};
+}
+
 async function request<T>(path: string, config: RequestConfig = {}): Promise<T> {
   const {
     params,
@@ -422,7 +436,8 @@ export const api = {
 
     checkEnvironment: () =>
       request<EnvironmentCheckResponse>('/api/install/check-environment', {
-        method: 'POST'
+        method: 'POST',
+        headers: installTicketHeaders()
       }),
 
     testDatabase: (data: DatabaseConfigRequest) =>
@@ -435,18 +450,21 @@ export const api = {
         databaseMissing?: boolean;
       }>('/api/install/test-database', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     createDatabase: (data: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/create-database', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     resetInstallState: () =>
       request<{ success: boolean; message: string }>('/api/install/reset-install-state', {
-        method: 'POST'
+        method: 'POST',
+        headers: installTicketHeaders()
       }),
 
     checkDatabase: (data: DatabaseConfigRequest) =>
@@ -462,52 +480,60 @@ export const api = {
         logs: string[];
       }>('/api/install/check-database', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     executeSql: (data: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/execute-sql', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     createAdmin: (data: AdminAccountRequest) =>
       request<{ success: boolean; message: string }>('/api/install/create-admin', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     saveSiteConfig: (data: SiteConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/site-config', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     testSmtp: (data: SmtpConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/test-smtp', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     saveSmtpConfig: (data: SmtpConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/smtp-config', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     saveFaviconConfig: (data: FaviconConfigRequest) =>
       request<{ success: boolean; message: string }>('/api/install/favicon-config', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: installTicketHeaders()
       }),
 
     complete: () =>
       request<{ success: boolean; message: string }>('/api/install/complete', {
-        method: 'POST'
+        method: 'POST',
+        headers: installTicketHeaders()
       }),
 
     verifyReinstall: (password: string, confirm: string) =>
-      request<{ success: boolean; message: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
+      request<{ success: boolean; message: string; installTicket?: string; needsOptions?: boolean }>('/api/install/verify-reinstall', {
         method: 'POST',
         body: JSON.stringify({ password, confirm })
       }),
@@ -524,7 +550,8 @@ export const api = {
     executeReinstall: (option: string, confirm: string, database?: DatabaseConfigRequest) =>
       request<{ success: boolean; message: string; option: string }>('/api/install/reinstall', {
         method: 'POST',
-        body: JSON.stringify({ option, confirm, database })
+        body: JSON.stringify({ option, confirm, database }),
+        headers: installTicketHeaders()
       })
   },
 

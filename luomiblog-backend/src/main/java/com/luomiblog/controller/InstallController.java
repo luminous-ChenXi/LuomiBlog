@@ -321,11 +321,14 @@ public class InstallController {
 
         boolean verified = installService.verifyReinstallPermission(password);
         if (verified) {
-            // 验证通过后重置安装状态
-            installService.resetInstallation();
+            // 验证通过：开启重装窗口（写标记+删锁）并签发一次性安装票据。
+            // 窗口期内所有安装写操作必须携带 X-Lcx-Install-Ticket（InstallLockFilter 强制校验），
+            // 关闭此前"验证即删锁"造成的匿名危险窗口（BUG-008 TOCTOU）
+            String installTicket = installService.beginReinstall();
             return ApiResponse.success(Map.of(
                 "success", true,
                 "message", "验证通过，可以重新安装",
+                "installTicket", installTicket,
                 "needsOptions", installService.needsReinstallOptions()
             ));
         } else {

@@ -85,4 +85,24 @@ public interface InstallService {
      * @param clientIp 客户端 IP
      */
     void recordReinstallVerifyFailure(String clientIp);
+
+    /**
+     * [BUG-008 TOCTOU 修复] 开启重装窗口：
+     * 写入重装标记文件（含时间戳与一次性安装票据的 SHA-256），随后重置安装状态。
+     * 标记存在期间，所有安装写操作必须携带有效票据头 X-Lcx-Install-Ticket，
+     * 关闭"验证通过即删锁"造成的匿名危险窗口。
+     *
+     * @return 一次性安装票据（仅此一次返回给已通过 ADMIN 密码验证的调用方）
+     */
+    String beginReinstall();
+
+    /**
+     * 重装窗口是否开启（标记文件存在即视为开启，含已过期——过期后所有写操作被拒绝，fail-closed）
+     */
+    boolean isReinstallWindowOpen();
+
+    /**
+     * 校验安装票据：非空、未过期、SHA-256 与标记文件常量时间比对
+     */
+    boolean isInstallTicketValid(String ticket);
 }

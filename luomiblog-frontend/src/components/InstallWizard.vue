@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { api } from '../utils/api';
+import { api, setLcxInstallTicket } from '../utils/api';
 import type { FaviconConfigRequest } from '../types/api';
 
 const currentStep = ref(0);
@@ -429,6 +429,10 @@ const verifyReinstall = async () => {
   try {
     const response = await api.install.verifyReinstall(verifyPassword.value, 'REINSTALL');
     if (response.success) {
+      // 保存一次性安装票据：重装窗口期内所有安装写操作必须携带（后端强制校验）
+      if (response.installTicket) {
+        setLcxInstallTicket(response.installTicket);
+      }
       ElMessage.success('验证通过');
       showReinstallVerify.value = false;
 

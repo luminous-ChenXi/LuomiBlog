@@ -56,6 +56,22 @@ public class InstallLockFilter extends OncePerRequestFilter {
                 }
             }
 
+            // [BUG-008 TOCTOU 修复] 重装窗口期内（verify-reinstall 通过后、complete 之前），
+            // 所有安装写操作必须携带有效的一次性安装票据，匿名请求一律 403。
+            // verify-reinstall 本身要求 ADMIN 认证且是签发票据的入口，故豁免。
+            if (!isInstallLocked()
+                    && installService.isReinstallWindowOpen()
+                    && "POST".equalsIgnoreCase(request.getMethod())
+                    && !requestURI.equals("/api/install/verify-reinstall")) {
+                String ticket = request.getHeader("X-Lcx-Install-Ticket");
+                if (!installService.isInstallTicketValid(ticket)) {
+                    log.warn("重装窗口期内拒绝无票据安装请求: {} from {}", requestURI,
+                            request.getRemoteAddr());
+                    sendLockedResponse(response, "重装窗口已开启：请先通过 verify-reinstall 获取安装票据");
+                    return;
+                }
+            }
+
             if (!verifyLockIntegrity()) {
                 log.warn("安装锁文件完整性校验失败，可能已被篡改");
             }
