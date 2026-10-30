@@ -25,10 +25,15 @@ public class RateLimitServiceImpl implements RateLimitService {
     private static final String BUCKET_COMMENT = "comment:";
     private static final String BUCKET_INTERACTION = "interaction:";
     private static final String BUCKET_AUTH_VERIFY = "authverify:";
+    private static final String BUCKET_CHENXI_EXCHANGE = "chenxiexchange:";
 
     /** 敏感认证端点固定阈值：10 次/分钟/IP（不可配置调低的安全下限） */
     private static final int AUTH_VERIFY_MAX_REQUESTS = 10;
     private static final int AUTH_VERIFY_WINDOW_SECONDS = 60;
+
+    /** 辰汐 SSO 交换固定阈值：10 次/分钟/IP（同 checkAuthVerify 口径，不可配置调低） */
+    private static final int CHENXI_EXCHANGE_MAX_REQUESTS = 10;
+    private static final int CHENXI_EXCHANGE_WINDOW_SECONDS = 60;
 
     private final MemoryCacheService memoryCacheService;
     private final RateLimitProperties properties;
@@ -91,6 +96,14 @@ public class RateLimitServiceImpl implements RateLimitService {
         acquireOrThrow(BUCKET_AUTH_VERIFY + scene + ":" + clientIp,
                 AUTH_VERIFY_MAX_REQUESTS, AUTH_VERIFY_WINDOW_SECONDS,
                 "验证尝试过于频繁，请 1 分钟后再试");
+    }
+
+    @Override
+    public void checkChenxiExchange(String clientIp) {
+        // 注意：不检查 properties.isEnabled()——SSO 交换入口限流同样不受站点开关约束
+        acquireOrThrow(BUCKET_CHENXI_EXCHANGE + clientIp,
+                CHENXI_EXCHANGE_MAX_REQUESTS, CHENXI_EXCHANGE_WINDOW_SECONDS,
+                "登录请求过于频繁，请 1 分钟后再试");
     }
 
     /**

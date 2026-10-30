@@ -34,4 +34,11 @@ public interface RateLimitService {
      * @param scene 场景隔离键（如 "2fa"、"emailverify"），避免共享窗口
      */
     void checkAuthVerify(String clientIp, String scene);
+
+    /**
+     * 辰汐通行证 SSO 交换限流：固定 10 次/分钟/IP。
+     * exchange 是匿名可达端点，每次调用触发对上游通行证的出站 token/userinfo 请求，
+     * 不限流时可被高频调用打爆上游或当作转发跳板。
+     */
+    void checkChenxiExchange(String clientIp);
 }

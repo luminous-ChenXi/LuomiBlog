@@ -112,9 +112,12 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
             Role role = roleRepository.findById(user.getRoleId())
                     .orElseThrow(() -> new BusinessException(500, "角色不存在"));
 
-            // 本站会话 JWT：有效期 access-token-days，带 cxs 标记以支持滑动续期
+            // 本站会话 JWT：有效期 access-token-days，带 cxs 标记以支持滑动续期；
+            // ver 取当前会话版本——管理员重置影子账号密码（version+1）后旧 SSO 会话随之失效，
+            // 重新走 SSO 登录即可拿到新版本令牌（无 ver 令牌会被过滤器按 0 比对而永久 401）
             long durationMs = properties.getAccessTokenDays() * 86400000L;
-            String token = jwtUtil.generateChenxiSessionToken(user.getUsername(), durationMs);
+            String token = jwtUtil.generateChenxiSessionToken(user.getUsername(), durationMs,
+                    user.getTokenVersion() == null ? 0 : user.getTokenVersion());
             log.info("辰汐通行证登录成功: sub={} username={}", sub, user.getUsername());
 
             // 成功审计：影子账号已解析，返回令牌前落 login_logs（与密码登录同表同口径）

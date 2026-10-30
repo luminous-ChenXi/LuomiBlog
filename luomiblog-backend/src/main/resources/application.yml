@@ -20,8 +20,9 @@ spring:
 
   jpa:
     hibernate:
-      # ORM 自动建表
-      ddl-auto: update
+      # ORM 自动建表（可用环境变量 JPA_DDL_AUTO 覆盖；生产建议 validate——
+      # Hibernate 抢建表会使 schema.sql 的默认值/注释/索引失效，双源竞争见 BUG-086）
+      ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: true
     properties:
       hibernate:
@@ -52,6 +53,10 @@ jwt:
 
 app:
   registration-enabled: true
+  # Swagger/OpenAPI 文档匿名放行开关（SecurityConfig 读取；默认 true 维持现状，
+  # 生产建议 SWAGGER_PERMIT_ALL=false 收口）
+  swagger:
+    permit-all: ${SWAGGER_PERMIT_ALL:true}
   install:
     # 安装锁文件位置（默认 config/install.lock；可用环境变量 INSTALL_LOCK_FILE 覆盖；
     # 旧版落在工作目录的 install.lock 会在首次访问时自动迁移到该路径）

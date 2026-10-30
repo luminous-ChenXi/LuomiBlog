@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -142,7 +143,7 @@ public class AuthServiceImpl implements AuthService {
                     .emailVerified(false)
                     .build();
 
-            userRepository.save(user);
+            saveNewUserOrConflict(user);
 
             Set<String> permissions = permissionService.getPermissionCodesByRoleId(memberRole.getId());
             String accessToken = jwtUtil.generateAccessToken(user.getUsername(), memberRole.getCode(), permissions.stream().toList(), nvl(user.getTokenVersion()));
@@ -168,7 +169,7 @@ public class AuthServiceImpl implements AuthService {
                 .status("inactive")
                 .emailVerified(false)
                 .build();
-        userRepository.save(user);
+        saveNewUserOrConflict(user);
 
         String token = sendRegistrationEmail(user);
         log.info("用户注册成功（待邮箱验证）: {}", user.getUsername());
@@ -183,6 +184,21 @@ public class AuthServiceImpl implements AuthService {
                         .role(memberRole.getCode())
                         .build())
                 .build();
+    }
+
+    /**
+     * 注册落库兜底：预检 existsByUsername/Email 与写入非原子，
+     * 并发注册撞 username/email 唯一键时捕获 DataIntegrityViolationException
+     * 转为 409 友好提示（不兜底则落全局 500；User 主键为 IDENTITY，INSERT 即时执行，
+     * 异常在 save 处即可捕获——与 ChenxiAuthServiceImpl 影子账号并发回读同模式）
+     */
+    private User saveNewUserOrConflict(User user) {
+        try {
+            return userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            log.info("注册并发撞唯一键: username={}", user.getUsername());
+            throw new BusinessException(409, "用户名或邮箱已被占用");
+        }
     }
 
     /**
@@ -406,7 +422,11 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             loginSecurityService.recordFailedAttempt(identifier);
             recordLoginLog(null, request.getUsernameOrEmail(), LoginLog.LoginType.password, false);
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e.getMessage());
+            // e.getMessage() 可能携带 SQL 片段/框架内部信息，回显前端属信息泄露：
+            // 细节只进日志，前端统一固定文案
+            log.error("登录过程发生未预期异常: identifier={}, ip={}",
+                    request.getUsernameOrEmail(), clientIp, e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }
 

@@ -26,6 +26,9 @@ public class JwtUtil {
     /** 会话总有效期（毫秒）声明名，用于滑动续期计算 */
     private static final String CLAIM_DURATION = "dur";
 
+    /** 会话版本声明名：改密/重置/封禁 +1 后旧版本令牌被过滤器拒绝（与 access 令牌共用） */
+    private static final String CLAIM_VERSION = "ver";
+
     private final JwtConfig jwtConfig;
 
     private SecretKey getSigningKey() {
@@ -63,7 +66,7 @@ public class JwtUtil {
     /** 读取令牌的会话版本声明（历史令牌无此声明视为 0） */
     public int getTokenVersionFromToken(String token) {
         try {
-            Integer ver = parseToken(token).get("ver", Integer.class);
+            Integer ver = parseToken(token).get(CLAIM_VERSION, Integer.class);
             return ver == null ? 0 : ver;
         } catch (Exception e) {
             return -1;
@@ -87,9 +90,11 @@ public class JwtUtil {
 
     /**
      * 辰汐通行证会话令牌：有效期由 chenxi.passport.access-token-days 决定，
-     * 携带 cxs（会话来源）与 dur（总有效期毫秒）声明，用于滑动续期判定
+     * 携带 cxs（会话来源）与 dur（总有效期毫秒）声明，用于滑动续期判定；
+     * ver（会话版本）与密码登录令牌同口径——否则过滤器把无 ver 令牌按 0 比对，
+     * 管理员重置影子账号密码（token_version+1）后该账号 SSO 登录将永久 401
      */
-    public String generateChenxiSessionToken(String username, long durationMs) {
+    public String generateChenxiSessionToken(String username, long durationMs, int tokenVersion) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(username)
@@ -99,6 +104,7 @@ public class JwtUtil {
                 .expiration(new Date(now.getTime() + durationMs))
                 .claim(CLAIM_CHENXI_SESSION, true)
                 .claim(CLAIM_DURATION, durationMs)
+                .claim(CLAIM_VERSION, tokenVersion)
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -130,6 +136,7 @@ public class JwtUtil {
     public String slideToken(String token) {
         Claims claims = parseToken(token);
         long durationMs = claims.get(CLAIM_DURATION, Long.class);
+        Integer ver = claims.get(CLAIM_VERSION, Integer.class);
         Date now = new Date();
         return Jwts.builder()
                 .subject(claims.getSubject())
@@ -138,6 +145,8 @@ public class JwtUtil {
                 .expiration(new Date(now.getTime() + durationMs))
                 .claim(CLAIM_CHENXI_SESSION, true)
                 .claim(CLAIM_DURATION, durationMs)
+                // 续期令牌必须原样携带会话版本：版本丢失会被过滤器按 0 比对，活跃用户一续期即掉线
+                .claim(CLAIM_VERSION, ver == null ? 0 : ver)
                 .signWith(getSigningKey())
                 .compact();
     }
