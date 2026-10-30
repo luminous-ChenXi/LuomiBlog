@@ -274,13 +274,22 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void resendRegistrationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "该邮箱未注册待验证账号"));
+        // [P2-7 防枚举] 不再区分「未注册/已验证」：任何邮箱一律静默成功，
+        // 前端统一显示"验证邮件已重发"，邮箱存在性差异只进服务端日志。
+        // 频控（60s 冷却/邮箱 + 10 次/h/IP）在 Controller 层先于本方法对所有路径一致生效。
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            log.info("重发验证邮件请求（无待验证账号，静默忽略）: {}", email);
+            return;
+        }
         if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "该邮箱已验证，无需重复验证");
+            log.info("重发验证邮件请求（邮箱已验证，静默忽略）: {}", email);
+            return;
         }
         if (!mailService.isConfigured()) {
-            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "邮件服务未配置，请联系管理员");
+            // 为保持响应一致，配置缺失同样不外显；真实用户收不到信由管理员在日志侧发现
+            log.warn("重发验证邮件失败：邮件服务未配置，email={}", email);
+            return;
         }
         sendRegistrationEmail(user);
         log.info("已重发注册验证邮件: {}", email);
