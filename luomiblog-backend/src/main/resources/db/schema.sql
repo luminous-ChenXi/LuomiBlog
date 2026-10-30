@@ -866,3 +866,25 @@ CREATE TABLE IF NOT EXISTS `revoked_tokens` (
   UNIQUE KEY `uk_revoked_tokens_token_id` (`token_id`),
   KEY `idx_revoked_tokens_expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='已吊销令牌表';
+
+-- =============================================
+-- 登录防爆破锁定状态表（审计 P1-4：DB 持久化，重启不清零；存量库由 V5__auth_lock_states.sql 创建）
+-- 三维度：ACCOUNT_IP（账号+IP）/ ACCOUNT（跨 IP 账号）/ IP_ONLY（纯 IP 升级锁，24h 封顶）
+-- 锁定到期自动解；过期行由登录失败路径惰性清理
+-- 枚举值顺序与 entity/AuthLockState.LockScope 声明一致（BUG-086：ddl-auto 双源约束），勿调整
+-- =============================================
+CREATE TABLE IF NOT EXISTS `auth_lock_states` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `lock_scope` ENUM('ACCOUNT_IP','ACCOUNT','IP_ONLY') NOT NULL DEFAULT 'ACCOUNT_IP' COMMENT '锁定维度：账号+IP/跨IP账号/纯IP',
+  `identifier` VARCHAR(255) NOT NULL COMMENT '维度键：ACCOUNT_IP=账号:IP 原串；ACCOUNT=账号小写；IP_ONLY=客户端IP',
+  `failed_count` INT NOT NULL DEFAULT 0 COMMENT '当前失败计数窗口内的失败次数',
+  `window_started_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '失败计数窗口起点，过期后计数惰性清零重开',
+  `locked_until` DATETIME DEFAULT NULL COMMENT '锁定截止时间（NULL/已过期=未锁定，到期自动解）',
+  `lock_count` INT NOT NULL DEFAULT 0 COMMENT '累计锁定次数（IP_ONLY 升级锁依据）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_lock_scope_identifier` (`lock_scope`, `identifier`),
+  KEY `idx_auth_lock_locked_until` (`locked_until`),
+  KEY `idx_auth_lock_window` (`window_started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录防爆破锁定状态表（DB 持久化，重启不清零）';
