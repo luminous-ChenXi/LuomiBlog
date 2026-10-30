@@ -87,6 +87,11 @@ app:
       max-requests: 60
       window-seconds: 60
   security:
+    # 验证码摘要 pepper（审计 Round3 纵深防御）：邮箱验证码等一次性凭据只以
+    # HmacSHA256(code, pepper) 摘要形式入缓存。未配置时回落为启动期随机生成的
+    # 进程级 pepper——语义变化：重启后旧验证码/待确认 2FA 绑定失效（一次性凭据，可接受）；
+    # 生产建议配置 32 位以上随机串并保持稳定，更换 pepper 等效于作废全部现存验证码
+    code-pepper: ${SECURITY_CODE_PEPPER:}
     # 登录日志（login_logs 安全审计表）保留天数：每日定时任务清理超期记录，防止表无限增长
     login-log-retention-days: ${LOGIN_LOG_RETENTION_DAYS:180}
     # 两步验证（2FA）范围说明：本站 2FA 强制开关是站点设置 login.totp_required
