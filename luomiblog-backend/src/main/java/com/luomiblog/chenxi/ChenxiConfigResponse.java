@@ -31,4 +31,7 @@ public class ChenxiConfigResponse {
 
     /** 授权范围 */
     private String scopes;
+
+    /** 辰汐通行证注册页地址（由 issuer 推导，可用 register-url 覆盖；空串表示不下发注册引导） */
+    private String registerUrl;
 }

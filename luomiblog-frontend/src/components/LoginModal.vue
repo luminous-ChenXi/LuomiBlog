@@ -15,6 +15,8 @@ const backendError = ref('');
 // 辰汐通行证登录（后端启用时才显示入口，配置懒加载、不阻塞表单）
 const chenxiEnabled = ref(false);
 const chenxiLoading = ref(false);
+// 通行证注册引导链接（后端 config 下发；仅 enabled 时随入口一起显示）
+const chenxiRegisterUrl = ref('');
 
 const { isUnavailable, backendStatus, checkBackendStatus } = useBackendStatus();
 
@@ -167,6 +169,17 @@ const handleClose = () => {
   pendingAuthResult.value = null;
 };
 
+// 注册入口（2026-10-17 生态收口）：通行证配置了主站注册地址 → 去主站建号；
+// 开源独立部署未配置时保持本地注册弹窗。
+const handleRegister = () => {
+  if (chenxiEnabled.value && chenxiRegisterUrl.value) {
+    window.location.href = chenxiRegisterUrl.value;
+    return;
+  }
+  handleClose();
+  window.dispatchEvent(new CustomEvent('open-register-modal'));
+};
+
 const handleOpen = async () => {
   // 打开前检查后端状态
   backendError.value = '';
@@ -178,8 +191,14 @@ const handleOpen = async () => {
 
   // 懒加载辰汐通行证配置（fire-and-forget，失败就不显示按钮）
   api.chenxi.config()
-    .then((config) => { chenxiEnabled.value = config.enabled; })
-    .catch(() => { chenxiEnabled.value = false; });
+    .then((config) => {
+      chenxiEnabled.value = config.enabled;
+      chenxiRegisterUrl.value = config.registerUrl || '';
+    })
+    .catch(() => {
+      chenxiEnabled.value = false;
+      chenxiRegisterUrl.value = '';
+    });
 
   isVisible.value = true;
 };
@@ -542,11 +561,21 @@ onUnmounted(() => {
                     <span v-if="!chenxiLoading">使用辰汐通行证登录</span>
                     <span v-else class="loading-spinner chenxi-spinner"></span>
                   </button>
+                  <!-- 注册引导：非强制，新标签前往通行证主站注册 -->
+                  <a
+                    v-if="chenxiRegisterUrl"
+                    class="chenxi-register-link"
+                    :href="chenxiRegisterUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    没有辰汐账号？前往辰汐通行证注册
+                  </a>
                 </div>
 
                 <div class="form-footer">
                   <span class="footer-text">还没有账号？</span>
-                  <a href="#" class="register-link" @click.prevent>立即注册</a>
+                  <a href="#" class="register-link" @click.prevent="handleRegister">立即注册</a>
                 </div>
               </form>
               </template>
@@ -973,6 +1002,20 @@ onUnmounted(() => {
   border-top-color: #E87A9F;
 }
 
+/* 注册引导链接（新标签打开通行证主站） */
+.chenxi-register-link {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-align: center;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.chenxi-register-link:hover {
+  color: #E87A9F;
+  text-decoration: underline;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1164,6 +1207,14 @@ onUnmounted(() => {
 [data-theme="dark"] .chenxi-divider::before,
 [data-theme="dark"] .chenxi-divider::after {
   background: #3a3a4a;
+}
+
+[data-theme="dark"] .chenxi-register-link {
+  color: #a0a0b0;
+}
+
+[data-theme="dark"] .chenxi-register-link:hover {
+  color: #F9A8C8;
 }
 
 [data-theme="dark"] .modal-close:hover {

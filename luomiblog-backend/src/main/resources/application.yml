@@ -100,6 +100,8 @@ chenxi:
     client-id: ${CHENXI_CLIENT_ID:}
     # 授权回调地址，必须与通行证侧注册的 redirect_uri 完全一致
     redirect-uri: ${CHENXI_REDIRECT_URI:}
+    # 辰汐通行证注册页地址（留空时由 issuer 推导为 {issuer}/register，供登录界面注册引导使用）
+    register-url: ${CHENXI_REGISTER_URL:}
     # 授权范围（逗号分隔，与 AstrNest 规范一致）
     scopes: ${CHENXI_SCOPES:openid,profile}
     # 本站会话令牌不活动过期天数（滑动刷新：活跃使用自动续期）

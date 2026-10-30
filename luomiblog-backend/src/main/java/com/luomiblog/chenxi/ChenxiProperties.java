@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -35,6 +36,9 @@ public class ChenxiProperties {
     /** 授权回调地址，必须与通行证侧注册的 redirect_uri 完全一致 */
     private String redirectUri = "";
 
+    /** 辰汐通行证注册页地址，留空时由 issuer 推导（见 getResolvedRegisterUrl） */
+    private String registerUrl = "";
+
     /** 授权范围，逗号分隔（如 openid,profile），兼容空格分隔 */
     private String scopes = "openid,profile";
 
@@ -55,5 +59,38 @@ public class ChenxiProperties {
                 .distinct()
                 .collect(Collectors.joining(" "))
                 .toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 解析后的注册页地址：优先取显式配置的 registerUrl。
+     *
+     * <p>未配置时（2026-10-17 生态收口）：通行证注册统一在主站前端完成，不能回落到
+     * {@code https://passport.xxx/register}（passport 域只有登录/授权，没有注册页）。
+     * 因此 issuer 主机以 {@code passport.} 开头时，去掉该子域回主站 {@code /register}；
+     * 其他标准 OIDC issuer（Keycloak 等）仍回落 {@code {issuer}/register}。
+     */
+    public String getResolvedRegisterUrl() {
+        if (StringUtils.hasText(registerUrl)) {
+            return registerUrl.trim();
+        }
+        if (!StringUtils.hasText(issuer)) {
+            return "";
+        }
+        String base = issuer.trim().replaceAll("/+$", "");
+        try {
+            URI uri = URI.create(base);
+            String host = uri.getHost();
+            if (host != null && host.startsWith("passport.")) {
+                String mainHost = host.substring("passport.".length());
+                StringBuilder url = new StringBuilder(uri.getScheme()).append("://").append(mainHost);
+                if (uri.getPort() > 0) {
+                    url.append(':').append(uri.getPort());
+                }
+                return url.append("/register").toString();
+            }
+        } catch (IllegalArgumentException ignored) {
+            // issuer 不是合法 URI：保持旧口径
+        }
+        return base + "/register";
     }
 }

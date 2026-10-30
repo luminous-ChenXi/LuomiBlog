@@ -36,6 +36,13 @@ function initAuth() {
       }
     }) as EventListener);
 
+    // 辰汐会话滑动续期：api 层静默替换 localStorage 后，同步内存态令牌
+    window.addEventListener('auth-token-renewed', ((event: CustomEvent) => {
+      if (event.detail?.token) {
+        token.value = event.detail.token;
+      }
+    }) as EventListener);
+
     // [BUG-050 修复] 后端离线不再清登录态：令牌失效由 401 统一裁决
   }
 }

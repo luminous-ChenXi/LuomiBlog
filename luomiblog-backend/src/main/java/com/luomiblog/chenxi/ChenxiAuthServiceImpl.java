@@ -79,6 +79,8 @@ public class ChenxiAuthServiceImpl implements ChenxiAuthService {
                 .redirectUri(properties.getRedirectUri())
                 // OAuth 协议要求 scope 以空格分隔，这里统一规范化后再下发给前端
                 .scopes(properties.getScopesForAuthorize())
+                // 注册引导地址：未显式配置时由 issuer 推导，供登录界面"前往注册"链接使用
+                .registerUrl(properties.getResolvedRegisterUrl())
                 .build();
     }
 

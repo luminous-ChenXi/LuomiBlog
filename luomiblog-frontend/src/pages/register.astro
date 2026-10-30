@@ -879,6 +879,20 @@ import { API_BASE_URL } from '../config/api';
 
 <script define:vars={{ apiBaseUrl: API_BASE_URL }}>
   const API_BASE = apiBaseUrl;
+
+  // 2026-10-17 生态收口：通行证配置了主站注册地址时，注册统一去主站（建号/邮箱验证/资料写库在主站）；
+  // 开源独立部署默认 registerUrl 为空，继续使用本页本地注册。
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/chenxi/config`, { credentials: 'include' });
+      const json = await res.json();
+      const url = String(json?.data?.registerUrl || '').trim();
+      if (json?.data?.enabled === true && url) window.location.replace(url);
+    } catch {
+      /* 配置不可得：保持本地注册 */
+    }
+  })();
+
   const stepItems = document.querySelectorAll('.step-item');
   const stepLine = document.querySelector('.step-line');
 

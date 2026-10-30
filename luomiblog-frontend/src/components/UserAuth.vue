@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useUserStore, logout } from '../stores/user';
+import { api } from '../utils/api';
 import type { User } from '../types/api';
 
 const userStore = useUserStore();
 const isMenuOpen = ref(false);
 const isClient = ref(false);
+// 辰汐主站注册地址（通行证 config 下发；空=保持本地注册）
+const chenxiRegisterUrl = ref('');
 
 // 只在客户端渲染后显示登录状态，避免 hydration 不匹配
 const showAuthenticated = computed(() => {
@@ -22,7 +25,12 @@ const handleLoginClick = () => {
 };
 
 const handleRegisterClick = () => {
-  // 触发打开注册弹窗事件
+  // 2026-10-17 生态收口：配置了辰汐主站注册地址时，注册统一去主站（建号/邮箱验证/资料写库都在主站）；
+  // 开源独立部署默认 registerUrl 为空，保持本地注册不变。
+  if (chenxiRegisterUrl.value) {
+    window.location.href = chenxiRegisterUrl.value;
+    return;
+  }
   window.dispatchEvent(new CustomEvent('open-register-modal'));
 };
 
@@ -49,6 +57,14 @@ const handleClickOutside = (e: MouseEvent) => {
 onMounted(() => {
   isClient.value = true;
   document.addEventListener('click', handleClickOutside);
+  // 仅用于注册引导，失败静默回退本地注册
+  void api.chenxi.config()
+    .then((cfg) => {
+      chenxiRegisterUrl.value = cfg?.enabled ? (cfg?.registerUrl || '').trim() : '';
+    })
+    .catch(() => {
+      chenxiRegisterUrl.value = '';
+    });
 });
 </script>
 

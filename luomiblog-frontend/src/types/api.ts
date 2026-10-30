@@ -151,6 +151,8 @@ export interface ChenxiConfig {
   clientId: string;
   redirectUri: string;
   scopes: string;
+  /** 辰汐通行证注册页地址（后端由 issuer 推导或显式配置；旧版后端可能不下发） */
+  registerUrl?: string;
 }
 
 // 辰汐通行证授权码交换请求

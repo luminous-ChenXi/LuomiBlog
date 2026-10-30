@@ -24,8 +24,10 @@ public class WebConfig implements WebMvcConfigurer {
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
         configuration.setAllowedHeaders(List.of("*"));
+        // X-New-Token：辰汐会话滑动续期的新令牌响应头，跨域时前端需要读取
         configuration.setExposedHeaders(List.of(
-                "Authorization", "Content-Type", "X-Total-Count"
+                "Authorization", "Content-Type", "X-Total-Count",
+                com.luomiblog.security.JwtAuthenticationFilter.NEW_TOKEN_HEADER
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

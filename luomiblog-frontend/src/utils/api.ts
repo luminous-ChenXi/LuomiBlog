@@ -64,6 +64,23 @@ function clearAuthState() {
   }
 }
 
+// 辰汐会话滑动续期：后端在辰汐会话令牌活跃使用且剩余寿命不足一半时，
+// 通过 X-New-Token 响应头下发新令牌（CORS exposed-headers 已放行）。
+// 这里静默替换本地登录态并广播事件，不打断当前请求
+function applyRenewedToken(newToken: string | null) {
+  if (!newToken || typeof localStorage === 'undefined') {
+    return;
+  }
+  // 仅在已登录时替换，避免无登录态时被写入陌生令牌
+  if (!localStorage.getItem('token')) {
+    return;
+  }
+  localStorage.setItem('token', newToken);
+  window.dispatchEvent(new CustomEvent('auth-token-renewed', {
+    detail: { token: newToken }
+  }));
+}
+
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     const url = new URL(path);
@@ -198,6 +215,9 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
       clearTimeout(timeoutId);
 
       markBackendAvailable(silent);
+
+      // 辰汐会话滑动续期：有新令牌就静默替换本地登录态
+      applyRenewedToken(response.headers.get('X-New-Token'));
 
       if (response.status === 401) {
         clearAuthState();

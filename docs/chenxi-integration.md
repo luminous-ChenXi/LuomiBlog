@@ -20,6 +20,7 @@ LuomiBlog 与姊妹项目 AstrNest 共用同一套"辰汐生态集成"统一规�
 | `chenxi.passport.issuer` | `CHENXI_ISSUER` | 空 | 主站通行证 issuer（OIDC 签发方地址） |
 | `chenxi.passport.client-id` | `CHENXI_CLIENT_ID` | 空 | 在通行证注册的客户端 ID（公共客户端，无密钥） |
 | `chenxi.passport.redirect-uri` | `CHENXI_REDIRECT_URI` | 空 | 授权回调地址，必须与通行证侧注册完全一致 |
+| `chenxi.passport.register-url` | `CHENXI_REGISTER_URL` | 空 | 主站注册页地址；留空时由 issuer 推导：issuer 主机为 `passport.*` 时回主站 `https://<主域>/register`，其他 OIDC issuer 回落 `{issuer}/register`（随 config 下发 `registerUrl`，供登录界面“前往注册”引导使用） |
 | `chenxi.passport.scopes` | `CHENXI_SCOPES` | `openid,profile` | 授权范围（逗号分隔，后端统一规范化为空格分隔再下发） |
 | `chenxi.passport.access-token-days` | `CHENXI_ACCESS_TOKEN_DAYS` | `30` | 本站会话令牌不活动过期天数（滑动刷新，见下文） |
 | `chenxi.license.enabled` | `CHENXI_LICENSE_ENABLED` | `false` | 正版授权校验总开关（N2 占位） |
@@ -75,7 +76,7 @@ CHENXI_REDIRECT_URI=https://your-site.com/auth/chenxi
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/auth/chenxi/config` | 返回登录配置（`enabled/issuer/clientId/redirectUri/scopes`），无论是否启用都可访问。公共客户端没有密钥，这些都是可公开的"门牌"信息 |
+| GET | `/api/auth/chenxi/config` | 返回登录配置（`enabled/issuer/clientId/redirectUri/scopes/registerUrl`），无论是否启用都可访问。公共客户端没有密钥，这些都是可公开的"门牌"信息；`registerUrl` 由 issuer 推导（`passport.*` → 主站 `/register`；可用 `register-url` 覆盖），供登录界面“没有辰汐账号？前往主站注册”引导链接使用 |
 | POST | `/api/auth/chenxi/exchange` | 请求体 `{code, codeVerifier}`；后端向通行证换 token、拉取 userinfo、匹配/创建影子账号后，返回与 `/api/auth/login` **完全一致**的 `AuthResponse` 结构 |
 
 ### 令牌设计：30 天不活动过期（滑动刷新）vs 授权按年（解耦）

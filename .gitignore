@@ -88,7 +88,7 @@ log.log
 
 # 应用运行时文件（安装状态与本地生成的配置，泄露部署信息）
 luomiblog-backend/install.lock
-luomiblog-backend/config/custom-application.yml
+luomiblog-backend/config/
 
 # 数据库备份/损坏的历史文件
 luomiblog-backend/src/main/resources/db/schema.sql.backup
