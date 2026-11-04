@@ -35,7 +35,9 @@ const coupons = [
   <!-- 资产概览 -->
   <div class="assets-overview">
     <div class="asset-card primary">
-      <div class="asset-icon">💎</div>
+      <div class="asset-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+      </div>
       <div class="asset-info">
         <span class="asset-label">积分余额</span>
         <span class="asset-value">{assets.points}</span>
@@ -43,7 +45,9 @@ const coupons = [
       <a href="#" class="asset-action">去充值 →</a>
     </div>
     <div class="asset-card">
-      <div class="asset-icon">🎫</div>
+      <div class="asset-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+      </div>
       <div class="asset-info">
         <span class="asset-label">优惠券</span>
         <span class="asset-value">{assets.coupons}张</span>
@@ -51,7 +55,9 @@ const coupons = [
       <a href="#coupons" class="asset-action">查看 →</a>
     </div>
     <div class="asset-card">
-      <div class="asset-icon">📥</div>
+      <div class="asset-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+      </div>
       <div class="asset-info">
         <span class="asset-label">下载次数</span>
         <span class="asset-value">{assets.downloads}次</span>
@@ -59,7 +65,9 @@ const coupons = [
       <a href="#" class="asset-action">获取 →</a>
     </div>
     <div class="asset-card">
-      <div class="asset-icon">☁️</div>
+      <div class="asset-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+      </div>
       <div class="asset-info">
         <span class="asset-label">存储空间</span>
         <span class="asset-value">{assets.storage.used}{assets.storage.unit}</span>
@@ -155,8 +163,15 @@ const coupons = [
     color: white;
   }
 
+  /* 资产图标(原 emoji 已撤,换内联线性 SVG):随卡片文字色,主卡白/普通卡深 */
   .asset-icon {
-    font-size: 32px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .asset-icon svg {
+    width: 100%;
+    height: 100%;
   }
 
   .asset-info {

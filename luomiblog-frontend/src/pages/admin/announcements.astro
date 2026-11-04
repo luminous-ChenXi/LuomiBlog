@@ -104,7 +104,7 @@ const getStatusBadge = (status: string) => {
 
     <!-- 公告列表 -->
     <div class="announcements-list">
-      <div style="background:#fdf2f7;border:1px solid #ff6b9d;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px;color:#c2255c;">⚠ 该页面为演示数据，公告管理功能开发中</div>
+      <div style="background:#fdf2f7;border:1px solid #ff6b9d;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px;color:#c2255c;">注意：该页面为演示数据，公告管理功能开发中</div>
       {announcements.map((announcement) => {
         const levelBadge = getLevelBadge(announcement.level);
         const statusBadge = getStatusBadge(announcement.status);

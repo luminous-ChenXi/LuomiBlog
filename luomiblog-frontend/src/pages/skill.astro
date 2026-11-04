@@ -44,14 +44,14 @@ const skillCategories = [
 ];
 
 const tools = [
-  { name: 'VS Code', icon: '💻', category: '编辑器' },
-  { name: 'IntelliJ IDEA', icon: '🚀', category: '编辑器' },
-  { name: 'Figma', icon: '🎨', category: '设计' },
-  { name: 'Postman', icon: '📮', category: '工具' },
-  { name: 'GitHub', icon: '🐙', category: '协作' },
-  { name: 'Notion', icon: '📝', category: '笔记' },
-  { name: 'Docker Desktop', icon: '🐳', category: '工具' },
-  { name: 'TablePlus', icon: '🗄️', category: '数据库' }
+  { name: 'VS Code', abbr: 'VS', category: '编辑器' },
+  { name: 'IntelliJ IDEA', abbr: 'IJ', category: '编辑器' },
+  { name: 'Figma', abbr: 'FG', category: '设计' },
+  { name: 'Postman', abbr: 'PM', category: '工具' },
+  { name: 'GitHub', abbr: 'GH', category: '协作' },
+  { name: 'Notion', abbr: 'NT', category: '笔记' },
+  { name: 'Docker Desktop', abbr: 'DK', category: '工具' },
+  { name: 'TablePlus', abbr: 'TP', category: '数据库' }
 ];
 ---
 
@@ -96,7 +96,7 @@ const tools = [
       <div class="tools-grid">
         {tools.map((tool) => (
           <div class="tool-card">
-            <span class="tool-icon">{tool.icon}</span>
+            <span class="tool-icon">{tool.abbr}</span>
             <span class="tool-name">{tool.name}</span>
             <span class="tool-category">{tool.category}</span>
           </div>
@@ -135,9 +135,21 @@ const tools = [
     border-color: var(--color-brand-primary);
   }
 
+  /* 工具缩写字徽(原 emoji 图标已撤):品牌色浅底徽章 */
   .tool-icon {
-    font-size: 32px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--color-brand-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
   }
 
   .tool-name {

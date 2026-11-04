@@ -488,7 +488,11 @@ const isActive = (href: string) => {
     --admin-text: #1e293b;
     --admin-text-secondary: #64748b;
     --admin-text-muted: #94a3b8;
-    --admin-primary: #ff6b9d;
+    /* 品牌主色单一来源:引用 global.css 的 --color-brand-primary(同值 #ff6b9d)。
+       注意:admin 域暂未引入 global.css(其 @import tailwindcss,贸然引入会重置
+       全后台元素样式),故保留 #ff6b9d 兜底;待后续批把 --admin-* 并入站点
+       tokens 时再移除兜底。其余 --admin-* 变量在 global.css 无同值对应,暂为双源。 */
+    --admin-primary: var(--color-brand-primary, #ff6b9d);
     --admin-primary-hover: #ff5a8a;
     --admin-success: #10b981;
     --admin-warning: #f59e0b;

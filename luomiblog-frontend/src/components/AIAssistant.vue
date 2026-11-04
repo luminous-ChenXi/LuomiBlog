@@ -45,7 +45,7 @@ const quickQuestions = [
         </svg>
       </div>
       <div class="ai-info">
-        <h4 class="ai-title">AI 助手 <span style="background:#ff6b9d;color:#fff;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">WIP</span></h4>
+        <h4 class="ai-title">AI 助手 <span class="wip-badge">WIP</span></h4>
         <span class="ai-status">
           <span class="status-dot"></span>
           <span class="status-text">在线</span>
@@ -199,6 +199,17 @@ const quickQuestions = [
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* WIP 徽标(原内联 style 硬编码品牌色,收敛进 <style> 块并引用 token) */
+.wip-badge {
+  background: var(--color-brand-primary, #ff6b9d);
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 .ai-status {
