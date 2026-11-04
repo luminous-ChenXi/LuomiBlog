@@ -72,3 +72,90 @@ jobs:
           name: frontend-dist
           path: luomiblog-frontend/dist/
           retention-days: 7
+
+  # [R3-001 冒烟门禁] 全新安装链路端到端：空库 + Hibernate ddl-auto=update 抢建表
+  # （正是 create-admin 缺 token_version 默认值必 500 的复现路径）→ 安装向导
+  # execute-sql（IF NOT EXISTS 对 Hibernate 表全 no-op）→ create-admin → complete → login。
+  # 任何一步失败即红，防止"止血只留在文档、不进代码"的回归（R3-001 曾两轮审计原地踏步）。
+  install-smoke:
+    name: Fresh install smoke (create-admin + login)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: smoke_root_pw
+          MYSQL_DATABASE: luomiblog
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -psmoke_root_pw"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      DB_USERNAME: root
+      DB_PASSWORD: smoke_root_pw
+      # CI 冒烟专用一次性占位密钥，非真实凭据
+      JWT_SECRET: smoke-only-secret-0123456789abcdef0123456789abcdef
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Package backend (skip tests)
+        run: mvn -B -ntp -DskipTests package --file luomiblog-backend/pom.xml
+
+      - name: Start backend against empty database
+        run: |
+          java -jar luomiblog-backend/target/luomiblog-backend-*.jar > backend.log 2>&1 &
+          echo $! > backend.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8080/actuator/health | grep -q '"UP"'; then
+              echo "backend is UP (attempt $i)"; exit 0
+            fi
+            sleep 3
+          done
+          echo "backend failed to become healthy in 180s"; tail -100 backend.log; exit 1
+
+      - name: Install wizard: execute-sql (schema)
+        run: |
+          curl -sf -X POST http://127.0.0.1:8080/api/install/execute-sql \
+            -H 'Content-Type: application/json' \
+            -d '{"host":"127.0.0.1","port":3306,"database":"luomiblog","username":"root","password":"smoke_root_pw"}' \
+            | tee execute-sql.json
+          grep -q '"code":200' execute-sql.json || { cat execute-sql.json; exit 1; }
+
+      - name: Install wizard: create-admin (R3-001 regression gate)
+        run: |
+          curl -sf -X POST http://127.0.0.1:8080/api/install/create-admin \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"smokeadmin","password":"Sm0ke-Test-Passw0rd!","email":"smoke@example.com","nickname":"Smoke Admin"}' \
+            | tee create-admin.json
+          grep -q '"code":200' create-admin.json || { cat create-admin.json; exit 1; }
+
+      - name: Install wizard: complete
+        run: |
+          curl -sf -X POST http://127.0.0.1:8080/api/install/complete | tee complete.json
+          grep -q '"code":200' complete.json || { cat complete.json; exit 1; }
+
+      - name: Login as created admin
+        run: |
+          curl -sf -X POST http://127.0.0.1:8080/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"usernameOrEmail":"smokeadmin","password":"Sm0ke-Test-Passw0rd!"}' \
+            | tee login.json
+          grep -q 'accessToken' login.json || { cat login.json; exit 1; }
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then kill "$(cat backend.pid)" 2>/dev/null || true; fi
+          tail -50 backend.log 2>/dev/null || true

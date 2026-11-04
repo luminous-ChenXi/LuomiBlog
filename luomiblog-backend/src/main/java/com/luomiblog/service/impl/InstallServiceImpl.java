@@ -586,8 +586,9 @@ public class InstallServiceImpl implements InstallService {
                 throw new RuntimeException("admin 角色不存在，请先执行 SQL 脚本");
             }
 
-            // 使用 JDBC 直接插入管理员账号（totp_enabled 显式给默认值，兼容 Hibernate 建表无列默认值的情况）
-            String sql = "INSERT INTO users (username, email, password, nickname, role_id, status, email_verified, totp_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, false, NOW(), NOW())";
+            // 使用 JDBC 直接插入管理员账号（totp_enabled/token_version 显式给默认值，兼容 Hibernate 建表无列默认值的情况——
+            // 实体 @Column(nullable=false) 的 Java 字段初始化不会进 Hibernate DDL，缺省列会导致全新安装 create-admin 必 500，R3-001）
+            String sql = "INSERT INTO users (username, email, password, nickname, role_id, status, email_verified, totp_enabled, token_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, false, 0, NOW(), NOW())";
             String passwordHash = passwordEncoder.encode(request.getPassword());
             String nickname = request.getNickname() != null ? request.getNickname() : request.getUsername();
 
