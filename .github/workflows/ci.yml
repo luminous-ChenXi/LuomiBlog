@@ -125,7 +125,7 @@ jobs:
           done
           echo "backend failed to become healthy in 180s"; tail -100 backend.log; exit 1
 
-      - name: Install wizard: execute-sql (schema)
+      - name: "Install wizard: execute-sql (schema)"
         run: |
           curl -sf -X POST http://127.0.0.1:8080/api/install/execute-sql \
             -H 'Content-Type: application/json' \
@@ -133,7 +133,7 @@ jobs:
             | tee execute-sql.json
           grep -q '"code":200' execute-sql.json || { cat execute-sql.json; exit 1; }
 
-      - name: Install wizard: create-admin (R3-001 regression gate)
+      - name: "Install wizard: create-admin (R3-001 regression gate)"
         run: |
           curl -sf -X POST http://127.0.0.1:8080/api/install/create-admin \
             -H 'Content-Type: application/json' \
@@ -141,7 +141,7 @@ jobs:
             | tee create-admin.json
           grep -q '"code":200' create-admin.json || { cat create-admin.json; exit 1; }
 
-      - name: Install wizard: complete
+      - name: "Install wizard: complete"
         run: |
           curl -sf -X POST http://127.0.0.1:8080/api/install/complete | tee complete.json
           grep -q '"code":200' complete.json || { cat complete.json; exit 1; }
