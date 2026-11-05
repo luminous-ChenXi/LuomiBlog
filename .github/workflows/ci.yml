@@ -117,8 +117,11 @@ jobs:
         run: |
           java -jar luomiblog-backend/target/luomiblog-backend-*.jar > backend.log 2>&1 &
           echo $! > backend.pid
+          # 健康探针打 /api/install/status（permitAll、真实存在）。
+          # 不能打 /actuator/health——pom 无 actuator 依赖，该路径落进应用 404 信封，
+          # SecurityConfig 里那行 permitAll 是哑弹（本地 Docker 复现实证，2026-11-05）
           for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:8080/actuator/health | grep -q '"UP"'; then
+            if curl -sf http://127.0.0.1:8080/api/install/status | grep -q '"code":200'; then
               echo "backend is UP (attempt $i)"; exit 0
             fi
             sleep 3
